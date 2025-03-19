@@ -1,0 +1,16 @@
+<%- include('partials/header') %>
+<div class="container-fluid">
+  <h2>Contact Page Settings</h2>
+  <form action="/settings/update-contact" method="POST">
+    <div class="form-group mb-3">
+      <label for="mapEmbed">Map Embed Code (Google Maps iframe)</label>
+      <textarea class="form-control" id="mapEmbed" name="mapEmbed" rows="3"><%= (typeof contactContent !== 'undefined' && contactContent.mapEmbed) ? contactContent.mapEmbed : '' %></textarea>
+    </div>
+    <div class="form-group mb-3">
+      <label for="contactInfo">Contact Information (e.g., phone, email, address)</label>
+      <textarea class="form-control" id="contactInfo" name="contactInfo" rows="3"><%= (typeof contactContent !== 'undefined' && contactContent.contactInfo) ? contactContent.contactInfo : '' %></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+  </form>
+</div>
+<%- include('partials/footer') %>

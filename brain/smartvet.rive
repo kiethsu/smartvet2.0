@@ -1,0 +1,15 @@
+// smartvet.rive
+
+// Greeting Intent
++ hi
++ hello
++kamusta
+- Hello! Welcome to SmartVet. How can I help you with your pet care today?
+
+// Services Intent
++ what services do you offer
+- Our clinic offers pet check-ups, vaccinations, grooming, dental care, and minor surgeries.
+
+// Appointment Intent
++ how do i book an appointment
+- Booking an appointment is easy! Simply log in, go to our Appointment section, and choose your preferred date and time.

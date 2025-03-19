@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Customer Dashboard</title>
+  <!-- Google Fonts for a professional look -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet">
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Base Styles */
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f7f7f7;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      font-size: 14px;
+      color: #333;
+    }
+    .wrapper {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    /* Sidebar Styling */
+    #sidebar {
+      width: 250px;
+      background: #0F52BA; /* Sapphire Blue */
+      color: #fff; /* White text */
+      position: fixed;
+      top: 0;
+      left: -250px;
+      height: 100%;
+      transition: all 0.3s ease;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      z-index: 1050;
+      padding-top: 20px;
+    }
+    #sidebar.active {
+      left: 0;
+    }
+    /* Profile Area – horizontal layout */
+    .profile-area {
+      display: flex;
+      align-items: center;
+      padding: 0 20px 15px 20px;
+    }
+    .profile-area img.profile-img {
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid #ddd;
+      margin-right: 12px;
+    }
+    .profile-area h4 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #fff; /* White text for profile name */
+    }
+    /* Sidebar Toggle Button */
+    #sidebarToggleSidebar {
+      background: transparent;
+      border: none;
+      font-size: 1.2em;
+      cursor: pointer;
+      outline: none;
+      margin: 0 20px 10px;
+      color: #fff;
+    }
+    /* Sidebar Menu Container */
+    #sidebar ul.components {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      background: #0F52BA;  /* Sapphire Blue background */
+    }
+    /* Sidebar Menu Items */
+    #sidebar ul.components li {
+      position: relative;
+    }
+    #sidebar ul.components li a {
+      color: #fff; /* White text for menu items */
+      background: #0F52BA; /* Maintain Sapphire Blue background */
+      text-decoration: none;
+      display: block;
+      padding: 12px 20px;
+      transition: background 0.3s;
+    }
+    #sidebar ul.components li a:hover,
+    #sidebar ul.components li a.active {
+      background: #2a9d8f; /* Accent hover color */
+      color: #fff;
+      border-radius: 4px;
+    }
+    #sidebar ul.components li a i {
+      margin-right: 10px;
+      width: 20px;
+      text-align: center;
+    }
+    /* Content Header */
+    .content-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    #sidebarToggleContent {
+      margin-right: 15px;
+      border: none;
+      background: transparent;
+      font-size: 1.5em;
+      cursor: pointer;
+      outline: none;
+    }
+    /* Main Content Area */
+    #content {
+      margin-left: 0;
+      padding: 20px 40px;
+      background: #f7f7f7;
+      min-height: 100vh;
+      width: 100%;
+      transition: margin-left 0.3s ease;
+    }
+    #content.active {
+      margin-left: 250px;
+    }
+    /* Card Styling */
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      border: none;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .btn-primary {
+      background-color: #2a9d8f;
+      border-radius: 4px;
+      border: none;
+    }
+    .tutorial-btn {
+      width: 130px;
+      text-align: left;
+    }
+    /* Responsive Table */
+    .table-responsive {
+      overflow-x: auto;
+    }
+    .table th, .table td {
+      white-space: nowrap;
+    }
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      #content.active {
+        margin-left: 0;
+      }
+      #sidebar {
+        width: 250px;
+      }
+      #sidebar.active {
+        left: 0;
+      }
+      #content {
+        padding: 10px 20px;
+      }
+      .card {
+        text-align: center;
+      }
+      .table {
+        font-size: 0.9rem;
+      }
+    }
+
+      /* Chat widget container */
+  #chatWidget {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 300px;
+    max-height: 400px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    display: none; /* hidden by default */
+    flex-direction: column;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 9999;
+  }
+  #chatHeader {
+    background: #2a9d8f;
+    color: #fff;
+    padding: 10px;
+    cursor: pointer;
+  }
+  #chatMessages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+    background: #f9f9f9;
+  }
+  #chatInputContainer {
+    padding: 10px;
+    border-top: 1px solid #ccc;
+  }
+  #chatInput {
+    width: 100%;
+    padding: 8px;
+  }
+  /* Toggle button for the widget */
+  #chatToggleButton {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #2a9d8f;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 10000;
+  }
+  #suggestedPrompts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 5px 10px;
+    background: #f1f1f1;
+  }
+  #suggestedPrompts button {
+    background: #2a9d8f;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  </style>
+</head>
+<body>
+  <div id="chatWidget">
+    <div id="chatHeader">SmartVet Chat</div>
+    <div id="chatMessages"></div>
+    
+    <!-- Suggested Prompts Section -->
+    <div id="suggestedPrompts">
+      <button data-prompt="hello">Greeting</button>
+      <button data-prompt="what services do you offer">Services</button>
+      <button data-prompt="how do i book an appointment">Appointment</button>
+    </div>
+    
+    <div id="chatInputContainer">
+      <input type="text" id="chatInput" placeholder="Type your message..." />
+    </div>
+  </div>
+  <button id="chatToggleButton"><i class="fas fa-comment-dots"></i></button>
+  <div class="wrapper">
+    <!-- Sidebar -->
+    <nav id="sidebar">
+      <!-- Sidebar Toggle Button -->
+      <button id="sidebarToggleSidebar"><i class="fas fa-bars"></i></button>
+      <!-- Profile Area -->
+      <div class="profile-area">
+        <img src="<%= profilePic ? profilePic : '/images/default_profile_icon.png' %>" alt="Profile" class="profile-img" id="sidebarProfilePic">
+        <h4><%= username %></h4>
+      </div>
+      <!-- Sidebar Menu -->
+      <ul class="components">
+        <li>
+          <a href="#" class="menu-item" data-content="dashboard">
+            <i class="fas fa-home"></i> Dashboard
+          </a>
+        </li>
+        <li>
+          <a href="#" class="menu-item" data-content="mypet">
+            <i class="fas fa-paw"></i> My Pet
+          </a>
+        </li>
+        <li>
+          <a href="#" class="menu-item" data-content="consult">
+            <i class="fas fa-stethoscope"></i> Consult
+          </a>
+        </li>
+        <!-- Single Profile Setting Menu Item -->
+        <li>
+          <a href="#" class="menu-item" data-content="profileDetails">
+            <i class="fas fa-user-cog"></i> Profile Setting
+          </a>
+        </li>
+        <!-- Logout -->
+        <li class="logout">
+          <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>        </li>
+        
+      </ul>
+    </nav>
+    <!-- Main Content Area -->
+    <div id="content" class="container-fluid">
+      <!-- Content Header -->
+      <div class="content-header">
+        <button id="sidebarToggleContent"><i class="fas fa-bars"></i></button>
+        <h3 id="page-title" class="font-weight-bold mb-0">Dashboard</h3>
+      </div>
+      <!-- Dynamic Content Container -->
+      <div id="main-content">
+        <!-- Default Dashboard Content -->
+        <div class="card p-4 shadow-sm">
+          <h4 class="font-weight-bold">WELCOME BACK <%= username %></h4>
+          <p>If you’re a new user, be sure to watch our quick video tutorial...</p>
+          <button class="btn btn-primary tutorial-btn">Watch Tutorial</button>
+        </div>
+        <!-- Upcoming Visit Card -->
+        <div class="card p-4 shadow-sm upcoming-visit">
+          <h5 class="font-weight-bold"><i class="fas fa-calendar-alt"></i> Upcoming Visit</h5>
+          <h1 class="font-weight-bold text-dark">3</h1>
+        </div>
+        <!-- Recent Visits Section -->
+        <h5 class="font-weight-bold mt-4">Recent Visit</h5>
+        <div class="card p-4 shadow-sm recent-visit">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Pet Name</th>
+                  <th>Date of Visit</th>
+                  <th>Concern</th>
+                  <th>Doctor</th>
+                  <th>Consultation</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Buddy</td>
+                  <td>2025-02-01</td>
+                  <td><button class="btn btn-primary btn-sm">View Details</button></td>
+                  <td>Dr. Smith</td>
+                  <td><button class="btn btn-primary btn-sm">View Details</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- end main-content -->
+    </div><!-- end content -->
+  </div><!-- end wrapper -->
+  
+  <!-- jQuery and Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script>
+    $(document).ready(function(){
+      // Sidebar toggle functions
+      function openSidebar() {
+        $('#sidebar').addClass('active');
+        $('#content').addClass('active');
+        $('#sidebarToggleContent').hide();
+        $('#sidebarToggleSidebar').show();
+      }
+      function closeSidebar() {
+        $('#sidebar').removeClass('active');
+        $('#content').removeClass('active');
+        $('#sidebarToggleContent').show();
+        $('#sidebarToggleSidebar').hide();
+      }
+      $('#sidebarToggleContent').show();
+      $('#sidebarToggleSidebar').hide();
+      $('#sidebarToggleContent').on('click', function(){
+          openSidebar();
+      });
+      $('#sidebarToggleSidebar').on('click', function(){
+          closeSidebar();
+      });
+  
+      // Function to load dynamic content into #main-content
+      function loadContent(page, title) {
+        $("#main-content").load(`/customer/${page}`, function(response, status, xhr) {
+          if(status === "error"){
+            console.error("Error loading content:", xhr.status, xhr.statusText);
+          } else {
+            $("#page-title").text(title);
+          }
+        });
+      }
+  
+      // Load dashboard by default
+      loadContent("dashboard", "Dashboard");
+  
+      // Menu item click events
+      $('.menu-item').on('click', function(e){
+        e.preventDefault();
+        const page = $(this).data('content');
+        const title = $(this).text().trim();
+        loadContent(page, title);
+        if($(window).width() < 768){
+          closeSidebar();
+        }
+      });
+    });
+   // Generate a session ID
+   const sessionId = Date.now().toString();
+
+// Append a message to chat area
+function appendMessage(text, sender) {
+  const msgClass = sender === 'user' ? 'text-right text-primary' : 'text-left text-success';
+  const messageHTML = `<div class="${msgClass}" style="margin-bottom: 5px;">${text}</div>`;
+  document.getElementById("chatMessages").innerHTML += messageHTML;
+  document.getElementById("chatMessages").scrollTop = document.getElementById("chatMessages").scrollHeight;
+}
+
+// Toggle widget visibility
+document.getElementById("chatToggleButton").addEventListener("click", function() {
+  const widget = document.getElementById("chatWidget");
+  widget.style.display = widget.style.display === "none" || widget.style.display === "" ? "flex" : "none";
+});
+
+// Send message on Enter key press
+document.getElementById("chatInput").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    sendMessage(this.value.trim());
+    this.value = "";
+  }
+});
+
+// Function to send message and process reply
+function sendMessage(message) {
+  if (!message) return;
+  appendMessage("You: " + message, "user");
+  
+  fetch("/chatbot/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, sessionId })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.reply) {
+      appendMessage("Bot: " + data.reply, "bot");
+    } else {
+      appendMessage("Bot: Sorry, something went wrong.", "bot");
+    }
+  })
+  .catch(err => {
+    console.error("Chatbot error:", err);
+    appendMessage("Bot: Sorry, something went wrong.", "bot");
+  });
+}
+
+// Attach click event to suggested prompt buttons
+document.querySelectorAll("#suggestedPrompts button").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    const prompt = this.getAttribute("data-prompt");
+    // Auto-fill the input field and send the prompt
+    document.getElementById("chatInput").value = prompt;
+    sendMessage(prompt);
+  });
+});
+  // =============================
+    // AUTO-REFRESH ACCESS TOKEN
+    // =============================
+    // This script automatically calls the refresh token endpoint every 50 seconds.
+    // With an access token expiry of 1 minute (for testing), this keeps the user logged in without re-login.
+    setInterval(function(){
+    $.ajax({
+      url: '/refresh-token',  // Correct endpoint
+      type: 'POST',
+      xhrFields: { withCredentials: true }, // Ensure cookies are sent
+      success: function(response) {
+        console.log("Access token refreshed:", response.message);
+      },
+      error: function(xhr) {
+        console.error("Error refreshing token:", xhr.responseJSON ? xhr.responseJSON.message : xhr.statusText);
+      }
+    });
+  }, 50 * 60 * 1000); // 50 minutes in milliseconds
+  </script>
+  
+</body>
+</html>

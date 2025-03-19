@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile Details</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary-color: #2a9d8f;
+      --secondary-color: #264653;
+      --background-color: #f4f7fa;
+      --card-bg: #ffffff;
+      --border-color: #eaeaea;
+    }
+    body {
+      background-color: var(--background-color);
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 20px;
+      color: var(--secondary-color);
+    }
+    .main-container {
+      max-width: 1000px;
+      margin: 40px auto;
+    }
+    /* Profile Overview Card */
+    .profile-overview {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      padding: 20px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .profile-img-container {
+      position: relative;
+      width: 150px;
+      height: 150px;
+      margin: 0 auto 15px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 3px solid var(--primary-color);
+      background-color: #e9ecef;
+    }
+    .profile-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .upload-overlay {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      background: var(--primary-color);
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #fff;
+      font-size: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .profile-info h4 {
+      margin-bottom: 10px;
+      font-size: 1.8rem;
+      font-weight: 600;
+    }
+    .profile-info p {
+      margin: 0;
+      font-size: 1rem;
+    }
+    .profile-info p.text-muted {
+      color: #6c757d;
+    }
+    /* Tabbed Forms */
+    .nav-tabs .nav-link {
+      color: var(--secondary-color);
+      font-weight: 500;
+    }
+    .nav-tabs .nav-link.active {
+      background-color: var(--primary-color);
+      color: #fff;
+      border-color: var(--primary-color) var(--primary-color) transparent;
+    }
+    .tab-content {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .form-control {
+      border-radius: 5px;
+      box-shadow: none;
+      border: 1px solid #ced4da;
+    }
+    .form-control:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 0.2rem rgba(42,157,143,0.25);
+    }
+    label {
+      font-weight: 500;
+      color: var(--secondary-color);
+    }
+    button.btn {
+      border-radius: 5px;
+      font-weight: 500;
+    }
+    @media (max-width: 768px) {
+      .profile-overview {
+         margin-bottom: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container main-container">
+    <!-- Removed header text as requested -->
+    <div class="row">
+      <!-- Left Column: Profile Overview -->
+      <div class="col-md-4">
+        <div class="profile-overview text-center">
+          <div class="profile-img-container" id="profileImgContainer">
+            <% if(user.profilePic) { %>
+              <img src="<%= user.profilePic %>" alt="Profile Picture" class="profile-img" id="profilePreview">
+            <% } else { %>
+              <div class="d-flex align-items-center justify-content-center h-100" id="profilePreview">
+                <i class="fas fa-user fa-3x"></i>
+              </div>
+            <% } %>
+            <div class="upload-overlay">
+              <i class="fas fa-plus"></i>
+            </div>
+            <input type="file" id="profileImageInput" style="display: none;" accept="image/*">
+          </div>
+          <div class="profile-info">
+            <h4><%= user.username %></h4>
+            <p class="<%= user.address ? '' : 'text-muted' %>">
+              <i class="fas fa-map-marker-alt"></i>
+              <%= user.address ? user.address : 'No address provided' %>
+            </p>
+            <p class="<%= user.cellphone ? '' : 'text-muted' %>">
+              <i class="fas fa-phone"></i>
+              <%= user.cellphone ? user.cellphone : 'No cellphone number provided' %>
+            </p>
+          </div>
+        </div>
+      </div>
+      <!-- Right Column: Tabbed Forms -->
+      <div class="col-md-8">
+        <ul class="nav nav-tabs" id="profileTab" role="tablist">
+          <li class="nav-item">
+            <a class="nav-link active" id="profile-details-tab" data-toggle="tab" href="#profile-details" role="tab" aria-controls="profile-details" aria-selected="true">
+              Profile Details
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="update-email-tab" data-toggle="tab" href="#update-email" role="tab" aria-controls="update-email" aria-selected="false">
+              Update Email
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" id="update-password-tab" data-toggle="tab" href="#update-password" role="tab" aria-controls="update-password" aria-selected="false">
+              Update Password
+            </a>
+          </li>
+        </ul>
+        <div class="tab-content" id="profileTabContent">
+          <!-- Profile Details Form -->
+          <div class="tab-pane fade show active" id="profile-details" role="tabpanel" aria-labelledby="profile-details-tab">
+            <form id="profileDetailsForm">
+              <div class="form-group">
+                <label for="fullName">Username/Full Name</label>
+                <input type="text" class="form-control" id="fullName" value="<%= user.username %>">
+              </div>
+              <div class="form-group">
+                <label for="address">Address</label>
+                <input type="text" class="form-control" id="address" value="<%= user.address || '' %>">
+              </div>
+              <div class="form-group">
+                <label for="cellphone">Cellphone No(s)</label>
+                <input type="text" class="form-control" id="cellphone" value="<%= user.cellphone || '' %>">
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Update Profile</button>
+            </form>
+          </div>
+          <!-- Update Email Form -->
+          <div class="tab-pane fade" id="update-email" role="tabpanel" aria-labelledby="update-email-tab">
+            <form id="emailUpdateForm">
+              <div class="form-group">
+                <label for="currentEmail">Current Email</label>
+                <input type="email" class="form-control" id="currentEmail" value="<%= user.email %>" readonly>
+              </div>
+              <div class="form-group">
+                <label for="newEmail">New Email</label>
+                <div class="input-group">
+                  <input type="email" class="form-control" id="newEmail" placeholder="Enter new email">
+                  <div class="input-group-append">
+                    <button type="button" class="btn btn-primary" id="sendEmailOTP">Send OTP</button>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="emailOTP">Verify OTP</label>
+                <input type="text" class="form-control" id="emailOTP" placeholder="Enter OTP">
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Update Email</button>
+            </form>
+          </div>
+          <!-- Update Password Form -->
+          <div class="tab-pane fade" id="update-password" role="tabpanel" aria-labelledby="update-password-tab">
+            <form id="passwordUpdateForm">
+              <div class="form-group">
+                <label for="newPassword">New Password</label>
+                <div class="input-group">
+                  <input type="password" class="form-control" id="newPassword" placeholder="Enter new password">
+                  <div class="input-group-append">
+                    <span class="input-group-text toggle-password" style="cursor: pointer;">
+                      <i class="fas fa-eye"></i>
+                    </span>
+                  </div>
+                </div>
+                <small class="form-text text-muted">
+                  Must be at least 8 characters, include one uppercase letter, one special character, and one lowercase letter.
+                </small>
+              </div>
+              <div class="form-group">
+                <label for="confirmPassword">Confirm New Password</label>
+                <div class="input-group">
+                  <input type="password" class="form-control" id="confirmPassword" placeholder="Confirm new password">
+                  <div class="input-group-append">
+                    <span class="input-group-text toggle-password" style="cursor: pointer;">
+                      <i class="fas fa-eye"></i>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Update Password</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- jQuery, Bootstrap Bundle JS, and SweetAlert2 -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+      $(document).ready(function(){
+        // Toggle password visibility for both new and confirm password fields
+        $('.toggle-password').on('click', function(){
+          var input = $(this).closest('.input-group').find('input');
+          if(input.attr('type') === 'password'){
+            input.attr('type', 'text');
+            $(this).find('i').removeClass('fa-eye').addClass('fa-eye-slash');
+          } else {
+            input.attr('type', 'password');
+            $(this).find('i').removeClass('fa-eye-slash').addClass('fa-eye');
+          }
+        });
+        
+        // Profile image upload & preview
+        $('.upload-overlay').on('click', function(e) {
+          e.stopPropagation();
+          $('#profileImageInput').click();
+        });
+        $('#profileImageInput').on('change', function(){
+          var file = this.files[0];
+          if(file){
+            var reader = new FileReader();
+            reader.onload = function(e){
+              $('#profileImgContainer').html('<img src="'+e.target.result+'" alt="Profile Picture" class="profile-img" id="profilePreviewImg">');
+            }
+            reader.readAsDataURL(file);
+            var formData = new FormData();
+            formData.append('profilePic', file);
+            $.ajax({
+              url: '/customer/update-profile-image',
+              type: 'POST',
+              data: formData,
+              processData: false,
+              contentType: false,
+              success: function(response){
+                if(response.success){
+                  Swal.fire({ icon: 'success', title: 'Success', text: 'Profile image updated successfully!' });
+                  $('#profilePreviewImg').attr('src', response.profilePic + '?v=' + new Date().getTime());
+                  $('#sidebarProfilePic').attr('src', response.profilePic + '?v=' + new Date().getTime());
+                } else {
+                  Swal.fire({ icon: 'error', title: 'Oops...', text: response.message || 'Failed to update image.' });
+                }
+              },
+              error: function(){
+                Swal.fire({ icon: 'error', title: 'Error', text: 'An error occurred while updating the profile image.' });
+              }
+            });
+          }
+        });
+        
+        // Update Profile Details
+        $('#profileDetailsForm').on('submit', function(e){
+          e.preventDefault();
+          var fullName = $('#fullName').val().trim();
+          if(fullName === ''){
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Full name is required.' });
+            return;
+          }
+          var formData = {
+            fullName: fullName,
+            address: $('#address').val().trim(),
+            cellphone: $('#cellphone').val().trim()
+          };
+          $.ajax({
+            url: '/customer/update-profile-details',
+            method: 'POST',
+            data: formData,
+            success: function(response){
+              if(response.success){
+                Swal.fire({ icon: 'success', title: 'Success', text: 'Profile updated successfully!' });
+              } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: response.message || 'Update failed.' });
+              }
+            },
+            error: function(xhr){
+              Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON.message || 'An error occurred.' });
+            }
+          });
+        });
+        
+        // Send OTP for Email Update
+        $('#sendEmailOTP').on('click', function(){
+          var newEmail = $('#newEmail').val().trim();
+          if(newEmail === ''){
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Please enter a new email.' });
+            return;
+          }
+          $.ajax({
+            url: '/customer/send-email-otp',
+            method: 'POST',
+            data: { newEmail: newEmail },
+            success: function(response) {
+              if(response.success) {
+                Swal.fire({ icon: 'success', title: 'OTP Sent', text: 'OTP sent to your new email.' });
+              } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: response.message || 'Failed to send OTP.' });
+              }
+            },
+            error: function(xhr) {
+              Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON.message || 'An error occurred.' });
+            }
+          });
+        });
+        
+        // Update Email Submission
+        $('#emailUpdateForm').on('submit', function(e){
+          e.preventDefault();
+          var newEmail = $('#newEmail').val().trim();
+          var emailOTP = $('#emailOTP').val().trim();
+          if(newEmail === '' || emailOTP === ''){
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Please enter both new email and OTP.' });
+            return;
+          }
+          $.ajax({
+            url: '/customer/update-email',
+            method: 'POST',
+            data: { newEmail: newEmail, emailOTP: emailOTP },
+            success: function(response) {
+              if(response.success) {
+                Swal.fire({ icon: 'success', title: 'Success', text: 'Email updated successfully!' })
+                  .then(() => { location.reload(); });
+              } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: response.message || 'Failed to update email.' });
+              }
+            },
+            error: function(xhr){
+              Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON.message || 'An error occurred.' });
+            }
+          });
+        });
+        
+        // Update Password Submission
+        $('#passwordUpdateForm').on('submit', function(e){
+          e.preventDefault();
+          var newPassword = $('#newPassword').val().trim();
+          var confirmPassword = $('#confirmPassword').val().trim();
+          if(newPassword === '' || confirmPassword === ''){
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Please fill in all password fields.' });
+            return;
+          }
+          if(newPassword !== confirmPassword){
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Passwords do not match!' });
+            return;
+          }
+          $.ajax({
+            url: '/customer/update-password',
+            method: 'POST',
+            data: { newPassword: newPassword },
+            success: function(response){
+              if(response.success){
+                Swal.fire({ icon: 'success', title: 'Success', text: 'Password updated successfully!' });
+                $('#newPassword, #confirmPassword').val('');
+              } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: response.message || 'Failed to update password.' });
+              }
+            },
+            error: function(xhr){
+              Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON.message || 'An error occurred.' });
+            }
+          });
+        });
+      });
+    </script>
+  </div>
+</body>
+</html>

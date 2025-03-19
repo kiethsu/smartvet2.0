@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- Disable auto-zoom on tap by setting maximum-scale and user-scalable attributes -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Doctor Dashboard</title>
+  <!-- Bootstrap CSS and Font Awesome -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+  <style>
+    /* Common layout styling */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f7f9;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    .wrapper {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    /* Sidebar using HR color palette and text size */
+    #sidebar {
+      width: 250px;
+      background: #264653; /* HR sidebar background */
+      color: #fff;
+      transition: width 0.3s;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #sidebar.collapsed {
+      width: 80px;
+    }
+    /* Sidebar header styling updated for smaller height and horizontal alignment */
+    .sidebar-header {
+      padding: 10px;
+      background: #3c4147; /* Header background */
+    }
+    .sidebar-header .header-content {
+      display: flex;
+      align-items: center;
+    }
+    /* Default profile icon remains same size regardless of sidebar state */
+    .default-profile-icon {
+      width: 50px;
+      height: 50px;
+      background: #fff;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5em;
+      color: #264653;
+      cursor: pointer;
+      transition: width 0.3s, height 0.3s;
+      flex-shrink: 0;  /* Prevents compression */
+    }
+    /* Doctor name styling */
+    .doctor-name {
+      margin-left: 10px;
+      font-size: 14px; /* Same as menu option text */
+      line-height: 1;
+    }
+    /* Hide doctor name and center header content when collapsed */
+    #sidebar.collapsed .doctor-name {
+      display: none;
+    }
+    #sidebar.collapsed .header-content {
+      justify-content: center;
+    }
+    /* Menu items styling */
+    #sidebar ul.components {
+      padding: 0;
+      margin: 0;
+      flex: 1;
+      list-style: none;
+    }
+    #sidebar ul.components li {
+      padding: 10px;
+      transition: background 0.3s;
+    }
+    #sidebar ul.components li a {
+      color: #fff;  /* White text */
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      padding: 10px;
+      font-size: 14px;
+    }
+    #sidebar ul.components li a:hover,
+    #sidebar ul.components li.active a {
+      background: #00796B; /* HR active/hover color */
+      color: #fff;
+      border-radius: 4px;
+    }
+    #sidebar ul.components li a i {
+      width: 25px;
+      text-align: center;
+      font-size: 1.2em;
+      color: inherit;  /* Inherit white color */
+    }
+    #sidebar ul.components li a .menu-text {
+      margin-left: 10px;
+      transition: opacity 0.3s;
+    }
+    #sidebar.collapsed ul.components li a .menu-text {
+      display: none;
+    }
+    .sidebar-footer {
+      padding: 10px;
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .sidebar-footer button {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.1em;
+      cursor: pointer;
+    }
+    .sidebar-footer button:hover {
+      color: #fff;
+    }
+    .sidebar-footer .toggle-text {
+      margin-left: 5px;
+      transition: opacity 0.3s;
+    }
+    #sidebar.collapsed .sidebar-footer .toggle-text {
+      display: none;
+    }
+    #content {
+      flex: 1;
+      padding: 20px;
+      background: #fff;
+      overflow-y: auto;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <!-- Sidebar -->
+    <nav id="sidebar">
+      <div class="sidebar-header">
+        <div class="header-content">
+          <!-- Default profile icon (remains same size) -->
+          <div class="default-profile-icon" id="profileIcon">
+            <i class="fas fa-user"></i>
+          </div>
+          <% 
+            // Fallback: if the view data doesn't include a doctor object, default to an object with username "Doctor"
+            var doctorName = (typeof doctor !== 'undefined' && doctor.username) ? doctor.username : 'Doctor';
+          %>
+          <!-- Display the logged-in doctor's username -->
+          <h4 class="doctor-name"><%= doctorName %></h4>
+        </div>
+      </div>
+      <ul class="components">
+        <li class="active">
+          <a href="#" class="menu-item" data-content="d-dashboard">
+            <i class="fas fa-home"></i>
+            <span class="menu-text">Dashboard</span>
+          </a>
+        </li>
+        <li>
+          <a href="#" class="menu-item" data-content="d-patient">
+            <i class="fas fa-user-injured"></i>
+            <span class="menu-text">Patient</span>
+          </a>
+        </li>
+        <li>
+          <a href="#" class="menu-item" data-content="d-history">
+            <i class="fas fa-history"></i>
+            <span class="menu-text">History</span>
+          </a>
+        </li>
+        <!-- Removed the Profile menu item here -->
+        <li>
+          <a href="/logout" class="menu-item">
+            <i class="fas fa-sign-out-alt"></i>
+            <span class="menu-text">Logout</span>
+          </a>
+        </li>
+      </ul>
+      <div class="sidebar-footer">
+        <button id="toggleSidebar">
+          <i class="fas fa-angle-double-left"></i>
+          <span class="toggle-text">Collapse Sidebar</span>
+        </button>
+      </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <div id="content">
+      <div id="main-content">
+        <!-- By default, load the doctor dashboard overview -->
+      </div>
+    </div>
+  </div>
+  
+  <!-- jQuery and Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script>
+    $(document).ready(function(){
+      // Function to load partial views from the /doctor/ route
+      function loadContent(page) {
+        $("#main-content").load(`/doctor/${page}`);
+      }
+      
+      // Initially load the dashboard view
+      loadContent("d-dashboard");
+      
+      // Handle sidebar menu clicks
+      $('.menu-item').on('click', function(e){
+  var href = $(this).attr('href');
+  if(href && href !== "#") {
+    // If the href is not "#", let the default behavior occur (for example, for logout)
+    return;
+  }
+  e.preventDefault();
+  $('.menu-item').parent().removeClass('active');
+  $(this).parent().addClass('active');
+  const contentKey = $(this).data('content');
+  loadContent(contentKey);
+});
+
+      // Toggle sidebar collapse/expand
+      $('#toggleSidebar').on('click', function(){
+        $('#sidebar').toggleClass('collapsed');
+        if($('#sidebar').hasClass('collapsed')){
+          $(this).find('i').removeClass('fa-angle-double-left').addClass('fa-angle-double-right');
+        } else {
+          $(this).find('i').removeClass('fa-angle-double-right').addClass('fa-angle-double-left');
+        }
+      });
+    });
+      // =============================
+    // AUTO-REFRESH ACCESS TOKEN
+    // =============================
+    // This script automatically calls the refresh token endpoint every 50 seconds.
+    // With an access token expiry of 1 minute (for testing), this keeps the user logged in without re-login.
+      // Automatically refresh the access token every 50 seconds.
+      setInterval(function(){
+    $.ajax({
+      url: '/refresh-token',  // Correct endpoint
+      type: 'POST',
+      xhrFields: { withCredentials: true }, // Ensure cookies are sent
+      success: function(response) {
+        console.log("Access token refreshed:", response.message);
+      },
+      error: function(xhr) {
+        console.error("Error refreshing token:", xhr.responseJSON ? xhr.responseJSON.message : xhr.statusText);
+      }
+    });
+  }, 50 * 60 * 1000); // 50 minutes in milliseconds
+  </script>
+</body>
+</html>

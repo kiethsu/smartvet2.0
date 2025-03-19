@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profile Settings</title>
+  <!-- Bootstrap CSS (Bootstrap 4) -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" />
+
+  <!-- SweetAlert2 CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+  <style>
+    .profile-card {
+      max-width: 600px;
+      margin: auto;
+    }
+    .profile-img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 3px solid #fff;
+      box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.1);
+    }
+    @media (max-width: 576px) {
+      .profile-img {
+        width: 100px;
+        height: 100px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container my-4">
+    <div class="card profile-card shadow-sm">
+      <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Profile Settings</h4>
+      </div>
+      <div class="card-body">
+        <!-- The form uses multipart/form-data because of file upload -->
+        <form id="profileForm" enctype="multipart/form-data">
+          <!-- Hidden field for user id -->
+          <input type="hidden" name="userId" value="<%= user._id %>">
+
+          <!-- Profile Picture Preview -->
+          <div class="text-center mb-4">
+            <img 
+              src="<%= user.profilePic ? user.profilePic : '/images/default_profile_icon.png' %>" 
+              alt="Profile Picture" 
+              id="profilePreview" 
+              class="profile-img"
+            >
+            <div class="mt-2">
+              <label class="btn btn-outline-secondary btn-sm mb-0">
+                <i class="fas fa-upload"></i> Change Photo
+                <input type="file" id="profilePicInput" name="profilePic" accept="image/*" hidden>
+              </label>
+            </div>
+          </div>
+
+          <!-- Name -->
+          <div class="form-group">
+            <label for="username">Name</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="username" 
+              name="username" 
+              placeholder="Enter your name" 
+              value="<%= user.username %>" 
+              required
+            >
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label for="email">Email address</label>
+            <input 
+              type="email" 
+              class="form-control" 
+              id="email" 
+              name="email" 
+              placeholder="Enter your email" 
+              value="<%= user.email %>" 
+              required
+            >
+          </div>
+
+          <!-- New Password -->
+          <div class="form-group">
+            <label for="password">New Password <small class="text-muted">(leave blank to keep current)</small></label>
+            <input 
+              type="password" 
+              class="form-control" 
+              id="password" 
+              name="password" 
+              placeholder="New password"
+            >
+          </div>
+
+          <!-- Confirm New Password -->
+          <div class="form-group">
+            <label for="confirmPassword">Confirm New Password</label>
+            <input 
+              type="password" 
+              class="form-control" 
+              id="confirmPassword" 
+              name="confirmPassword" 
+              placeholder="Confirm new password"
+            >
+          </div>
+
+          <!-- OTP Verification Toggle for Admin Login -->
+          <div class="form-group mt-4">
+            <label for="otpToggle" class="font-weight-bold">OTP Verification for Admin Login</label>
+            <div class="custom-control custom-switch">
+              <!-- Toggle checked based on user.otpEnabled -->
+              <input 
+                type="checkbox" 
+                class="custom-control-input" 
+                id="otpToggle" 
+                <%= user.otpEnabled ? "checked" : "" %>
+              >
+              <label class="custom-control-label" for="otpToggle">
+                <span id="otpToggleLabel"><%= user.otpEnabled ? "Enabled" : "Disabled" %></span>
+              </label>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block mt-4">Save Changes</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- jQuery and Bootstrap JS (for Bootstrap 4) -->
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+  <!-- SweetAlert2 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <script>
+    // Preview the uploaded profile picture
+    document.getElementById('profilePicInput').addEventListener('change', function() {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('profilePreview').setAttribute('src', e.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Handle the profile form submission via AJAX
+    document.getElementById('profileForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      if (password && password !== confirmPassword) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Passwords do not match!'
+        });
+        return;
+      }
+      const formData = new FormData(this);
+      try {
+        const response = await fetch('/admin/update-profile', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await response.json();
+        if (result.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: 'Profile updated successfully!'
+          });
+          updateSidebarProfile(result.user);
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: result.message || 'Update failed!'
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'An error occurred while updating your profile.'
+        });
+      }
+    });
+
+    // Update sidebar profile with new info
+    function updateSidebarProfile(user) {
+      const profileImg = document.getElementById('sidebarProfilePic');
+      if (profileImg) {
+        let newSrc = user.profilePic ? user.profilePic : '/images/default_profile_icon.png';
+        newSrc += '?t=' + new Date().getTime();
+        profileImg.src = newSrc;
+      }
+      const profileName = document.querySelector('#sidebar .sidebar-header h4');
+      if (profileName) {
+        profileName.textContent = user.username;
+      }
+    }
+
+    // OTP Toggle handler: send AJAX request to update OTP setting
+    document.getElementById("otpToggle").addEventListener("change", function () {
+      const otpEnabled = this.checked;
+      document.getElementById("otpToggleLabel").textContent = otpEnabled ? "Enabled" : "Disabled";
+
+      fetch("/admin/update-otp-setting", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otpEnabled, userId: "<%= user._id %>" })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: 'OTP Verification setting updated.'
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to update OTP setting.'
+          });
+        }
+      })
+      .catch(err => {
+        console.error("Error updating OTP setting:", err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Error updating OTP setting.'
+        });
+      });
+    });
+  </script>
+</body>
+</html>

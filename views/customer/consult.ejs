@@ -1,0 +1,670 @@
+<%
+  // Fallback for petDetails
+  var petDetails = typeof petDetails !== 'undefined' ? petDetails : { species: [], breeds: [], diseases: [] };
+%>
+<div class="container scrollable-content">
+  <div class="row mt-3">
+    <!-- Left Column: Consultation Form -->
+    <div class="col-lg-6 col-md-12 mb-4">
+      <div class="card p-4 shadow-sm">
+        <h4 class="font-weight-bold">Select Pets</h4>
+        <!-- Horizontal pet selection -->
+        <div class="horizontal-scroll">
+          <% if (pets && pets.length > 0) { %>
+            <% pets.forEach(function(pet) { %>
+              <% if (!pet.addedFromReservation) { %>
+                <div class="vetcard" data-petid="<%= pet._id %>" data-petname="<%= pet.petName %>">
+                  <div class="circle">
+                    <% if (pet.petPic) { %>
+                      <img src="<%= pet.petPic %>" 
+                           alt="<%= pet.petName %>" 
+                           style="width:50px; height:50px; object-fit:cover; border-radius:50%;">
+                    <% } else { %>
+                      <div class="default-pet-icon" style="width:50px; height:50px; display:flex; align-items:center; justify-content:center; border:2px solid #4B9CD3; border-radius:50%;">
+                        <i class="fa-solid fa-paw"></i>
+                      </div>
+                    <% } %>
+                    <div class="checkmark-overlay">
+                      <i class="fas fa-check"></i>
+                    </div>
+                  </div>
+                  <p><%= pet.petName %></p>
+                </div>
+              <% } %>
+            <% }); %>
+          <% } else { %>
+            <p>No pets available. Please add a pet in the My Pet section.</p>
+          <% } %>
+        </div>
+
+        <p class="mt-2">Selected Pets</p>
+        <div id="selectedPetsContainer"></div>
+
+        <!-- Consultation Form -->
+        <form id="consultForm">
+          <div class="form-group mt-3">
+            <label for="services">Services</label>
+            <select class="form-control" id="services">
+              <option value="">Select a service</option>
+              <% if (petDetails.services && petDetails.services.length > 0) { %>
+                <% petDetails.services.forEach(function(svc) { %>
+                  <option value="<%= svc %>"><%= svc %></option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="date">Date</label>
+            <input type="date" class="form-control" id="date">
+          </div>
+          <div class="form-group">
+            <label for="timeSelect">Time</label>
+            <select class="form-control" id="timeSelect"><!-- replaced by JS --></select>
+            <div id="timeError" style="color: red; margin-top: 5px;"></div>
+          </div>
+          <div class="form-group">
+            <label for="concerns">Concerns</label>
+            <textarea class="form-control" id="concerns" rows="3" placeholder="Describe your pet's concern"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Submit</button>
+        </form>
+      </div>
+    </div>
+    
+    <!-- Right Column: Reservation Details & History -->
+    <div class="col-lg-6 col-md-12">
+     <!-- Reservation Details Card -->
+<div class="card p-4 shadow-sm mb-4 reservation-details-card">
+  <h4 class="font-weight-bold">Reservation Details</h4>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Pet Name</th>
+          <th>Details</th>
+          <th>Status</th>
+          <th>Action</th> <!-- New header column -->
+        </tr>
+      </thead>
+      <tbody id="reservationDetailsTableBody">
+        <% if (reservations && reservations.length > 0) { %>
+          <% reservations.forEach(function(reservation) { %>
+            <% if (reservation.status === 'Pending') { %>
+              <tr id="reservation-<%= reservation._id %>">
+                <td><%= reservation.pets.map(p => p.petName).join(', ') %></td>
+                <td>
+                  <button class="btn btn-primary btn-sm" onclick="viewReservation('<%= reservation._id %>')">
+                    View
+                  </button>
+                </td>
+                <td>
+                  <span class="badge badge-info"><%= reservation.status %></span>
+                </td>
+                <td>
+                  <button class="btn btn-danger btn-sm" onclick="cancelReservation('<%= reservation._id %>')">
+                    Cancel
+                  </button>
+                </td>
+              </tr>
+            <% } %>
+          <% }); %>
+        <% } %>
+      </tbody>
+      
+      
+    </table>
+  </div>
+</div>
+
+    
+      <!-- History Card -->
+      <div class="card p-4 shadow-sm">
+        <h4 class="font-weight-bold">History</h4>
+        <!-- Wrap history table in a scrollable container -->
+        <div class="table-responsive" style="max-height:300px; overflow-y:auto;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Pet Name</th>
+                <th>Doctor Name</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody">
+              <% if (reservations && reservations.length > 0) { %>
+                <% reservations.forEach(function(reservation) { %>
+                  <% if (reservation.status === 'Done' || reservation.status === 'Canceled' || reservation.status === 'CanceledPending') { %>
+                    <tr id="history-<%= reservation._id %>">
+                      <td><%= reservation.pets.map(p => p.petName).join(', ') %></td>
+                      <td>
+                        <%= reservation.doctor ? (typeof reservation.doctor === 'object' ? reservation.doctor.username : reservation.doctor) : 'Not Assigned' %>
+                      </td>
+                      <td>
+                        <% if (reservation.status === 'CanceledPending' || reservation.status === 'Canceled') { %>
+                          <span class="badge badge-secondary">Canceled</span>
+                        <% } else { %>
+                          <button class="btn btn-primary btn-sm" onclick="viewReservation('<%= reservation._id %>')">
+                            View Details
+                          </button>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% } %>
+                <% }); %>
+              <% } %>
+            </tbody>
+            
+            
+<!-- Modal for Viewing Consultation Details -->
+<div class="modal fade" id="viewConsultationModal" tabindex="-1" role="dialog" aria-labelledby="viewConsultationModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="viewConsultationModalLabel">Consultation Details</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id="consultationDetails">
+        <!-- Consultation details will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Additional Styles and Scripts -->
+<style>
+  .scrollable-content {
+    padding: 15px;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+  }
+  .horizontal-scroll {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+  }
+  .horizontal-scroll .vetcard {
+    display: inline-block;
+    vertical-align: top;
+    width: 80px;
+    margin-right: 15px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .horizontal-scroll .vetcard .circle {
+    position: relative;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #ddd;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+  .checkmark-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 24px;
+  }
+  .btn-primary {
+    background-color: #2a9d8f;
+    border: none;
+    border-radius: 5px;
+  }
+  .badge-info {
+    background-color: #17a2b8;
+    color: white;
+    padding: 5px;
+    border-radius: 5px;
+  }
+  #selectedPetsContainer .selected-pet-item {
+    display: inline-block;
+    background: #f0f0f0;
+    padding: 5px 10px;
+    margin: 5px;
+    border-radius: 4px;
+  }
+  #selectedPetsContainer .selected-pet-item .remove-pet {
+    cursor: pointer;
+    margin-left: 5px;
+    font-weight: bold;
+  }
+  .reservation-details-card {
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  @media (max-width: 768px) {
+    .horizontal-scroll .vetcard {
+      width: 70px;
+    }
+  }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<!-- SweetAlert2 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+  $(document).ready(function () {
+    let selectedPets = {};
+
+    // Pet selection handling
+    $('.horizontal-scroll .vetcard').on('click', function () {
+  const petId = $(this).data('petid');
+  const petName = $(this).data('petname');
+
+  // If this pet is already selected, allow deselection.
+  if ($(this).hasClass('selected')) {
+    $(this).removeClass('selected');
+    $(this).find('.checkmark-overlay').hide();
+    delete selectedPets[petId];
+    $('#selectedPetsContainer').find('[data-petid="' + petId + '"]').remove();
+  } else {
+    // Check if any pet is already selected.
+    if (Object.keys(selectedPets).length > 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Selection Limit Reached',
+        text: 'You can only select one pet per submission. Please deselect your current pet before selecting another.'
+      });
+      return; // Prevent adding another pet.
+    }
+    // Otherwise, select this pet.
+    $(this).addClass('selected');
+    $(this).find('.checkmark-overlay').show();
+    selectedPets[petId] = petName;
+    let selectedPetItem = $('<span data-petid="' + petId + '" class="selected-pet-item">' + petName + ' <span class="remove-pet">x</span></span>');
+    $('#selectedPetsContainer').append(selectedPetItem);
+  }
+});
+
+    // Remove selected pet
+    $('#selectedPetsContainer').on('click', '.remove-pet', function (e) {
+      e.stopPropagation();
+      const parentItem = $(this).closest('.selected-pet-item');
+      const petId = parentItem.data('petid');
+      delete selectedPets[petId];
+      parentItem.remove();
+      $('.horizontal-scroll .vetcard[data-petid="' + petId + '"]').removeClass('selected').find('.checkmark-overlay').hide();
+    });
+  
+    // Consultation form submission
+    $('#consultForm').on('submit', function(e) {
+      e.preventDefault();
+        
+      const service = $('#services').val();
+      const date = $('#date').val();
+      const time = $('#timeSelect').val();
+      const concerns = $('#concerns').val();
+        
+      if(Object.keys(selectedPets).length === 0) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Please select at least one pet.'
+        });
+        return;
+      }
+        
+      let selectedPetsArray = [];
+      for(let key in selectedPets) {
+        selectedPetsArray.push({ petId: key, petName: selectedPets[key] });
+      }
+        
+      const postData = {
+        service,
+        date,
+        time,
+        concerns,
+        selectedPets: selectedPetsArray
+      };
+        
+      $.ajax({
+        url: '/customer/submit-reservation',
+        method: 'POST',
+        data: JSON.stringify(postData),
+        contentType: 'application/json',
+        success: function(response) {
+          if(response.success) {
+            // Show SweetAlert2 success pop-up
+            Swal.fire({
+              icon: 'success',
+              title: 'Success',
+              text: 'Reservation submitted successfully!'
+            });
+
+            // Update table with new reservation
+            const petNames = selectedPetsArray.map(item => item.petName).join(', ');
+           // Updated newRow code with cancel button
+const newRow = `
+  <tr id="reservation-${response.reservation._id}">
+    <td>${petNames}</td>
+    <td>
+      <button class="btn btn-primary btn-sm" onclick="viewReservation('${response.reservation._id}')">View</button>
+    </td>
+    <td><span class="badge badge-info">Pending</span></td>
+    <td>
+      <button class="btn btn-danger btn-sm" onclick="cancelReservation('${response.reservation._id}')">Cancel</button>
+    </td>
+  </tr>`;
+
+            $('#reservationDetailsTableBody').append(newRow);
+
+            // Reset form
+            $('#consultForm')[0].reset();
+            $('#selectedPetsContainer').empty();
+            $('.horizontal-scroll .vetcard').removeClass('selected').find('.checkmark-overlay').hide();
+            selectedPets = {};
+            $('#timeError').text('');
+
+            // Re-check time slots
+            updateTimeDropdownForToday();
+            checkTimeSlots();
+          }
+        },
+        error: function(err) {
+          if (err.responseJSON && err.responseJSON.message && err.responseJSON.message.indexOf("full") !== -1) {
+            $('#timeError').text(err.responseJSON.message);
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: 'There was a problem submitting your reservation.'
+            });
+          }
+        }
+      });
+    });
+  
+    // ----------------- Time Selection Dropdown -----------------
+    let timeOptions = '';
+    for(let hour = 8; hour <= 17; hour++){
+      let timeStr = (hour < 10 ? '0' + hour : hour) + ":00";
+      timeOptions += `<option value="${timeStr}" id="slot-${timeStr.replace(':','')}">${timeStr}</option>`;
+    }
+    $('#timeSelect').html(timeOptions);
+  
+    let appointmentLimit = 1;
+    
+    function checkTimeSlots() {
+      let selectedDate = $('#date').val();
+      if(!selectedDate){
+        selectedDate = new Date().toISOString().slice(0,10);
+      }
+      $('#timeSelect option').each(function(){
+        let timeSlot = $(this).val();
+        $.ajax({
+          url: '/consult/appointmentCount',
+          method: 'GET',
+          data: { time: timeSlot, date: selectedDate },
+          success: function(data){
+            if(data.count >= appointmentLimit){
+              $('#slot-' + timeSlot.replace(":", "")).attr('disabled', true)
+                .text(timeSlot + " - Full").attr('data-disabled-by-count', true);
+            } else {
+              // If not disabled by the past, re-enable
+              if(!$('#slot-' + timeSlot.replace(":", "")).attr('data-disabled-by-past')){
+                $('#slot-' + timeSlot.replace(":", "")).removeAttr('disabled')
+                  .text(timeSlot).removeAttr('data-disabled-by-count');
+              }
+            }
+          },
+          error: function(err){
+            console.error("Error checking appointment count for " + timeSlot, err);
+          }
+        });
+      });
+    }
+    
+    $.ajax({
+      url: '/settings/appointmentLimit',
+      method: 'GET',
+      success: function(response){
+        appointmentLimit = response.limit;
+        checkTimeSlots();
+      },
+      error: function(err){
+        console.error("Error fetching appointment limit", err);
+      }
+    });
+  
+    function updateTimeDropdownForToday() {
+      let selectedDate = $('#date').val();
+      if(!selectedDate){
+        selectedDate = new Date().toISOString().slice(0,10);
+      }
+      const todayStr = new Date().toISOString().slice(0,10);
+      if(selectedDate === todayStr){
+        const currentHour = new Date().getHours();
+        $('#timeSelect option').each(function(){
+          let timeSlot = $(this).val();
+          const slotHour = parseInt(timeSlot.split(':')[0], 10);
+          if(slotHour < currentHour){
+            $(this).attr('disabled', true).attr('data-disabled-by-past', true);
+            if(!$(this).text().includes("Full")){
+              $(this).text(timeSlot + " - Passed");
+            }
+          }
+        });
+      } else {
+        $('#timeSelect option').each(function(){
+          let timeSlot = $(this).val();
+          if($(this).attr('data-disabled-by-past')){
+            $(this).removeAttr('data-disabled-by-past');
+            if(!$(this).attr('data-disabled-by-count')){
+              $(this).removeAttr('disabled').text(timeSlot);
+            }
+          }
+        });
+      }
+    }
+    
+    $('#date').on('change', function(){
+      updateTimeDropdownForToday();
+      checkTimeSlots();
+    });
+    
+    if($('#date').val()){
+      updateTimeDropdownForToday();
+      checkTimeSlots();
+    }
+  });
+  
+  // ----------------- Mark as Done (AJAX) with SweetAlert -----------------
+  function markAsDone(reservationId) {
+    Swal.fire({
+      title: 'Mark as Done?',
+      text: 'Are you sure you want to mark this consultation as done?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, mark as done',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.ajax({
+          url: '/doctor/mark-as-done',
+          method: 'POST',
+          data: { reservationId: reservationId },
+          success: function(response) {
+            if(response.success) {
+              Swal.fire({
+                icon: 'success',
+                title: 'Done!',
+                text: 'Consultation marked as done.'
+              });
+              $("#reservation-" + reservationId).remove();
+              let doctorName = 'Not Assigned';
+              if(response.reservation.doctor){
+                if(typeof response.reservation.doctor === 'object' && response.reservation.doctor.username) {
+                  doctorName = response.reservation.doctor.username;
+                } else {
+                  doctorName = response.reservation.doctor;
+                }
+              }
+              let historyRow = `
+                <tr id="history-${response.reservation._id}">
+                  <td>${response.reservation.pets.map(p => p.petName).join(', ')}</td>
+                  <td>${doctorName}</td>
+                  <td>
+                    <button class="btn btn-primary btn-sm" onclick="viewReservation('${response.reservation._id}')">
+                      View Details
+                    </button>
+                  </td>
+                </tr>`;
+              $("#historyTableBody").append(historyRow);
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: response.message || 'Error marking consultation as done.'
+              });
+            }
+          },
+          error: function() {
+            Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: 'Server error while marking as done.'
+            });
+          }
+        });
+      }
+    });
+  }
+
+  // Expose viewReservation globally so inline onclick works
+  window.viewReservation = function(id) {
+  $.ajax({
+    url: '/customer/get-consultation',
+    method: 'GET',
+    data: { reservationId: id },
+    success: function(response) {
+      if (response.success) {
+        let detailsHtml = '';
+        if (response.reservation.pets && response.reservation.pets.length > 0) {
+          detailsHtml += '<strong>Pet(s):</strong> ' + response.reservation.pets.map(p => p.petName).join(', ') + '<br>';
+        }
+        if (response.reservation.concerns) {
+          detailsHtml += '<strong>Customer Concerns:</strong> ' + response.reservation.concerns + '<br>';
+        }
+        detailsHtml += '<hr>';
+        detailsHtml += '<strong>Consultation Notes:</strong><br>' + (response.reservation.consultationNotes || 'N/A') + '<br>';
+        if (response.reservation.medications && response.reservation.medications.length > 0) {
+          detailsHtml += '<hr><strong>Medication Details:</strong><br>';
+          response.reservation.medications.forEach(function(med) {
+            detailsHtml += 'Medication Name: ' + med.medicationName + '<br>';
+            detailsHtml += 'Quantity: ' + (med.quantity ? med.quantity : 'N/A') + '<br>';
+            detailsHtml += 'Dosage: ' + med.dosage + '<br>';
+            detailsHtml += 'Frequency: ' + med.frequency + '<br>';
+            detailsHtml += 'Administration Time: ' + med.adminTime + '<br>';
+            if (med.additionalInstructions)
+              detailsHtml += 'Additional Instructions: ' + med.additionalInstructions + '<br>';
+            detailsHtml += '<hr>';
+          });
+        }
+        if (response.reservation.schedule && response.reservation.schedule.scheduleDate) {
+          detailsHtml += '<hr><strong>Follow-Up Schedule:</strong><br>';
+          detailsHtml += 'Date: ' + formatVisitDate(response.reservation.schedule.scheduleDate) + '<br>';
+          detailsHtml += 'Details: ' + response.reservation.schedule.scheduleDetails + '<br>';
+        }
+        $("#consultationDetails").html(detailsHtml);
+        $("#viewConsultationModal").modal("show");
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: response.message || 'Error fetching consultation details.'
+        });
+      }
+    },
+    error: function() {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Server error while fetching consultation details.'
+      });
+    }
+  });
+};
+
+  function cancelReservation(reservationId) {
+  Swal.fire({
+    title: 'Cancel Reservation?',
+    text: 'Are you sure you want to cancel this reservation?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, cancel it',
+    cancelButtonText: 'No, keep it'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      $.ajax({
+        url: '/customer/cancel-reservation',
+        method: 'POST',
+        data: { reservationId: reservationId },
+        success: function(response) {
+          if (response.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Canceled',
+              text: 'Your reservation has been canceled.'
+            });
+            // Remove the row from the pending table
+            $('#reservation-' + reservationId).remove();
+            // Append/update in the history table (if desired)
+            const historyRow = `
+              <tr id="history-${response.reservation._id}">
+                <td>${response.reservation.pets.map(p => p.petName).join(', ')}</td>
+                <td>
+                  ${response.reservation.doctor ? response.reservation.doctor.username : 'Not Assigned'}
+                </td>
+                <td>
+                  <span class="badge badge-secondary">Canceled</span>
+                </td>
+              </tr>`;
+            $('#historyTableBody').append(historyRow);
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: response.message || 'Unable to cancel the reservation.'
+            });
+          }
+        },
+        error: function() {
+          Swal.fire({
+            icon: 'error',
+            title: 'Server Error',
+            text: 'There was a problem cancelling the reservation.'
+          });
+        }
+      });
+    }
+  });
+}
+function formatVisitDate(date) {
+  const d = new Date(date);
+  const month = d.toLocaleString('en-US', { month: 'long' }).toLowerCase();
+  const day = d.getDate();
+  const year = d.getFullYear();
+  return `${month} ${day} ${year}`;
+}
+
+</script>

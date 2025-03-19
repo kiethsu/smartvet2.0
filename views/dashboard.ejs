@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- Custom CSS for a modern dashboard -->
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    h2 {
+      margin: 20px 0;
+      font-weight: 600;
+    }
+    /* Card styles for a modern, flat design */
+    .card {
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+    .card-header {
+      background-color: #fff;
+      border-bottom: 1px solid #eee;
+      padding: 15px 20px;
+    }
+    .card-header h5 {
+      margin: 0;
+      font-weight: 600;
+    }
+    .card-body {
+      background-color: #fff;
+      padding: 20px;
+    }
+    /* Activity Feed styling */
+    .list-group-item {
+      border: none;
+      border-bottom: 1px solid #eee;
+      padding: 10px 15px;
+    }
+    .list-group-item:last-child {
+      border-bottom: none;
+    }
+    /* Chart container styling */
+    .chart-container {
+      position: relative;
+      height: 300px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <h2>Dashboard Overview</h2>
+    <!-- Row 1: Appointment Trends & User Account Statistics -->
+    <div class="row">
+      <!-- Appointment Trends Chart -->
+      <div class="col-lg-8 col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h5>Appointment Trends (Past 7 Days)</h5>
+          </div>
+          <div class="card-body chart-container">
+            <canvas id="appointmentTrendsChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <!-- User Account Statistics -->
+      <div class="col-lg-4 col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h5>User Account Statistics</h5>
+          </div>
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col-12 mb-3">
+                <h6>Doctors</h6>
+                <h3 id="doctorsCount">0</h3>
+              </div>
+              <div class="col-12 mb-3">
+                <h6>HR</h6>
+                <h3 id="hrCount">0</h3>
+              </div>
+              <div class="col-12">
+                <h6>Customers</h6>
+                <h3 id="customersCount">0</h3>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Row 2: Actionable Alerts -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h5>Recent Activity</h5>
+          </div>
+          <div class="card-body">
+            <ul class="list-group" id="activityFeed">
+              <!-- Activity feed items will be loaded here -->
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Row 3: Additional Analytics -->
+    <div class="row">
+      <!-- Most Used Services (Pie Chart) -->
+      <div class="col-lg-4 col-md-6">
+        <div class="card">
+          <div class="card-header">
+            <h5>Most Used Services</h5>
+          </div>
+          <div class="card-body chart-container">
+            <canvas id="servicesChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <!-- Pets by Species & Breed (Stacked Bar Chart) -->
+      <div class="col-lg-4 col-md-6">
+        <div class="card">
+          <div class="card-header">
+            <h5>Pets Species</h5>
+          </div>
+          <div class="card-body chart-container">
+            <canvas id="petsChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <!-- Disease Analytics (Bar Chart) -->
+      <div class="col-lg-4 col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <h5>Disease Analytics</h5>
+          </div>
+          <div class="card-body chart-container">
+            <canvas id="diseaseChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

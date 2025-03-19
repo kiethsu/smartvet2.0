@@ -1,0 +1,344 @@
+<%
+  // Helper function to format dates as "january 2 2004"
+  function formatVisitDate(date) {
+    const d = new Date(date);
+    const month = d.toLocaleString('en-US', { month: 'long' }).toLowerCase();
+    const day = d.getDate();
+    const year = d.getFullYear();
+    return month + " " + day + " " + year;
+  }
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Include Bootstrap CSS (adjust path as needed) -->
+  <link rel="stylesheet" href="/path/to/bootstrap.css">
+  <style>
+    /* Global scrollable page */
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+    .page-wrapper {
+      height: 100vh;
+      overflow-y: auto;
+      box-sizing: border-box;
+      padding: 15px;
+      padding-bottom: 50px;
+    }
+    
+    /* Video container remains inside the normal flow */
+    .video-container {
+      position: relative;
+      margin-top: 15px;
+      height: 300px; /* adjust height as needed */
+      overflow: hidden;
+      display: none; /* hidden by default */
+      background: #000;
+    }
+    .video-container iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      /* Ensures the whole video is visible */
+    }
+    /* Full Screen Button styling */
+    .fs-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      z-index: 3;
+      background: rgba(0,0,0,0.5);
+      color: #fff;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    
+    /* --- Custom Table Styling for Recent Visits --- */
+    .custom-table {
+      table-layout: fixed;
+      width: 100%;
+      background-color: #ffffff; /* Table background white */
+    }
+    .custom-table thead tr {
+      background-color: #4B9CD3; /* Carolina blue header background */
+      color: #ffffff;            /* White text */
+    }
+    .custom-table thead th {
+      text-align: center;
+      padding: 12px;
+      font-weight: 600;
+      border: none;
+    }
+    .custom-table tbody tr {
+      border-bottom: 1px solid #dee2e6;
+    }
+    .custom-table tbody td {
+      text-align: center;
+      padding: 12px;
+    }
+    /* Optional: hover effect on rows */
+    .custom-table tbody tr:hover {
+      background-color: #f9f9f9;
+    }
+    
+    /* --- Watch Tutorial Button Styling --- */
+    #watchTutorialBtn {
+      display: inline-block;
+      text-align: center;
+      width: 220px; /* Adjust the width as needed */
+      background-color: #4B9CD3; /* Carolina blue */
+      border-color: #4B9CD3;
+      color: #fff; /* White text */
+    }
+    
+    /* Remove flex stretching by not using align-items-stretch on the row */
+    .row.no-stretch {
+      align-items: flex-start;
+    }
+    
+    /* Make the Upcoming Visit card sticky so it remains in view */
+    .upcoming-visit {
+      position: sticky;
+      top: 20px; /* Adjust as needed */
+      cursor: pointer;
+    }
+    
+    /* Ensure the left card remains in normal document flow */
+    .card {
+      position: relative;
+      overflow: visible;
+    }
+  </style>
+</head>
+<body>
+  <!-- Scrollable content wrapper -->
+  <div class="page-wrapper">
+    <div class="container">
+      <!-- Row without stretching so columns maintain their own height -->
+      <div class="row no-stretch">
+        <!-- Left Column: Quick Guide Card -->
+        <div class="col-md-8">
+          <h4 class="font-weight-bold">WELCOME BACK <%= username %></h4>
+          <div class="card p-4 shadow-sm">
+            <!-- Quick Guide Text placed above the description -->
+            <h3 class="font-weight-bold">
+              <%= dashboardSetting && dashboardSetting.quickGuide ? dashboardSetting.quickGuide : "Quick Guide" %>
+            </h3>
+            <p>
+              <%= dashboardSetting && dashboardSetting.welcomeText 
+                    ? dashboardSetting.welcomeText 
+                    : "Manage your appointments and keep track of your pet’s health easily." %>
+            </p>
+  
+            <!-- Watch Tutorial Button (left aligned, Carolina blue background) -->
+            <button id="watchTutorialBtn" class="btn">Watch Tutorial</button>
+  
+            <!-- Hidden Video Container (remains in the document flow) -->
+            <div id="videoContainer" class="video-container">
+              <!-- Full Screen Button -->
+              <button id="fullscreenBtn" class="fs-btn">Full Screen</button>
+              <iframe id="tutorialVideo" src=""></iframe>
+            </div>
+          </div>
+        </div>
+  
+        <!-- Right Column: Upcoming Visit Card -->
+        <div class="col-md-4">
+          <div class="card upcoming-visit p-4 shadow-sm text-center w-100" data-toggle="modal" data-target="#upcomingVisitsModal">
+            <h5 class="font-weight-bold">Upcoming Visit</h5>
+            <h1 class="font-weight-bold"><%= upcomingVisits ? upcomingVisits.length : 0 %></h1>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Recent Visits Section -->
+      <h5 class="font-weight-bold mt-4">Recent Visits</h5>
+      <!-- Only the table (no extra divs) -->
+      <table class="table custom-table">
+        <thead>
+          <tr>
+            <th>Pet Name</th>
+            <th>Date of Visit</th>
+            <th>Consultation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (recentVisits && recentVisits.length > 0) { %>
+            <% recentVisits.forEach(function(visit) { %>
+              <tr>
+                <td><%= visit.pets.map(p => p.petName).join(', ') %></td>
+                <td>
+                  <% if (visit.schedule && visit.schedule.scheduleDate) { %>
+                    <%= formatVisitDate(visit.schedule.scheduleDate) %>
+                  <% } else { %>
+                    <%= formatVisitDate(visit.createdAt) %>
+                  <% } %>
+                </td>
+                <td>
+                  <button class="btn btn-primary btn-sm" onclick="viewRecentVisit('<%= visit._id %>')">
+                    View Details
+                  </button>
+                </td>
+              </tr>
+            <% }); %>
+          <% } else { %>
+            <tr>
+              <td colspan="3">No recent visits found.</td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+  
+      <!-- Modal for Upcoming Visits -->
+      <div class="modal fade" id="upcomingVisitsModal" tabindex="-1" role="dialog" aria-labelledby="upcomingVisitsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="upcomingVisitsModalLabel">Upcoming Visits</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <% if (upcomingVisits && upcomingVisits.length > 0) { %>
+                <ul class="list-group">
+                  <% upcomingVisits.forEach(function(visit) { %>
+                    <li class="list-group-item">
+                      <strong>Date:</strong>
+                      <%= formatVisitDate(visit.schedule.scheduleDate) %>
+                      <br>
+                      <strong>Service:</strong> <%= visit.service %>
+                    </li>
+                  <% }); %>
+                </ul>
+              <% } else { %>
+                <p>No upcoming visits found.</p>
+              <% } %>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Modal for Viewing Recent Visit Details -->
+      <div class="modal fade" id="recentVisitModal" tabindex="-1" role="dialog" aria-labelledby="recentVisitModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="recentVisitModalLabel">Visit Details</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body" id="recentVisitDetails">
+              <!-- Visit details loaded via AJAX -->
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+    </div>
+  </div>
+  
+  <!-- Include jQuery, Popper.js, and Bootstrap JS (adjust paths as needed) -->
+  <script src="/path/to/jquery.js"></script>
+  <script src="/path/to/popper.js"></script>
+  <script src="/path/to/bootstrap.js"></script>
+  <script>
+    // Toggle the video container when the Watch Tutorial button is clicked.
+    document.getElementById('watchTutorialBtn').addEventListener('click', function() {
+      var container = document.getElementById('videoContainer');
+      var iframe = document.getElementById('tutorialVideo');
+      var videoUrl = "<%= dashboardSetting && dashboardSetting.videoUrl ? dashboardSetting.videoUrl : '' %>";
+      if (!videoUrl) return; // Do nothing if no video URL provided.
+      
+      // For Google Drive links, convert to preview URL.
+      if (videoUrl.indexOf("drive.google.com/file/d/") > -1) {
+        var match = videoUrl.match(/\/file\/d\/([^\/]+)/);
+        if (match && match[1]) {
+          videoUrl = "https://drive.google.com/file/d/" + match[1] + "/preview";
+        }
+      }
+      
+      // Toggle behavior: if container is hidden, show it,
+      // otherwise hide it and clear the iframe's src.
+      if (container.style.display === "none" || container.style.display === "") {
+        iframe.setAttribute('src', videoUrl);
+        container.style.display = "block";
+      } else {
+        container.style.display = "none";
+        iframe.setAttribute('src', '');
+      }
+    });
+  
+    // Fullscreen toggle for video container.
+    document.getElementById('fullscreenBtn').addEventListener('click', function(e) {
+      e.stopPropagation(); // Prevent triggering container toggle
+      var container = document.getElementById('videoContainer');
+      if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => {
+          alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+  
+    // Function to fetch and display recent visit details via AJAX.
+    window.viewRecentVisit = function(id) {
+      $.ajax({
+        url: '/customer/get-consultation',
+        method: 'GET',
+        data: { reservationId: id },
+        success: function(response) {
+          if (response.success) {
+            var detailsHtml = '';
+            if (response.reservation.pets && response.reservation.pets.length > 0) {
+              detailsHtml += '<strong>Pet(s):</strong> ' + response.reservation.pets.map(function(p) { return p.petName; }).join(', ') + '<br>';
+            }
+            if (response.reservation.concerns) {
+              detailsHtml += '<strong>Concern:</strong> ' + response.reservation.concerns + '<br>';
+            }
+            detailsHtml += '<hr>';
+            detailsHtml += '<strong>Consultation Notes:</strong><br>' + (response.reservation.consultationNotes || 'N/A') + '<br>';
+            if (response.reservation.medications && response.reservation.medications.length > 0) {
+              detailsHtml += '<hr><strong>Medication Details:</strong><br>';
+              response.reservation.medications.forEach(function(med) {
+                detailsHtml += 'Medication Name: ' + med.medicationName + '<br>';
+                detailsHtml += 'Quantity: ' + (med.quantity ? med.quantity : 'N/A') + '<br>';
+                detailsHtml += 'Dosage: ' + med.dosage + '<br>';
+                detailsHtml += 'Frequency: ' + med.frequency + '<br>';
+                detailsHtml += 'Administration Time: ' + med.adminTime + '<br>';
+                if (med.additionalInstructions)
+                  detailsHtml += 'Additional Instructions: ' + med.additionalInstructions + '<br>';
+                detailsHtml += '<hr>';
+              });
+            }
+            if (response.reservation.doctor) {
+              detailsHtml += '<hr><strong>Doctor:</strong> ' + response.reservation.doctor.username + '<br>';
+            }
+            $("#recentVisitDetails").html(detailsHtml);
+            $("#recentVisitModal").modal("show");
+          } else {
+            alert("Error: " + response.message);
+          }
+        },
+        error: function() {
+          alert("Server error while fetching visit details.");
+        }
+      });
+    };
+  </script>
+</body>
+</html>

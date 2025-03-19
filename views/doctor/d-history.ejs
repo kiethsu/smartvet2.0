@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Patient History</title>
+  <!-- You can include Bootstrap if needed -->
+  <!-- <link rel="stylesheet" href="/path/to/bootstrap.css"> -->
+
+  <!-- Inline CSS to mirror the .custom-table style from dashboard.ejs -->
+  <style>
+    /* Custom Table Styling (same as dashboard.ejs) */
+    .custom-table {
+      table-layout: fixed;
+      width: 100%;
+      background-color: #ffffff; /* Table background white */
+    }
+    .custom-table thead tr {
+      background-color: #4B9CD3; /* Carolina blue header background */
+      color: #ffffff;            /* White text */
+    }
+    .custom-table thead th {
+      text-align: center;
+      padding: 12px;
+      font-weight: 600;
+      border: none;
+    }
+    .custom-table tbody tr {
+      border-bottom: 1px solid #dee2e6;
+    }
+    .custom-table tbody td {
+      text-align: center;
+      padding: 12px;
+    }
+    /* Optional: hover effect on rows */
+    .custom-table tbody tr:hover {
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <% 
+    // Helper function to format a date in "January 17 2002" format
+    function formatDateLong(dateStr) {
+      const d = new Date(dateStr);
+      const options = { year: 'numeric', month: 'long', day: 'numeric' };
+      let formatted = d.toLocaleDateString('en-US', options);
+      // Remove any trailing comma (e.g. "January 17, 2002" -> "January 17 2002")
+      return formatted.replace(',', '');
+    }
+  %>
+
+  <div class="container-fluid">
+    <h2>Patient History</h2>
+
+    <% if (history && history.length > 0) { %>
+      <!-- Apply the .custom-table class -->
+      <table class="table custom-table">
+        <thead>
+          <tr>
+            <th>Pet Name</th>
+            <th>Doctor</th>
+            <th>Consultation Notes</th>
+            <th>Follow-Up Schedule</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% history.forEach(function(reservation) { %>
+            <tr>
+              <td><%= reservation.pets.map(p => p.petName).join(', ') %></td>
+              <td>
+                <%= reservation.doctor 
+                      ? (typeof reservation.doctor === 'object' ? reservation.doctor.username : reservation.doctor)
+                      : 'N/A' %>
+              </td>
+              <td><%= reservation.consultationNotes || 'N/A' %></td>
+              <td>
+                <% if (reservation.schedule && reservation.schedule.scheduleDate) { %>
+                  <strong><%= formatDateLong(reservation.schedule.scheduleDate) %></strong><br>
+                  <small><%= reservation.schedule.scheduleDetails %></small>
+                <% } else { %>
+                  N/A
+                <% } %>
+              </td>
+              <td><%= formatDateLong(reservation.createdAt) %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p>No history records found.</p>
+    <% } %>
+  </div>
+
+  <!-- Include Bootstrap JS or other scripts here if needed -->
+  <!-- <script src="/path/to/jquery.js"></script> -->
+  <!-- <script src="/path/to/popper.js"></script> -->
+  <!-- <script src="/path/to/bootstrap.js"></script> -->
+</body>
+</html>

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manage Accounts</title>
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+  <style>
+    body {
+      background-color: #f7f7f7;
+      font-family: 'Segoe UI', sans-serif;
+      color: #264653;
+      margin: 0;
+      padding: 0;
+    }
+    .account-container {
+      padding: 2rem;
+      min-height: 100vh;
+    }
+    .card {
+      background: #fff;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 1.5rem;
+      overflow: visible;
+      padding: 1.5rem;
+    }
+    .card-header {
+      font-weight: bold;
+      font-size: 18px;
+      color: #264653;
+      border-bottom: 1px solid #e0e0e0;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .form-label {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .form-control, .form-select {
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px 12px;
+      margin-top: 4px;
+    }
+    .form-control:focus, .form-select:focus {
+      box-shadow: none;
+      border-color: #007bff;
+    }
+    .btn {
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 4px;
+    }
+    .btn-link {
+      color: #2a9d8f;
+      font-size: 14px;
+    }
+    #roleOptions {
+      gap: 10px;
+    }
+    #roleOptions .btn {
+      background-color: #fff;
+      color: #264653;
+      border: 1px solid #264653;
+    }
+    #roleOptions .btn.active {
+      background-color: #fff;
+      color: #264653;
+    }
+    #addAccountBtn, #updatePasswordBtn {
+      background-color: #28a745 !important;
+      color: #fff !important;
+      border: 1px solid #28a745;
+    }
+    #addAccountBtn:hover, #updatePasswordBtn:hover {
+      background-color: #218838 !important;
+      color: #fff !important;
+    }
+    .table {
+      font-size: 14px;
+    }
+    .table thead th {
+      background-color: #fff;
+      color: #264653;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    .table td, .table th {
+      padding: 8px;
+    }
+    .badge {
+      font-size: 0.8rem;
+      padding: 0.5em 0.75em;
+    }
+    .dropdown.toggle > input {
+      display: none;
+    }
+    .dropdown.toggle > label {
+      display: block;
+      padding: 8px 12px;
+      text-decoration: none;
+      line-height: 1.5;
+      font-size: 14px;
+      color: #264653;
+      background-color: #fff;
+      border: 1px solid #264653;
+      border-radius: 4px;
+      cursor: pointer;
+      position: relative;
+    }
+    .dropdown.toggle > label::after {
+      content: "";
+      display: inline-block;
+      margin-left: 12px;
+      vertical-align: middle;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid #264653;
+    }
+    .dropdown ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      position: absolute;
+      width: 100%;
+      background-color: #fff;
+      border: 1px solid #264653;
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      z-index: 1000;
+      display: none;
+    }
+    .dropdown.toggle > input:checked ~ ul {
+      display: block;
+    }
+    .dropdown ul li a {
+      display: block;
+      padding: 8px 12px;
+      font-size: 14px;
+      color: #264653;
+      text-decoration: none;
+      border-bottom: 1px solid #264653;
+    }
+    .dropdown ul li a:hover {
+      background-color: #f0f0f0;
+    }
+    .dropdown ul li:last-child a {
+      border-bottom: none;
+    }
+  </style>
+</head>
+<body>
+<div class="container-fluid account-container">
+    <div class="row">
+        <!-- Create New Account Column -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header">Create New Account</div>
+                <div class="card-body">
+                    <form id="createAccountForm">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="name" placeholder="Enter full name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" placeholder="Enter email address" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+                            <!-- Horizontal button group for role choices -->
+                            <div id="roleOptions" class="d-flex">
+                                <button type="button" class="btn btn-outline-primary btn-sm mr-2 role-option" data-value="Doctor">Doctor</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm role-option" data-value="HR">HR</button>
+                            </div>
+                            <!-- Hidden input to store selected role -->
+                            <input type="hidden" id="roleInput" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" placeholder="Enter password" required>
+                        </div>
+                        <button type="button" class="btn w-100 fw-bold" id="addAccountBtn">
+                            <i class="bi bi-person-plus"></i> Create Account
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Reset Password / Update Email Column -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header">Reset Password / Update Email</div>
+                <div class="card-body">
+                    <form id="resetPasswordForm">
+                        <div class="mb-3">
+                            <!-- Redesigned Dropdown for account selection -->
+                            <div class="dropdown toggle" id="resetAccountDropdownContainer">
+                                <input id="resetAccountToggle" type="checkbox">
+                                <label for="resetAccountToggle" id="resetAccountLabel">Select Account</label>
+                                <ul id="resetAccountDropdown">
+                                  <!-- Dropdown items will be added dynamically as <li><a ...></a></li> -->
+                                </ul>
+                                <input type="hidden" id="resetAccountInput" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="newEmail" class="form-label">New Email</label>
+                            <input type="email" class="form-control" id="newEmail" placeholder="Enter new email">
+                        </div>
+                        <div class="mb-3">
+                            <label for="newPassword" class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="newPassword" placeholder="Enter new password">
+                        </div>
+                        <button type="button" class="btn w-100 fw-bold" id="updatePasswordBtn">
+                            <i class="bi bi-shield-lock"></i> Update Account
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Accounts List Below -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold">Accounts List</h5>
+                    <input type="text" class="form-control w-50" id="searchInput" placeholder="Search accounts...">
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                        <table class="table table-hover text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Profile</th>
+                                    <th>Status</th>
+                                    <th>Delete</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accountTableBody">
+                                <!-- Table rows will be dynamically added -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for handling account actions -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<!-- SweetAlert2 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+  $(document).ready(function() {
+    loadAccounts();
+
+    // Role selection in Create Account
+    $(document).on("click", "#roleOptions .role-option", function(e) {
+      e.preventDefault();
+      const selected = $(this).data("value");
+      $("#roleInput").val(selected);
+      $("#roleOptions .role-option").removeClass("active");
+      $(this).addClass("active");
+    });
+
+    // Search box
+    $("#searchInput").on("input", function() {
+      const query = $(this).val().trim();
+      loadAccounts(query);
+    });
+
+    // Create Account button
+    $("#addAccountBtn").on("click", async function() {
+      const name = $("#name").val().trim();
+      const email = $("#email").val().trim();
+      const password = $("#password").val();
+      const role = $("#roleInput").val();
+
+      if (!name || !email || !password || !role) {
+        return Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'All fields are required!'
+        });
+      }
+
+      try {
+        const res = await fetch("/admin/create-account", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password, role })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          return Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: data.message || 'Error creating account!'
+          });
+        }
+
+        // Success
+        Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'Account created successfully!'
+        });
+        $("#createAccountForm")[0].reset();
+        $("#roleInput").val("");
+        $("#roleOptions .role-option").removeClass("active");
+        addAccountRow(data.user);
+      } catch (err) {
+        console.error("Error creating account:", err);
+        Swal.fire('Error', 'Server error while creating account.', 'error');
+      }
+    });
+
+    // Reset Password / Update Email
+    $("#updatePasswordBtn").on("click", async function() {
+      const userId = $("#resetAccountInput").data("value");
+      const newEmail = $("#newEmail").val().trim();
+      const newPassword = $("#newPassword").val();
+
+      if (!userId) {
+        return Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Select an account to update!'
+        });
+      }
+
+      try {
+        const res = await fetch("/admin/reset-account", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, newEmail, newPassword })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          return Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: data.message || 'Error updating account!'
+          });
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: 'Account updated successfully!'
+        });
+        $("#resetPasswordForm")[0].reset();
+        $("#resetAccountInput").val("").removeData("value");
+        $("#resetAccountLabel").text("Select Account");
+      } catch (err) {
+        console.error("Error updating account:", err);
+        Swal.fire('Error', 'Server error while updating account.', 'error');
+      }
+    });
+
+    // Event binding for Reset Account dropdown selection
+    $(document).on("click", ".reset-account-option", function(e) {
+      e.preventDefault();
+      const selected = $(this).data("value");
+      const text = $(this).text();
+      // Update the label text and hidden input value/data
+      $("#resetAccountLabel").text(text);
+      $("#resetAccountInput").val(text).data("value", selected);
+      // Close the toggle dropdown by unchecking the checkbox
+      $("#resetAccountToggle").prop("checked", false);
+    });
+
+    // Load all accounts
+    async function loadAccounts(search = "") {
+      try {
+        const res = await fetch(`/admin/api/accounts${search ? "?search=" + encodeURIComponent(search) : ""}`);
+        const data = await res.json();
+        if (!res.ok) {
+          return Swal.fire('Error', data.message || 'Failed to load accounts!', 'error');
+        }
+
+        $("#accountTableBody").empty();
+        // Populate Reset Account Dropdown
+        $("#resetAccountDropdown").empty();
+
+        data.users.forEach(user => {
+          addAccountRow(user);
+          // Add to dropdown only if role is Doctor/HR
+          if (user.role === "Doctor" || user.role === "HR") {
+            $("#resetAccountDropdown").append(
+              `<li><a class="reset-account-option" href="#" data-value="${user._id}">${user.username} (${user.role})</a></li>`
+            );
+          }
+        });
+      } catch (err) {
+        console.error("Error loading accounts:", err);
+        Swal.fire('Error', 'Server error while loading accounts.', 'error');
+      }
+    }
+
+    function addAccountRow(user) {
+      const statusClass = user.status === 'Active' ? 'bg-success' : 'bg-secondary';
+      const row = `
+        <tr id="account-${user._id}">
+          <td>${user.username}</td>
+          <td>${user.email}</td>
+          <td>${user.role}</td>
+          <td>
+            <button class="btn btn-sm btn-info text-white" onclick="showProfile('${user._id}')">
+              <i class="bi bi-person-circle"></i> View
+            </button>
+          </td>
+          <td>
+            <span class="badge ${statusClass}">
+              ${user.status}
+            </span>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-danger" onclick="deleteAccount('${user._id}')">
+              <i class="bi bi-trash"></i> Delete
+            </button>
+          </td>
+        </tr>`;
+      $("#accountTableBody").append(row);
+    }
+  });
+
+  // Show profile (placeholder stub)
+  function showProfile(userId) {
+    // For example: open a modal or navigate
+    Swal.fire({
+      icon: 'info',
+      title: 'Profile',
+      text: `Show profile for user ID: ${userId}`
+    });
+  }
+
+  // Delete account with SweetAlert confirmation
+  async function deleteAccount(userId) {
+    Swal.fire({
+      title: 'Delete Account?',
+      text: 'Are you sure you want to delete this account?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it',
+      cancelButtonText: 'Cancel'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const res = await fetch("/admin/delete-account", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            return Swal.fire('Error', data.message || 'Error deleting account.', 'error');
+          }
+          // Success
+          Swal.fire({
+            icon: 'success',
+            title: 'Deleted!',
+            text: 'The account has been deleted.'
+          });
+          // Remove row from table
+          $(`#account-${userId}`).remove();
+        } catch (err) {
+          console.error("Error deleting account:", err);
+          Swal.fire('Error', 'Server error while deleting account.', 'error');
+        }
+      }
+    });
+  }
+</script>
+</body>
+</html>
