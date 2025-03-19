@@ -411,11 +411,12 @@ exports.verifyResetOTP = async (req, res) => {
 
   // Debug logs for verification
   console.log("Verifying OTP for:", normalizedEmail);
-  console.log("Stored OTP:", resetOtpStore[normalizedEmail]);
-  console.log("Provided OTP:", providedOtp);
+  console.log("Stored OTP for this email:", resetOtpStore[normalizedEmail]);
+  console.log("Provided OTP from request:", providedOtp);
 
   // Check if the OTP exists and matches exactly
   if (!resetOtpStore[normalizedEmail] || resetOtpStore[normalizedEmail] !== providedOtp) {
+    console.log("OTP mismatch: either none is stored or the values do not match.");
     return res.status(400).json({ message: "Invalid OTP" });
   }
 
