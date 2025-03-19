@@ -28,7 +28,29 @@ const Reservation = require("./models/reservation");
 const app = express();
 
 // Use Helmet for basic security headers
-app.use(helmet());
+// Configure Helmet with a custom Content Security Policy (CSP)
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      // Allow scripts from self, jsdelivr, and Google. 
+      // 'unsafe-inline' is added here for inline scripts. Consider using nonces/hashes for better security.
+      scriptSrc: ["'self'", "https://cdn.jsdelivr.net", "https://www.google.com", "'unsafe-inline'"],
+      // Allow styles from self and inline styles.
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      // Allow images from self and data URIs.
+      imgSrc: ["'self'", "data:"],
+      // Allow connections to your own domain.
+      connectSrc: ["'self'"],
+      // Allow fonts from self and Google Fonts.
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      // Allow frames for reCAPTCHA.
+      frameSrc: ["'self'", "https://www.google.com", "https://www.google.com/recaptcha/"],
+      // Optionally, allow other sources as needed
+    },
+  })
+);
+
 
 // Configure CORS for production (allowing all origins temporarily; update later with your client URL)
 app.use(cors({
