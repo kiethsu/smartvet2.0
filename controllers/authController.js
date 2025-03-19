@@ -407,12 +407,20 @@ exports.sendResetOTP = async (req, res) => {
 exports.verifyResetOTP = async (req, res) => {
   const { email, otp } = req.body;
   const normalizedEmail = email.trim().toLowerCase();
-  if (!resetOtpStore[normalizedEmail] || resetOtpStore[normalizedEmail] !== otp) {
+  const providedOtp = otp.trim();
+
+  // Debug logs
+  console.log("Verifying OTP for:", normalizedEmail);
+  console.log("Stored OTP:", resetOtpStore[normalizedEmail]);
+  console.log("Provided OTP:", providedOtp);
+
+  if (!resetOtpStore[normalizedEmail] || resetOtpStore[normalizedEmail] !== providedOtp) {
     return res.status(400).json({ message: "Invalid OTP" });
   }
   delete resetOtpStore[normalizedEmail];
   res.status(200).json({ message: "OTP verified! You can now reset your password." });
 };
+
 
 // ================================
 // RESET PASSWORD
