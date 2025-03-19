@@ -27,13 +27,14 @@ const Reservation = require("./models/reservation");
 
 const app = express();
 
-// Configure CORS to allow credentials
-app.use(
-  cors({
-    origin: "http://localhost:3000", // change if your client is elsewhere
-    credentials: true,
-  })
-);
+// Use Helmet for basic security headers
+app.use(helmet());
+
+// Configure CORS for production (allowing all origins temporarily; update later with your client URL)
+app.use(cors({
+  origin: true,  // Allows all origins; change this to your client URL once available
+  credentials: true,
+}));
 
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
@@ -43,14 +44,23 @@ app.use(cookieParser());
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// Database connection
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.error("❌ MongoDB Connection Error:", err));
+// Updated MongoDB connection with event listeners for debugging
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+mongoose.connection.on('connected', () => {
+  console.log('✅ MongoDB connection established successfully');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ MongoDB disconnected');
+});
 
 // Serve static files (e.g., images in /public)
 app.use(express.static(path.join(__dirname, "public")));
@@ -104,8 +114,7 @@ app.use("/customer", customerRoutes);
 // Settings routes (protected via authMiddleware)
 app.use('/settings', settingRoutes);
 
-// Daily Cron Job: Remove pending reservations older than today
-// Cron Job for Follow-Up Schedule Notifications (runs every 2 hours)
+// Daily Cron Job: Follow-Up Schedule Notifications (runs every 2 hours)
 cron.schedule('0 */2 * * *', async () => {
   try {
     const now = new Date();
@@ -159,7 +168,7 @@ cron.schedule('0 */2 * * *', async () => {
         continue;
       }
 
-      // Attempt to send SMS if a cellphone exists (ensure it is in international format, e.g., "639953771605")
+      // Attempt to send SMS if a cellphone exists
       if (customer.cellphone) {
         console.log(`Attempting to send SMS to: ${customer.cellphone} for reservation ${reservation._id}`);
         try {
@@ -169,7 +178,6 @@ cron.schedule('0 */2 * * *', async () => {
               sender: "SmartVet", // Must be a validated sender ID in Brevo.
               recipient: customer.cellphone,
               content: message
-              // Add additional parameters as required by Brevo's SMS API.
             },
             {
               headers: {
@@ -217,7 +225,6 @@ cron.schedule('0 */2 * * *', async () => {
   }
 });
 
-
 // Cron Job: Clear canceled and unassigned approved reservations older than 1 minute (runs every minute)
 cron.schedule('*/1 * * * *', async () => {
   try {
@@ -232,7 +239,6 @@ cron.schedule('*/1 * * * *', async () => {
     console.log(`Old canceled reservations cleared: ${canceledResult.deletedCount} removed.`);
 
     // Delete approved reservations that have no doctor assigned and were created more than one minute ago.
-    // Here we check that the doctor field is either not present or null.
     const approvedResult = await Reservation.deleteMany({
       status: 'Approved',
       $or: [{ doctor: { $exists: false } }, { doctor: null }],
@@ -249,7 +255,7 @@ cron.schedule('*/1 * * * *', async () => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
-app.use(helmet());
+// Additional routes and middleware
 app.use("/chatbot", chatbotRoutes);
 app.get('/logout', (req, res) => {
   res.clearCookie('doctor_token');
@@ -259,4 +265,3 @@ app.get('/logout', (req, res) => {
   res.clearCookie('refreshToken');
   res.redirect('/');
 });
-
