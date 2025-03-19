@@ -22,12 +22,8 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false,
   auth: {
-    user: process.env.SMTP_EMAIL, // Ensure this is set to your verified email
+    user: process.env.SMTP_EMAIL,
     pass: process.env.SMTP_PASS
-  },
-  tls: {
-    // Accept self-signed certificates if needed
-    rejectUnauthorized: false
   }
 });
 
@@ -69,24 +65,20 @@ exports.sendOTP = async (req, res) => {
     otpStore[normalizedEmail] = otp;
 
     const mailOptions = {
-      from: `"SmartVet" <dehe.marquez.au@phinmaed.com>`, // Must match your verified sender
+      from: `"SmartVet" <dehe.marquez.au@phinmaed.com>`,
       to: normalizedEmail,
       subject: "Your OTP Verification Code",
       text: `Your OTP code is: ${otp}. It expires in 5 minutes.`
     };
-    
+
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
-        console.error("❌ SMTP ERROR:", error);
-        return res.status(500).json({ 
-          message: "Failed to send OTP. Check SMTP settings.", 
-          error: error.toString() 
-        });
+        console.error("SMTP ERROR:", error);
+        return res.status(500).json({ message: "Failed to send OTP. Check SMTP settings." });
       }
-      console.log("✅ Email sent: " + info.response);
+      console.log("Email sent: " + info.response);
       res.status(200).json({ message: "OTP sent. Check your email!" });
     });
-    
   } catch (error) {
     console.error("Error Sending OTP:", error);
     res.status(500).json({ message: "Failed to send OTP" });
@@ -230,11 +222,11 @@ exports.login = async (req, res) => {
     else if (user.role === "HR") redirectPath = "/hr-dashboard";
     else if (user.role === "Admin") redirectPath = "/admin-dashboard";
 
-    // Access token now expires in 1 hour
+    // For testing: Access token expires in 1 minute
     const accessToken = jwt.sign(
       { userId: user._id, username: user.username, email: user.email, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1m" }
     );
     // Refresh token remains long-lived (e.g. 7 days)
     const refreshToken = jwt.sign(
@@ -242,15 +234,15 @@ exports.login = async (req, res) => {
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: "7d" }
     );
-    // Set the access token cookie (expires in 1 hour)
+    // Role-specific access token cookie (expires in 1 minute for testing)
     const accessCookieName = user.role.toLowerCase() + "_token";
-    res.cookie(accessCookieName, accessToken, { httpOnly: true, maxAge: 60 * 60 * 1000, path: "/" });
+    res.cookie(accessCookieName, accessToken, { httpOnly: true, maxAge: 60 * 1000, path: "/" });
     // Set refresh token cookie under a unified name (expires in 7 days)
     res.cookie("refreshToken", refreshToken, { 
       httpOnly: true, 
-      maxAge: 7 * 24 * 60 * 60 * 1000, 
+      maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days 
       path: "/", 
-      sameSite: "lax"  // for local testing
+      sameSite: "lax"  // added sameSite option for local testing
     });
     // Send login notification email
     const mailOptions = {
@@ -274,6 +266,7 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: "Login failed!" });
   }
 };
+
 
 // ================================
 // VERIFY ADMIN OTP
@@ -452,7 +445,6 @@ exports.refreshToken = async (req, res) => {
   }
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    // New access token now expires in 1 hour
     const newAccessToken = jwt.sign(
       {
         userId: decoded.userId,
@@ -461,7 +453,7 @@ exports.refreshToken = async (req, res) => {
         role: decoded.role
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1h" } // You can test with "1h" or "1m" as needed
     );
     const cookieName = decoded.role.toLowerCase() + "_token";
     res.cookie(cookieName, newAccessToken, { httpOnly: true, maxAge: 60 * 60 * 1000, path: "/" });
@@ -471,3 +463,4 @@ exports.refreshToken = async (req, res) => {
     return res.status(401).json({ message: "Invalid refresh token" });
   }
 };
+
