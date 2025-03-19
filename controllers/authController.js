@@ -47,19 +47,29 @@ exports.sendOTP = async (req, res) => {
   const normalizedEmail = email.trim().toLowerCase();
   const ADMIN_EMAIL = "smartvetclinic17@gmail.com";
 
+  console.log("Send OTP request received for:", normalizedEmail);
+
   try {
     if (normalizedEmail === ADMIN_EMAIL) {
       return res.status(400).json({ message: "Admin email cannot be used for registration!" });
     }
 
-    const existingUser = await User.findOne({ email: { $regex: `^${normalizedEmail}$`, $options: "i" } });
+    const existingUser = await User.findOne({
+      email: { $regex: `^${normalizedEmail}$`, $options: "i" }
+    });
     if (existingUser) {
       return res.status(400).json({ message: "This email is already registered! Please log in." });
     }
 
     // Generate a 6-digit OTP and save it to Redis with a 5-minute expiration (300 seconds)
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    await client.setEx(normalizedEmail, 300, otp);
+    try {
+      await client.setEx(normalizedEmail, 300, otp);
+      console.log(`OTP ${otp} saved to Redis for ${normalizedEmail}`);
+    } catch (redisError) {
+      console.error("Redis error while saving OTP:", redisError);
+      return res.status(500).json({ message: "Failed to save OTP. Try again later." });
+    }
 
     const mailOptions = {
       from: `"SmartVet" <dehe.marquez.au@phinmaed.com>`,
@@ -102,12 +112,16 @@ exports.verifyOTPAndRegister = async (req, res) => {
   }
 
   try {
-    const existingUser = await User.findOne({ email: { $regex: `^${normalizedEmail}$`, $options: "i" } });
+    const existingUser = await User.findOne({
+      email: { $regex: `^${normalizedEmail}$`, $options: "i" }
+    });
     if (existingUser) {
       return res.status(400).json({ message: "This email is already registered! Please log in." });
     }
 
-    const existingUsername = await User.findOne({ username: { $regex: `^${normalizedUsername}$`, $options: "i" } });
+    const existingUsername = await User.findOne({
+      username: { $regex: `^${normalizedUsername}$`, $options: "i" }
+    });
     if (existingUsername) {
       return res.status(400).json({ message: "This username is already taken! Please choose another one." });
     }
@@ -243,9 +257,9 @@ exports.login = async (req, res) => {
     // Set refresh token cookie under a unified name (expires in 7 days)
     res.cookie("refreshToken", refreshToken, { 
       httpOnly: true, 
-      maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days 
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/", 
-      sameSite: "lax"  // added sameSite option for local testing
+      sameSite: "lax"
     });
     // Send login notification email
     const mailOptions = {
@@ -330,7 +344,9 @@ exports.checkUsernameAvailability = async (req, res) => {
 
   try {
     const normalizedUsername = username.trim().toLowerCase();
-    const existingUser = await User.findOne({ username: { $regex: `^${normalizedUsername}$`, $options: "i" } });
+    const existingUser = await User.findOne({
+      username: { $regex: `^${normalizedUsername}$`, $options: "i" }
+    });
     if (existingUser) {
       return res.status(400).json({ available: false, message: "Username is already taken!" });
     }
@@ -355,7 +371,9 @@ exports.checkEmailAvailability = async (req, res) => {
     if (normalizedEmail === ADMIN_EMAIL) {
       return res.status(400).json({ available: false, message: "This email cannot be used for registration!" });
     }
-    const existingUser = await User.findOne({ email: { $regex: `^${normalizedEmail}$`, $options: "i" } });
+    const existingUser = await User.findOne({
+      email: { $regex: `^${normalizedEmail}$`, $options: "i" }
+    });
     if (existingUser) {
       return res.status(400).json({ available: false, message: "This email is already registered! Please log in." });
     }
@@ -386,6 +404,7 @@ exports.sendResetOTP = async (req, res) => {
     // Generate OTP for password reset and store it in Redis with a 5-minute expiration
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     await client.setEx(normalizedEmail, 300, otp);
+    console.log(`Password reset OTP ${otp} saved for ${normalizedEmail}`);
 
     const mailOptions = {
       from: `"SmartVet" <dehe.marquez.au@phinmaed.com>`,
