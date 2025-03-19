@@ -33,30 +33,24 @@ const app = express();
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
-      // Allow content only from your domain by default.
       defaultSrc: ["'self'"],
-      // Allow scripts from your domain, jsdelivr (Bootstrap), Google (reCAPTCHA) and inline scripts.
       scriptSrc: [
         "'self'",
         "https://cdn.jsdelivr.net",
         "https://www.google.com",
-        "'unsafe-inline'" // Allows inline scripts (you could later replace this with nonces or hashes)
+        "https://www.gstatic.com", // Allow recaptcha and related scripts
+        "'unsafe-inline'"
       ],
-      // Allow styles from your domain, jsdelivr (Bootstrap CSS), Google Fonts, and cdnjs (Font Awesome).
       styleSrc: [
         "'self'",
         "https://cdn.jsdelivr.net",
         "https://fonts.googleapis.com",
         "https://cdnjs.cloudflare.com",
-        "'unsafe-inline'" // Allows inline styles if any
+        "'unsafe-inline'"
       ],
-      // Allow fonts from your domain and Google Fonts.
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      // Allow images from your domain and data URIs.
+      fontSrc: ["'self'", "https://fonts.gstatic.com"], // Allow Google Fonts
       imgSrc: ["'self'", "data:"],
-      // Allow AJAX/fetch connections to your domain.
       connectSrc: ["'self'"],
-      // Allow frames for reCAPTCHA.
       frameSrc: [
         "'self'",
         "https://www.google.com",
@@ -65,6 +59,7 @@ app.use(
     }
   })
 );
+
 
 
 
