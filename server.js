@@ -6,7 +6,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const path = require("path");
 const cron = require('node-cron');
-
+const helmet = require('helmet');
 const axios = require('axios');         // For SMS API calls
 const nodemailer = require('nodemailer'); // For sending emails
 const chatbotRoutes = require("./routes/chatbot");
@@ -27,10 +27,8 @@ const Reservation = require("./models/reservation");
 
 const app = express();
 
-
-
-
-
+// Use Helmet for basic security headers
+app.use(helmet());
 
 // Configure CORS for production (allowing all origins temporarily; update later with your client URL)
 app.use(cors({
