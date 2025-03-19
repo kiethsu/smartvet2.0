@@ -22,8 +22,12 @@ const transporter = nodemailer.createTransport({
   port: 587,
   secure: false,
   auth: {
-    user: process.env.SMTP_EMAIL,
+    user: process.env.SMTP_EMAIL, // Ensure this is set to your verified email
     pass: process.env.SMTP_PASS
+  },
+  tls: {
+    // Accept self-signed certificates if needed
+    rejectUnauthorized: false
   }
 });
 
@@ -65,25 +69,24 @@ exports.sendOTP = async (req, res) => {
     otpStore[normalizedEmail] = otp;
 
     const mailOptions = {
-      from: `"SmartVet" <dehe.marquez.au@phinmaed.com>`,
+      from: `"SmartVet" <dehe.marquez.au@phinmaed.com>`, // Must match your verified sender
       to: normalizedEmail,
       subject: "Your OTP Verification Code",
       text: `Your OTP code is: ${otp}. It expires in 5 minutes.`
     };
-
+    
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
-        console.error("SMTP ERROR:", error);
-        return res.status(500).json({ message: "Failed to send OTP. Check SMTP settings." });
+        console.error("❌ SMTP ERROR:", error);
+        return res.status(500).json({ 
+          message: "Failed to send OTP. Check SMTP settings.", 
+          error: error.toString() 
+        });
       }
-      console.log("Email sent: " + info.response);
+      console.log("✅ Email sent: " + info.response);
       res.status(200).json({ message: "OTP sent. Check your email!" });
     });
-  } catch (error) {
-    console.error("Error Sending OTP:", error);
-    res.status(500).json({ message: "Failed to send OTP" });
-  }
-};
+    
 
 // ================================
 // Verify OTP & Register User
