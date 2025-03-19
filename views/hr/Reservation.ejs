@@ -159,8 +159,8 @@
                 <% if (reservation.status === 'Pending') { %>
                   <tr id="reservation-<%= reservation._id %>" 
                       data-date="<%= formatLocalDate(reservation.date) %>" 
-                      data-time="<%= reservation.time.split(':')[0] %>">
-                    <td class="ownerName"><%= reservation.ownerName %></td>
+                      data-time="<%= reservation.time ? reservation.time.split(':')[0] : '' %>"
+                      <td class="ownerName"><%= reservation.ownerName %></td>
                     <td><%= reservation.service %></td>
                     <td>
                       <div class="text-center">
