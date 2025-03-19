@@ -30,6 +30,7 @@
     "node-cron": "^3.0.3",
     "nodemailer": "^6.10.0",
     "path": "^0.12.7",
+    "redis": "^4.7.0",
     "rivescript": "^1.19.0"
   },
   "description": "",

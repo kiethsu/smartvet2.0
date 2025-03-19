@@ -5,11 +5,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
 const Joi = require("joi"); // <-- Added for input validation
-
-// In-memory stores (for demo only)
-let otpStore = {};       // For registration OTP
-let resetOtpStore = {};  // For password reset OTP
-let adminOtpStore = {};  // For admin login OTP
+const client = require("../redisClient"); // Use Redis for OTP storage
 
 // In-memory login attempt counter (for demo only)
 const loginAttempts = {};  // e.g. { "admin@example.com": { count: 0, lockoutStart: Date } }
@@ -61,8 +57,9 @@ exports.sendOTP = async (req, res) => {
       return res.status(400).json({ message: "This email is already registered! Please log in." });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000);
-    otpStore[normalizedEmail] = otp;
+    // Generate a 6-digit OTP and save it to Redis with a 5-minute expiration (300 seconds)
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await client.setEx(normalizedEmail, 300, otp);
 
     const mailOptions = {
       from: `"SmartVet" <dehe.marquez.au@phinmaed.com>`,
@@ -98,7 +95,9 @@ exports.verifyOTPAndRegister = async (req, res) => {
     return res.status(400).json({ message: "Admin email cannot be used for user registration!" });
   }
 
-  if (!otpStore[normalizedEmail] || otpStore[normalizedEmail] !== parseInt(otp)) {
+  // Retrieve the stored OTP from Redis
+  const storedOtp = await client.get(normalizedEmail);
+  if (!storedOtp || storedOtp !== otp.trim()) {
     return res.status(400).json({ message: "Invalid OTP" });
   }
 
@@ -122,7 +121,8 @@ exports.verifyOTPAndRegister = async (req, res) => {
     });
     await newUser.save();
 
-    delete otpStore[normalizedEmail];
+    // Delete the OTP from Redis after successful verification
+    await client.del(normalizedEmail);
 
     res.status(200).json({ message: "Successfully registered!", success: true });
   } catch (error) {
@@ -142,9 +142,11 @@ exports.sendAdminOTP = async (req, res) => {
     if (!user || user.role !== "Admin") {
       return res.status(400).json({ message: "Admin account not found!" });
     }
-    const otp = (Math.floor(100000 + Math.random() * 900000)).toString();
-    adminOtpStore[normalizedEmail] = otp;
+    // Generate OTP and store it in Redis for admin login
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    await client.setEx(normalizedEmail, 300, otp);
     console.log("Stored Admin OTP:", otp);
+
     const mailOptions = {
       from: `"SmartVet" <dehe.marquez.au@phinmaed.com>`,
       to: normalizedEmail,
@@ -213,6 +215,7 @@ exports.login = async (req, res) => {
 
     console.log("User role:", user.role, "OTP enabled:", user.otpEnabled);
     if (user.role === "Admin" && user.otpEnabled) {
+      // For admin, trigger OTP send using Redis storage
       await exports.sendAdminOTP({ body: { email: normalizedEmail } });
       return res.status(200).json({ message: "Admin OTP sent. Check your email!", requireOTP: true });
     }
@@ -267,7 +270,6 @@ exports.login = async (req, res) => {
   }
 };
 
-
 // ================================
 // VERIFY ADMIN OTP
 // ================================
@@ -275,13 +277,17 @@ exports.verifyAdminOTP = async (req, res) => {
   const { email, otp } = req.body;
   const normalizedEmail = email.trim().toLowerCase();
 
-  console.log("Stored Admin OTP:", adminOtpStore[normalizedEmail]);
+  // Retrieve the stored admin OTP from Redis
+  const storedOtp = await client.get(normalizedEmail);
+  console.log("Stored Admin OTP:", storedOtp);
   console.log("Received OTP:", otp);
 
-  if (!adminOtpStore[normalizedEmail] || adminOtpStore[normalizedEmail] !== otp) {
+  if (!storedOtp || storedOtp !== otp) {
     return res.status(400).json({ message: "Invalid OTP" });
   }
-  delete adminOtpStore[normalizedEmail];
+  // Delete the OTP after successful verification
+  await client.del(normalizedEmail);
+
   const user = await User.findOne({ email: normalizedEmail });
   if (!user) {
     return res.status(400).json({ message: "User not found." });
@@ -377,14 +383,15 @@ exports.sendResetOTP = async (req, res) => {
       return res.status(400).json({ message: "This email is not registered!" });
     }
 
+    // Generate OTP for password reset and store it in Redis with a 5-minute expiration
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    resetOtpStore[normalizedEmail] = otp;
+    await client.setEx(normalizedEmail, 300, otp);
 
     const mailOptions = {
       from: `"SmartVet" <dehe.marquez.au@phinmaed.com>`,
       to: normalizedEmail,
       subject: "Password Reset OTP",
-      text: `Your OTP for password reset is: ${otp}. It expires in 5 minutes.`,
+      text: `Your OTP for password reset is: ${otp}. It expires in 5 minutes.`
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
@@ -409,22 +416,21 @@ exports.verifyResetOTP = async (req, res) => {
   const normalizedEmail = email.trim().toLowerCase();
   const providedOtp = otp.trim(); // Ensure no extra spaces
 
-  // Debug logs for verification
   console.log("Verifying OTP for:", normalizedEmail);
-  console.log("Stored OTP for this email:", resetOtpStore[normalizedEmail]);
+  // Retrieve OTP from Redis
+  const storedOtp = await client.get(normalizedEmail);
+  console.log("Stored OTP for this email:", storedOtp);
   console.log("Provided OTP from request:", providedOtp);
 
-  // Check if the OTP exists and matches exactly
-  if (!resetOtpStore[normalizedEmail] || resetOtpStore[normalizedEmail] !== providedOtp) {
+  if (!storedOtp || storedOtp !== providedOtp) {
     console.log("OTP mismatch: either none is stored or the values do not match.");
     return res.status(400).json({ message: "Invalid OTP" });
   }
 
-  // If matched, delete the stored OTP and respond with success
-  delete resetOtpStore[normalizedEmail];
+  // Delete the OTP after successful verification
+  await client.del(normalizedEmail);
   res.status(200).json({ message: "OTP verified! You can now reset your password." });
 };
-
 
 // ================================
 // RESET PASSWORD
@@ -475,4 +481,3 @@ exports.refreshToken = async (req, res) => {
     return res.status(401).json({ message: "Invalid refresh token" });
   }
 };
-
