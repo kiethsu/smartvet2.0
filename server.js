@@ -6,7 +6,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const path = require("path");
 const cron = require('node-cron');
-const helmet = require('helmet');
+
 const axios = require('axios');         // For SMS API calls
 const nodemailer = require('nodemailer'); // For sending emails
 const chatbotRoutes = require("./routes/chatbot");
@@ -27,38 +27,7 @@ const Reservation = require("./models/reservation");
 
 const app = express();
 
-// Use Helmet for basic security headers
-// Configure Helmet with a custom Content Security Policy (CSP)
-// Configure Helmet with a custom Content Security Policy (CSP)
-app.use(
-  helmet.contentSecurityPolicy({
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: [
-        "'self'",
-        "https://cdn.jsdelivr.net",
-        "https://www.google.com",
-        "https://www.gstatic.com", // Allow recaptcha and related scripts
-        "'unsafe-inline'"
-      ],
-      styleSrc: [
-        "'self'",
-        "https://cdn.jsdelivr.net",
-        "https://fonts.googleapis.com",
-        "https://cdnjs.cloudflare.com",
-        "'unsafe-inline'"
-      ],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"], // Allow Google Fonts
-      imgSrc: ["'self'", "data:"],
-      connectSrc: ["'self'"],
-      frameSrc: [
-        "'self'",
-        "https://www.google.com",
-        "https://www.google.com/recaptcha/"
-      ]
-    }
-  })
-);
+
 
 
 
