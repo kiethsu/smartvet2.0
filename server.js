@@ -29,27 +29,43 @@ const app = express();
 
 // Use Helmet for basic security headers
 // Configure Helmet with a custom Content Security Policy (CSP)
+// Configure Helmet with a custom Content Security Policy (CSP)
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
+      // Allow content only from your domain by default.
       defaultSrc: ["'self'"],
-      // Allow scripts from self, jsdelivr, and Google. 
-      // 'unsafe-inline' is added here for inline scripts. Consider using nonces/hashes for better security.
-      scriptSrc: ["'self'", "https://cdn.jsdelivr.net", "https://www.google.com", "'unsafe-inline'"],
-      // Allow styles from self and inline styles.
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      // Allow images from self and data URIs.
-      imgSrc: ["'self'", "data:"],
-      // Allow connections to your own domain.
-      connectSrc: ["'self'"],
-      // Allow fonts from self and Google Fonts.
+      // Allow scripts from your domain, jsdelivr (Bootstrap), Google (reCAPTCHA) and inline scripts.
+      scriptSrc: [
+        "'self'",
+        "https://cdn.jsdelivr.net",
+        "https://www.google.com",
+        "'unsafe-inline'" // Allows inline scripts (you could later replace this with nonces or hashes)
+      ],
+      // Allow styles from your domain, jsdelivr (Bootstrap CSS), Google Fonts, and cdnjs (Font Awesome).
+      styleSrc: [
+        "'self'",
+        "https://cdn.jsdelivr.net",
+        "https://fonts.googleapis.com",
+        "https://cdnjs.cloudflare.com",
+        "'unsafe-inline'" // Allows inline styles if any
+      ],
+      // Allow fonts from your domain and Google Fonts.
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      // Allow images from your domain and data URIs.
+      imgSrc: ["'self'", "data:"],
+      // Allow AJAX/fetch connections to your domain.
+      connectSrc: ["'self'"],
       // Allow frames for reCAPTCHA.
-      frameSrc: ["'self'", "https://www.google.com", "https://www.google.com/recaptcha/"],
-      // Optionally, allow other sources as needed
-    },
+      frameSrc: [
+        "'self'",
+        "https://www.google.com",
+        "https://www.google.com/recaptcha/"
+      ]
+    }
   })
 );
+
 
 
 // Configure CORS for production (allowing all origins temporarily; update later with your client URL)
