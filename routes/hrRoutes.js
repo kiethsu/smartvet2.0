@@ -49,7 +49,7 @@ router.get('/reservation', authMiddleware, async (req, res) => {
     }
 
     const doctors = await User.find({ role: 'Doctor' }).lean();
-    res.render('hr/reservation', { reservations, doctors });
+    res.render('hr/Reservation', { reservations, doctors });
   } catch (error) {
     console.error("Error fetching reservations:", error);
     res.status(500).send("Server error");
