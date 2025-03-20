@@ -112,7 +112,9 @@ router.get("/petlist", (req, res) => {
       res.status(500).send("Server error");
     });
 });
+router.get("/peak-day-of-week", adminController.getPeakDayOfWeek);
 
+router.get("/predict-appointments", adminController.predictAppointments);
 router.post("/update-profile", upload.single("profilePic"), adminController.updateProfile);
 router.get("/get-dashboard-stats", adminController.getDashboardStats);
 module.exports = router;
