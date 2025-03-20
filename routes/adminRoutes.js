@@ -84,18 +84,21 @@ router.get("/dashboard", (req, res) => {
 router.get("/accounts-view", (req, res) => {
   res.render("accounts");
 });
-router.get("/profile", (req, res) => {
-  // For demonstration, passing a mock admin user object.
-  res.render("profile", {
-    user: {
-      _id: "679cd78beceffa46ea1a6cbe",
-      username: "Admin",
-      email: "smartvetclinic17@gmail.com",
-      profilePic: "",
-      otpEnabled: false
+// In adminRoutes.js, update the profile view route:
+router.get("/profile", async (req, res) => {
+  try {
+    // For example, if the admin's email is known:
+    const adminUser = await require("../models/user").findOne({ email: "smartvetclinic17@gmail.com" }).lean();
+    if (!adminUser) {
+      return res.status(404).send("Admin user not found.");
     }
-  });
+    res.render("profile", { user: adminUser });
+  } catch (error) {
+    console.error("Error fetching admin profile:", error);
+    res.status(500).send("Server error");
+  }
 });
+
 // Admin pet list view route
 router.get("/petlist", (req, res) => {
   // You may need to query for pets here, similar to HR:
