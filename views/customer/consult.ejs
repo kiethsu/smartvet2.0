@@ -87,29 +87,30 @@
         </tr>
       </thead>
       <tbody id="reservationDetailsTableBody">
-        <% if (reservations && reservations.length > 0) { %>
-          <% reservations.forEach(function(reservation) { %>
-            <% if (reservation.status === 'Pending') { %>
-              <tr id="reservation-<%= reservation._id %>">
-                <td><%= reservation.pets.map(p => p.petName).join(', ') %></td>
-                <td>
-                  <button class="btn btn-primary btn-sm" onclick="viewReservation('<%= reservation._id %>')">
-                    View
-                  </button>
-                </td>
-                <td>
-                  <span class="badge badge-info"><%= reservation.status %></span>
-                </td>
-                <td>
-                  <button class="btn btn-danger btn-sm" onclick="cancelReservation('<%= reservation._id %>')">
-                    Cancel
-                  </button>
-                </td>
-              </tr>
-            <% } %>
-          <% }); %>
-        <% } %>
-      </tbody>
+  <% if (reservations && reservations.length > 0) { %>
+    <% reservations.forEach(function(reservation) { %>
+      <% if (reservation.status === 'Pending' || reservation.status === 'Approved') { %>
+        <tr id="reservation-<%= reservation._id %>">
+          <td><%= reservation.pets.map(p => p.petName).join(', ') %></td>
+          <td>
+            <button class="btn btn-primary btn-sm" onclick="viewReservation('<%= reservation._id %>')">
+              View
+            </button>
+          </td>
+          <td>
+            <span class="badge badge-info"><%= reservation.status %></span>
+          </td>
+          <td>
+            <button class="btn btn-danger btn-sm" onclick="cancelReservation('<%= reservation._id %>')">
+              Cancel
+            </button>
+          </td>
+        </tr>
+      <% } %>
+    <% }); %>
+  <% } %>
+</tbody>
+
       
       
     </table>
