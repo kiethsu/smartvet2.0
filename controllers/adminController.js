@@ -377,3 +377,177 @@ exports.deleteDoctor = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error deleting doctor" });
   }
 };
+exports.predictAppointments = async (req, res) => {
+  try {
+    console.log("Start predictAppointments...");
+
+    // 1) Build dayCounts for last 7 days
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    let dayCounts = [];
+    for (let i = 6; i >= 0; i--) {
+      const dayDate = new Date(today);
+      dayDate.setDate(dayDate.getDate() - i);
+
+      // day start & end
+      const start = new Date(dayDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(dayDate);
+      end.setHours(23, 59, 59, 999);
+
+      // Count how many reservations
+      const dailyCount = await Reservation.countDocuments({
+        createdAt: { $gte: start, $lte: end }
+      });
+
+      dayCounts.push({
+        date: dayDate.toISOString().slice(0, 10),
+        count: dailyCount
+      });
+    }
+
+    console.log("   dayCounts =>", dayCounts);
+
+    // 2) Check if all 7 days are zero
+    const allZero = dayCounts.every(dc => dc.count === 0);
+    if (allZero) {
+      // If truly no data in system, fallback to "0" for next 3 days
+      const predictions = [];
+      for (let i = 1; i <= 3; i++) {
+        const futureDate = new Date(today);
+        futureDate.setDate(today.getDate() + i);
+        predictions.push({
+          date: futureDate.toISOString().slice(0, 10),
+          predictedCount: 0
+        });
+      }
+      return res.json({
+        last7days: dayCounts,
+        method: "fallbackAllZero",
+        predictions
+      });
+    }
+
+    // 3) If there's ANY data, do the naive ratio/diff approach
+    console.log("   Some days have non-zero data => ratio/diff approach.");
+
+    // Build arrays of ratio/diffs
+    let ratios = [];
+    let diffs = [];
+    for (let i = 1; i < dayCounts.length; i++) {
+      let prev = dayCounts[i - 1].count;
+      let curr = dayCounts[i].count;
+      if (prev > 0) {
+        ratios.push(curr / prev);
+      }
+      diffs.push(curr - prev);
+    }
+
+    let forecastMethod = "";
+    let averageGrowth = 1;
+    let averageDiff = 0;
+
+    if (ratios.length >= 3) {
+      // Use ratio approach
+      averageGrowth = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+      forecastMethod = "averageRatio";
+    } else {
+      // Use difference approach
+      if (diffs.length > 0) {
+        averageDiff = Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length);
+      }
+      forecastMethod = "averageDiff";
+    }
+
+    console.log("   forecastMethod=", forecastMethod, " growth=", averageGrowth, " diff=", averageDiff);
+
+    // 4) Generate predictions for next 3 days
+    let predictions = [];
+    let lastCount = dayCounts[dayCounts.length - 1].count;
+    for (let i = 1; i <= 3; i++) {
+      const nextDate = new Date(today);
+      nextDate.setDate(today.getDate() + i);
+
+      let nextCount = 0;
+      if (forecastMethod === "averageRatio") {
+        nextCount = Math.round(lastCount * averageGrowth);
+      } else {
+        nextCount = lastCount + averageDiff;
+      }
+
+      if (nextCount < 0) nextCount = 0; // never go negative
+      predictions.push({
+        date: nextDate.toISOString().slice(0, 10),
+        predictedCount: nextCount
+      });
+
+      lastCount = nextCount;
+    }
+
+    return res.json({
+      last7days: dayCounts,
+      method: forecastMethod,
+      averageGrowth,
+      averageDiff,
+      predictions
+    });
+
+  } catch (err) {
+    console.error("Error in predictAppointments:", err);
+    return res.status(500).json({ error: "Server error predicting appointments." });
+  }
+};
+/**
+ * Predict the busiest day-of-week for the next 7 days
+ */
+// adminController.js
+exports.getPeakDayOfWeek = async (req, res) => {
+  try {
+    console.log("[getPeakDayOfWeek] Starting day-of-week analysis...");
+
+    // 1) Determine "30 days ago"
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(now.getDate() - 30);
+
+    // 2) Retrieve reservations in the last 30 days
+    //    (Adjust the field name if needed, e.g. "createdAt")
+    const reservations = await Reservation.find({
+      createdAt: { $gte: thirtyDaysAgo, $lte: now }
+    }).lean();
+
+    // 3) dayOfWeekCounts: an object, keys are [0..6], values are how many
+    //    For easy label, we'll define an array of day names:
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    let dayOfWeekCounts = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+
+    // 4) Loop each reservation, find its day-of-week
+    reservations.forEach(resv => {
+      const day = new Date(resv.createdAt).getDay(); 
+      dayOfWeekCounts[day] = (dayOfWeekCounts[day] || 0) + 1;
+    });
+
+    // 5) Convert that object to an array: [ { dayLabel, count } ]
+    let dayArray = [];
+    for (let i = 0; i < 7; i++) {
+      dayArray.push({
+        dayLabel: dayNames[i],
+        count: dayOfWeekCounts[i]
+      });
+    }
+
+    // 6) Find the top day (peak) by count
+    let peakDay = dayArray.reduce((max, current) => current.count > max.count ? current : max, dayArray[0]);
+
+    // Return the result
+    return res.json({
+      last30daysTotal: reservations.length,
+      days: dayArray,      // e.g. [ { dayLabel:"Monday", count:10 }, ... ]
+      peakDayOfWeek: peakDay // e.g. { dayLabel:"Monday", count:10 }
+    });
+  } catch (err) {
+    console.error("Error in getPeakDayOfWeek:", err);
+    return res.status(500).json({ error: "Server error analyzing day-of-week." });
+  }
+};
