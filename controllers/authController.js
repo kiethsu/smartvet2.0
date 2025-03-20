@@ -236,7 +236,7 @@ exports.login = async (req, res) => {
     );
     // Role-specific access token cookie (expires in 1 minute for testing)
     const accessCookieName = user.role.toLowerCase() + "_token";
-    res.cookie(accessCookieName, accessToken, { httpOnly: true, maxAge: 60 * 1000, path: "/" });
+res.cookie(accessCookieName, accessToken, { httpOnly: true, maxAge: 60 * 60 * 1000, path: "/" });
     // Set refresh token cookie under a unified name (expires in 7 days)
     res.cookie("refreshToken", refreshToken, { 
       httpOnly: true, 
