@@ -145,5 +145,286 @@
       </div>
     </div>
   </div>
+  <!-- Row 4: Predictive Analytics -->
+<!-- Predicted Appointments (Next 3 Days) -->
+
+
+
+
+  <!-- Left Column: Predicted Appointments -->
+<!-- The row that holds both cards -->
+<div class="row mt-4">
+
+  <!-- LEFT CARD: Predicted Appointments -->
+  <div class="col-md-6 d-flex align-items-stretch">
+    <div class="card w-100">
+      <div class="card-header">
+        <h5>Predicted Appointments (Next 3 Days)</h5>
+      </div>
+      <div class="card-body">
+        <!-- 1) Table for predictions -->
+        <table class="table table-hover mb-4" id="predictionTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Predicted Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Filled by loadPredictions() -->
+          </tbody>
+        </table>
+
+        <!-- 2) Chart for predictions -->
+        <div style="height: 300px;">
+          <canvas id="predictionChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT CARD: Peak Day-of-Week (Last 30 Days) -->
+  <div class="col-md-6 d-flex align-items-stretch">
+    <div class="card w-100">
+      <div class="card-header">
+        <h5>Peak Day-of-Week (Last 30 Days)</h5>
+      </div>
+      <div class="card-body">
+        <!-- This small text will say e.g. "Peak: Thursday (4 appointments)" -->
+        <p class="mb-1 text-muted" id="peakDayTitle"></p>
+
+        <!-- 1) Table for day-of-week aggregator -->
+        <table class="table table-bordered table-sm mb-4" id="dayOfWeekTable">
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Count</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Filled by loadDayOfWeekStats() -->
+          </tbody>
+        </table>
+
+        <!-- 2) Chart for day-of-week aggregator -->
+        <div style="height: 300px;">
+          <canvas id="dayOfWeekChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Make sure jQuery is loaded BEFORE this script -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- If not already included -->
+<script>
+  // We'll keep references to both bar charts so we can destroy them if we reload data
+  let predictionBarChart = null;
+  let dayOfWeekChart = null;
+
+  /**
+   * Convert "YYYY-MM-DD" into "march 21 2025" (month spelled out).
+   */
+  function formatDateWords(isoDate) {
+    const d = new Date(isoDate + "T00:00:00");
+    const month = d.toLocaleString("en-US", { month: "long" }).toLowerCase();
+    const day = d.getDate();
+    const year = d.getFullYear();
+    return `${month} ${day} ${year}`;
+  }
+
+  /**
+   * Load next-3-days predictions from /admin/predict-appointments,
+   * fill the #predictionTable, and build a bar chart in #predictionChart.
+   */
+  function loadPredictions() {
+    $.ajax({
+      url: "/admin/predict-appointments",
+      method: "GET",
+      dataType: "json",
+      success: function(data) {
+        console.log("Predictions data:", data);
+        const $tbody = $("#predictionTable tbody");
+        $tbody.empty();
+
+        // Prepare arrays for chart
+        let chartLabels = [];
+        let chartData = [];
+
+        if (data.predictions && data.predictions.length > 0) {
+          data.predictions.forEach(pred => {
+            const niceDate = formatDateWords(pred.date);
+            // Append a row
+            $tbody.append(`
+              <tr>
+                <td>${niceDate}</td>
+                <td>${pred.predictedCount}</td>
+              </tr>
+            `);
+            // Chart arrays
+            chartLabels.push(niceDate);
+            chartData.push(pred.predictedCount);
+          });
+        } else {
+          // fallback if no predictions
+          $tbody.append(`
+            <tr>
+              <td colspan="2" class="text-muted">
+                No predicted data.
+              </td>
+            </tr>
+          `);
+        }
+
+        // Build or update the bar chart
+        if (predictionBarChart) {
+          predictionBarChart.destroy();
+        }
+        const ctx = document.getElementById("predictionChart").getContext("2d");
+        predictionBarChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: chartLabels,
+            datasets: [{
+              label: "Predicted Count",
+              data: chartData,
+              backgroundColor: "rgba(54, 162, 235, 0.5)",
+              borderColor: "rgba(54, 162, 235, 1)",
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+      },
+      error: function(xhr, status, error) {
+        console.error("Error fetching predictions:", error);
+        $("#predictionTable tbody").html(`
+          <tr>
+            <td colspan="2" class="text-danger">
+              Failed to load predictions.
+            </td>
+          </tr>
+        `);
+        if (predictionBarChart) {
+          predictionBarChart.destroy();
+          predictionBarChart = null;
+        }
+      }
+    });
+  }
+
+  /**
+   * Load day-of-week aggregator from /admin/peak-day-of-week,
+   * fill #dayOfWeekTable, set #peakDayTitle, and build a bar chart in #dayOfWeekChart.
+   */
+  function loadDayOfWeekStats() {
+    $.ajax({
+      url: "/admin/peak-day-of-week",
+      method: "GET",
+      dataType: "json",
+      success: function(data) {
+        console.log("Peak day-of-week data:", data);
+        const $title = $("#peakDayTitle");
+        const $tbody = $("#dayOfWeekTable tbody");
+        $tbody.empty();
+
+        if (data.peakDayOfWeek) {
+          $title.text(
+            `Peak: ${data.peakDayOfWeek.dayLabel} (${data.peakDayOfWeek.count} appointments)`
+          );
+        } else {
+          $title.text("No data found in the last 30 days.");
+        }
+
+        // Build arrays for chart
+        let dayLabels = [];
+        let dayCounts = [];
+
+        if (data.days && data.days.length > 0) {
+          data.days.forEach(dayObj => {
+            // e.g. dayObj.dayLabel = "Monday", dayObj.count = 3
+            $tbody.append(`
+              <tr>
+                <td>${dayObj.dayLabel}</td>
+                <td>${dayObj.count}</td>
+              </tr>
+            `);
+
+            dayLabels.push(dayObj.dayLabel);
+            dayCounts.push(dayObj.count);
+          });
+        } else {
+          $tbody.append(`
+            <tr>
+              <td colspan="2" class="text-muted">
+                No data for day-of-week.
+              </td>
+            </tr>
+          `);
+        }
+
+        // Build or update the day-of-week bar chart
+        if (dayOfWeekChart) {
+          dayOfWeekChart.destroy();
+        }
+        const ctx2 = document.getElementById("dayOfWeekChart").getContext("2d");
+        dayOfWeekChart = new Chart(ctx2, {
+          type: "bar",
+          data: {
+            labels: dayLabels,
+            datasets: [{
+              label: "Appointments",
+              data: dayCounts,
+              backgroundColor: "rgba(255, 159, 64, 0.5)",
+              borderColor: "rgba(255, 159, 64, 1)",
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+      },
+      error: function(xhr, status, error) {
+        console.error("Error fetching day-of-week stats:", error);
+        $("#dayOfWeekTable tbody").html(`
+          <tr>
+            <td colspan="2" class="text-danger">
+              Failed to load day-of-week stats.
+            </td>
+          </tr>
+        `);
+        if (dayOfWeekChart) {
+          dayOfWeekChart.destroy();
+          dayOfWeekChart = null;
+        }
+      }
+    });
+  }
+
+  // On page load, load both sets of data
+  $(document).ready(function(){
+    loadPredictions();
+    loadDayOfWeekStats();
+  });
+</script>
+
+
+  
+
+
+
+  
 </body>
 </html>
