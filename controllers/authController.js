@@ -226,7 +226,7 @@ exports.login = async (req, res) => {
     const accessToken = jwt.sign(
       { userId: user._id, username: user.username, email: user.email, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "1m" }
+      { expiresIn: "1h" }
     );
     // Refresh token remains long-lived (e.g. 7 days)
     const refreshToken = jwt.sign(
