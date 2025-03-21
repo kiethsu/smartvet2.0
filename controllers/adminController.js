@@ -7,6 +7,7 @@ const Pet = require("../models/pet");
 const Reservation = require("../models/reservation");
 const About = require("../models/about");
 const PetDetailsSetting = require("../models/petDetailsSetting");
+const ExcelJS = require('exceljs');
 /**
  * Create a new Doctor/HR account
  */
@@ -549,5 +550,134 @@ exports.getPeakDayOfWeek = async (req, res) => {
   } catch (err) {
     console.error("Error in getPeakDayOfWeek:", err);
     return res.status(500).json({ error: "Server error analyzing day-of-week." });
+  }
+};
+exports.generateReport = async (req, res) => {
+  try {
+    // --------- 1) Appointment Trends Data (Dummy example data, replace with actual query as needed) ---------
+    const appointmentTrends = {
+      labels: ["2025-03-20", "2025-03-21", "2025-03-22", "2025-03-23", "2025-03-24", "2025-03-25", "2025-03-26"],
+      pending: [2, 3, 1, 4, 2, 0, 3],
+      approved: [1, 2, 3, 1, 0, 2, 1],
+      completed: [5, 4, 6, 7, 3, 2, 4]
+    };
+
+    // --------- 2) User Account Statistics (Dummy example, replace with your actual data) ---------
+    const userStats = {
+      doctors: 5,
+      hr: 2,
+      customers: 50
+    };
+
+    // --------- 3) Customer & Pet Details -----------
+    // Find all customers (users with role "Customer")
+    const customers = await User.find({ role: "Customer" }).lean();
+
+    // Create an array to hold customer-pet info
+    const customerPetData = [];
+    for (const customer of customers) {
+      // Get pets for each customer
+      const pets = await Pet.find({ owner: customer._id }).lean();
+      // If customer has no pet, push customer info with blank pet fields
+      if (pets.length === 0) {
+        customerPetData.push({
+          customerName: customer.username,
+          email: customer.email,
+          cellphone: customer.cellphone || "N/A",
+          petName: "N/A",
+          species: "N/A",
+          breed: "N/A",
+          birthday: "N/A",
+          existingDisease: "N/A"
+        });
+      } else {
+        // For each pet, add a row with customer details and pet info
+        for (const pet of pets) {
+          customerPetData.push({
+            customerName: customer.username,
+            email: customer.email,
+            cellphone: customer.cellphone || "N/A",
+            petName: pet.petName,
+            species: pet.species,
+            breed: pet.breed || "N/A",
+            birthday: pet.birthday ? new Date(pet.birthday).toISOString().slice(0, 10) : "N/A",
+            existingDisease: pet.existingDisease || "N/A"
+          });
+        }
+      }
+    }
+
+    // Create a new Excel workbook
+    const workbook = new ExcelJS.Workbook();
+
+    // ---------------- Worksheet 1: Appointment Trends ----------------
+    const wsTrends = workbook.addWorksheet('Appointment Trends');
+    // Set header row
+    wsTrends.addRow(['Appointment Trends (Past 7 Days)']);
+    wsTrends.addRow(['Date', 'Pending', 'Approved', 'Completed']);
+    // Add each day's data
+    appointmentTrends.labels.forEach((date, idx) => {
+      wsTrends.addRow([
+        date,
+        appointmentTrends.pending[idx],
+        appointmentTrends.approved[idx],
+        appointmentTrends.completed[idx]
+      ]);
+    });
+    wsTrends.getRow(2).font = { bold: true };
+
+    // ---------------- Worksheet 2: User Account Statistics ----------------
+    const wsUserStats = workbook.addWorksheet('User Statistics');
+    wsUserStats.addRow(['User Account Statistics']);
+    wsUserStats.addRow(['Doctors', 'HR', 'Customers']);
+    wsUserStats.addRow([userStats.doctors, userStats.hr, userStats.customers]);
+    wsUserStats.getRow(2).font = { bold: true };
+
+    // ---------------- Worksheet 3: Customer & Pet Details ----------------
+    const wsCustPets = workbook.addWorksheet('Customer & Pet Details');
+    wsCustPets.addRow(['Customer & Pet Details']);
+    wsCustPets.addRow(['Customer Name', 'Email', 'Cellphone', 'Pet Name', 'Species', 'Breed', 'Birthday', 'Existing Disease']);
+    customerPetData.forEach(rowData => {
+      wsCustPets.addRow([
+        rowData.customerName,
+        rowData.email,
+        rowData.cellphone,
+        rowData.petName,
+        rowData.species,
+        rowData.breed,
+        rowData.birthday,
+        rowData.existingDisease
+      ]);
+    });
+    wsCustPets.getRow(2).font = { bold: true };
+
+    // Adjust columns width for better readability
+    [wsTrends, wsUserStats, wsCustPets].forEach(worksheet => {
+      worksheet.columns.forEach(column => {
+        let maxLength = 0;
+        column.eachCell({ includeEmpty: true }, cell => {
+          const cellValue = cell.value ? cell.value.toString() : "";
+          maxLength = Math.max(maxLength, cellValue.length);
+        });
+        column.width = maxLength < 10 ? 10 : maxLength;
+      });
+    });
+
+    // Set response headers to prompt file download
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=dashboard-report.xlsx'
+    );
+
+    // Write workbook to response
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error("Error generating report:", err);
+    res.status(500).json({ error: "Error generating report" });
   }
 };
