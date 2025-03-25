@@ -5,6 +5,10 @@ const multer = require("multer");
 const adminController = require("../controllers/adminController");
 const DashboardSetting = require('../models/dashboardSetting');
 const Joi = require('joi');
+const Service = require("../models/service");
+const ServiceCategory = require("../models/serviceCategory");
+const mongoose = require("mongoose");
+const Inventory = require("../models/inventory");
 
 const router = express.Router();
 
@@ -118,4 +122,174 @@ router.get("/peak-day-of-week", adminController.getPeakDayOfWeek);
 router.get("/predict-appointments", adminController.predictAppointments);
 router.post("/update-profile", upload.single("profilePic"), adminController.updateProfile);
 router.get("/get-dashboard-stats", adminController.getDashboardStats);
+// Render the Inventory view
+router.get("/inventory", (req, res) => {
+  res.render("inventory"); // Ensure views/inventory.ejs exists.
+});
+
+// API route to list all inventory items
+router.get("/inventory/list", async (req, res) => {
+  try {
+    const items = await Inventory.find().lean();
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching inventory items" });
+  }
+});
+
+// API route to add a new inventory item
+// API route to add a new inventory item
+router.post("/inventory/add", async (req, res) => {
+  try {
+    const { name, category, price, quantity } = req.body;
+    let expirationDates = req.body["expirationDates[]"] || req.body.expirationDates;
+    if (expirationDates) {
+      if (!Array.isArray(expirationDates)) {
+        expirationDates = [expirationDates];
+      }
+      expirationDates = expirationDates.filter(date => date);
+    } else {
+      expirationDates = [];
+    }
+    const newItem = new Inventory({
+      name,
+      category,
+      price,
+      quantity,
+      expirationDates
+    });
+    await newItem.save();
+    res.json({ message: "Inventory item added successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error adding inventory item" });
+  }
+});
+
+
+// API route to fetch a single inventory item by ID
+router.get("/inventory/item/:id", async (req, res) => {
+  try {
+    const item = await Inventory.findById(req.params.id).lean();
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching inventory item" });
+  }
+});
+
+// API route to edit an inventory item
+router.post("/inventory/edit", async (req, res) => {
+  try {
+    const { id, name, category, price, quantity } = req.body;
+    let expirationDates = req.body["expirationDates[]"] || req.body.expirationDates;
+    if (expirationDates) {
+      if (!Array.isArray(expirationDates)) {
+        expirationDates = [expirationDates];
+      }
+      expirationDates = expirationDates.filter(date => date);
+    } else {
+      expirationDates = [];
+    }
+    await Inventory.findByIdAndUpdate(id, { name, category, price, quantity, expirationDates });
+    res.json({ message: "Inventory item updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating inventory item" });
+  }
+});
+
+// API route to delete an inventory item
+router.post("/inventory/delete", async (req, res) => {
+  try {
+    const { id } = req.body;
+    await Inventory.findByIdAndDelete(id);
+    res.json({ message: "Inventory item deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting inventory item" });
+  }
+});
+
+// -------------------- Service Category Routes --------------------
+router.get("/services/categories/list", async (req, res) => {
+  try {
+    const categories = await ServiceCategory.find().lean();
+    res.json(categories);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching categories" });
+  }
+});
+router.post("/services/categories/add", async (req, res) => {
+  try {
+    const { name } = req.body;
+    const newCategory = new ServiceCategory({ name });
+    await newCategory.save();
+    res.json({ message: "Category added successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error adding category" });
+  }
+});
+router.post("/services/categories/delete", async (req, res) => {
+  try {
+    await ServiceCategory.findByIdAndDelete(req.body.id);
+    res.json({ message: "Category deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting category" });
+  }
+});
+
+// -------------------- Service Item Routes --------------------
+// Render the Services view
+router.get("/services", (req, res) => {
+  res.render("services"); // Ensure views/services.ejs exists.
+});
+router.get("/services/list", async (req, res) => {
+  try {
+    const services = await Service.find().lean();
+    for (let svc of services) {
+      if (mongoose.Types.ObjectId.isValid(svc.category)) {
+        const cat = await ServiceCategory.findById(svc.category).lean();
+        svc.categoryName = cat ? cat.name : "Unknown";
+      } else {
+        svc.categoryName = "Invalid Category";
+      }
+    }
+    res.json(services);
+  } catch (error) {
+    console.error("Error fetching services:", error);
+    res.status(500).json({ message: "Error fetching services", error: error.message });
+  }
+});
+router.post("/services/add", async (req, res) => {
+  try {
+    const { category, serviceName, weight, dosage, price } = req.body;
+    const newService = new Service({ category, serviceName, weight, dosage, price });
+    await newService.save();
+    res.json({ message: "Service added successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error adding service" });
+  }
+});
+router.get("/services/item/:id", async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id).lean();
+    res.json(service);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching service item" });
+  }
+});
+router.post("/services/edit", async (req, res) => {
+  try {
+    const { id, category, serviceName, weight, dosage, price } = req.body;
+    await Service.findByIdAndUpdate(id, { category, serviceName, weight, dosage, price });
+    res.json({ message: "Service updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating service" });
+  }
+});
+router.post("/services/delete", async (req, res) => {
+  try {
+    await Service.findByIdAndDelete(req.body.id);
+    res.json({ message: "Service deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting service" });
+  }
+});
 module.exports = router;
