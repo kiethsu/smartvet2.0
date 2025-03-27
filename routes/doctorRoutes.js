@@ -1,9 +1,29 @@
+// doctorRoutes.js
+
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const Reservation = require('../models/reservation');
 const Pet = require('../models/pet'); // needed to update pet details
 const Joi = require('joi');
+const Service = require('../models/service');
+const ServiceCategory = require('../models/serviceCategory');
+const Inventory = require('../models/inventory');  // NEW: Inventory model
+const Consultation = require('../models/consultation');
+
+// ----------------- Multer Setup -----------------
+// Updated storage: files will be stored in public/consultation/
+const multer = require('multer');
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'public/consultation/'); // Ensure this folder exists in your project
+  },
+  filename: function (req, file, cb) {
+    const ext = file.originalname.split('.').pop();
+    cb(null, file.fieldname + '-' + Date.now() + '.' + ext);
+  }
+});
+const upload = multer({ storage: storage });
 
 // Validation middleware helper
 function validateRequest(schema, property = 'body') {
@@ -22,11 +42,17 @@ const reservationIdSchema = Joi.object({
   reservationId: Joi.string().required()
 });
 
-// Schema for adding consultation details
+// Updated schema for adding consultation details
 const addConsultationSchema = Joi.object({
   reservationId: Joi.string().required(),
   consultationNotes: Joi.string().optional().allow(""),
-  medicationsData: Joi.string().optional().allow("")
+  examWeight: Joi.string().optional().allow(""),
+  examTemperature: Joi.string().optional().allow(""),
+  examOthers: Joi.string().optional().allow(""),
+  diagnosis: Joi.string().optional().allow(""),
+  notes: Joi.string().optional().allow(""),
+  medicationsData: Joi.string().optional().allow(""),
+  servicesData: Joi.string().optional().allow("")
 }).unknown(true);  // Allow unknown keys
 
 // Schema for adding a follow-up schedule
@@ -37,40 +63,26 @@ const addScheduleSchema = Joi.object({
 });
 
 // -------------------------
-// Render Doctor Dashboard with Appointments and Follow-Ups
+// Existing Routes (dashboard, patient, history, profile, etc.)
 // -------------------------
+
+// Render Doctor Dashboard with Appointments and Follow-Ups
 router.get("/d-dashboard", authMiddleware, async (req, res) => {
   try {
     const now = new Date();
-
-    // Total appointments assigned to this doctor
-    const totalAppointments = await Reservation.countDocuments({
-      doctor: req.user.userId
-    });
-
-    // Completed appointments
-    const doneAppointments = await Reservation.countDocuments({
-      doctor: req.user.userId,
-      status: 'Done'
-    });
-
-    // Upcoming appointments (not done and with a future schedule date)
+    const totalAppointments = await Reservation.countDocuments({ doctor: req.user.userId });
+    const doneAppointments = await Reservation.countDocuments({ doctor: req.user.userId, status: 'Done' });
     const upcomingAppointments = await Reservation.find({
       doctor: req.user.userId,
       status: { $ne: 'Done' },
       "schedule.scheduleDate": { $gte: now }
     }).lean();
-
-    // Follow-ups (done but with a future schedule)
     const followUps = await Reservation.find({
       doctor: req.user.userId,
       status: 'Done',
       "schedule.scheduleDate": { $gte: now }
     }).lean();
-
-    // Build dynamic appointments over time data (past 7 days)
     const appointmentsOverTime = await buildAppointmentsOverTimeData(req.user.userId);
-
     res.render("doctor/d-dashboard", {
       doctor: { userId: req.user.userId, username: req.user.username },
       totalAppointments,
@@ -85,21 +97,16 @@ router.get("/d-dashboard", authMiddleware, async (req, res) => {
   }
 });
 
-// Updated helper function: Build dynamic appointments data for the past 7 days
+// Helper function for appointments data
 async function buildAppointmentsOverTimeData(doctorId) {
-  // Set today's date to end of day
   const today = new Date();
   today.setHours(23, 59, 59, 999);
-
-  // Create an array for the past 7 days (including today)
   const past7Days = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
     past7Days.push(d);
   }
-
-  // For each day, count the number of appointments created by this doctor
   const data = [];
   for (let d of past7Days) {
     const start = new Date(d);
@@ -115,33 +122,28 @@ async function buildAppointmentsOverTimeData(doctorId) {
   return data;
 }
 
-// -------------------------
 // Render Active Patient Consultations Page
-// -------------------------
 router.get("/d-patient", authMiddleware, async (req, res) => {
   try {
     const patients = await Reservation.find({
       doctor: req.user.userId,
       status: { $ne: 'Done' }
     }).lean();
-    res.render("doctor/d-patient", { patients });
+    const serviceCategories = await ServiceCategory.find({}).lean();
+    res.render("doctor/d-patient", { patients, serviceCategories });
   } catch (error) {
     console.error("Error fetching assigned patients:", error);
     res.status(500).send("Server error");
   }
 });
 
-// -------------------------
 // Render Doctor History Page
-// -------------------------
 router.get("/d-history", authMiddleware, async (req, res) => {
   try {
     const history = await Reservation.find({
       doctor: req.user.userId,
       status: 'Done'
-    })
-      .populate('doctor', 'username')
-      .lean();
+    }).populate('doctor', 'username').lean();
     res.render("doctor/d-history", { history });
   } catch (error) {
     console.error("Error fetching history:", error);
@@ -149,18 +151,14 @@ router.get("/d-history", authMiddleware, async (req, res) => {
   }
 });
 
-// -------------------------
 // Render Doctor Profile Page
-// -------------------------
 router.get("/d-profile", authMiddleware, (req, res) => {
   res.render("doctor/d-profile", {
     doctor: { userId: req.user.userId, username: req.user.username }
   });
 });
 
-// -------------------------
 // Mark a Reservation as Done and Update Pet Details
-// -------------------------
 router.post("/mark-as-done", authMiddleware, validateRequest(reservationIdSchema), async (req, res) => {
   try {
     const { reservationId } = req.body;
@@ -171,8 +169,6 @@ router.post("/mark-as-done", authMiddleware, validateRequest(reservationIdSchema
     if (reservation.doctor.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to mark this reservation as done.' });
     }
-    
-    // If the reservation is for an existing pet and pet data is linked, update it.
     if (reservation.petExists && reservation.pets && reservation.pets.length > 0 && reservation.pets[0].petId) {
       const petId = reservation.pets[0].petId;
       const pet = await Pet.findById(petId);
@@ -181,15 +177,9 @@ router.post("/mark-as-done", authMiddleware, validateRequest(reservationIdSchema
         await pet.save();
       }
     }
-    
-    // Mark the reservation as done (do not set petAdded so HR can update pet details)
     reservation.status = 'Done';
     await reservation.save();
-    
-    // Populate doctor's username for response
-    reservation = await Reservation.findById(reservationId)
-                                     .populate('doctor', 'username')
-                                     .lean();
+    reservation = await Reservation.findById(reservationId).populate('doctor', 'username').lean();
     res.json({ success: true, reservation });
   } catch (error) {
     console.error("Error marking reservation as done:", error);
@@ -197,9 +187,7 @@ router.post("/mark-as-done", authMiddleware, validateRequest(reservationIdSchema
   }
 });
 
-// -------------------------
-// Get Consultation Details for a Reservation (validated)
-// -------------------------
+// Get Consultation Details for a Reservation
 router.get("/get-consultation", authMiddleware, validateRequest(reservationIdSchema, 'query'), async (req, res) => {
   try {
     const { reservationId } = req.query;
@@ -216,12 +204,27 @@ router.get("/get-consultation", authMiddleware, validateRequest(reservationIdSch
   }
 });
 
-// -------------------------
-// Add Consultation Details (validated)
-// -------------------------
-router.post("/add-consultation", authMiddleware, validateRequest(addConsultationSchema), async (req, res) => {
+// Updated Add Consultation Details Endpoint
+// Using upload.any() with diskStorage to allow file uploads.
+// Updated Add Consultation Details Endpoint
+// Using upload.any() with diskStorage to allow file uploads.
+router.post("/add-consultation", authMiddleware, upload.any(), validateRequest(addConsultationSchema), async (req, res) => {
   try {
-    const { reservationId, consultationNotes, medicationsData } = req.body;
+    const {
+      reservationId,
+      consultationNotes,
+      examWeight,
+      examTemperature,
+      examOthers,
+      diagnosis,
+      notes,
+      medicationsData,
+      servicesData
+    } = req.body;
+    
+    // Capture confinement status checkboxes (if none checked, default to empty array)
+    const confinementStatus = req.body.confinementStatus || [];
+    
     const reservation = await Reservation.findById(reservationId);
     if (!reservation) {
       return res.status(404).json({ success: false, message: 'Reservation not found.' });
@@ -229,19 +232,62 @@ router.post("/add-consultation", authMiddleware, validateRequest(addConsultation
     if (reservation.doctor.toString() !== req.user.userId.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized to add consultation details for this reservation.' });
     }
-    reservation.consultationNotes = consultationNotes;
-    reservation.medications = medicationsData ? JSON.parse(medicationsData) : [];
+
+    // Build a file map for service files.
+    let fileMap = {};
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        if (file.fieldname.startsWith("serviceFile_")) {
+          // Field name format: "serviceFile_{serviceId}"
+          const serviceId = file.fieldname.split("_")[1];
+          fileMap[serviceId] = file.path;
+        }
+      });
+      console.log("File map:", fileMap);
+    }
+
+    // Parse medicationsData if provided.
+    const medications = medicationsData ? JSON.parse(medicationsData) : [];
+    // Parse servicesData if provided.
+    let services = servicesData ? JSON.parse(servicesData) : [];
+    // For each service, attach the file path if a file was uploaded for its serviceId.
+    services = services.map(service => {
+      if (service.serviceId && fileMap[service.serviceId]) {
+        return { ...service, file: fileMap[service.serviceId] };
+      }
+      return service;
+    });
+
+    // Create the consultation record.
+    const consultation = new Consultation({
+      reservation: reservationId,
+      consultationNotes,
+      physicalExam: {
+        weight: examWeight,
+        temperature: examTemperature,
+        observations: examOthers
+      },
+      diagnosis,
+      notes,
+      medications,
+      services,
+      confinementStatus // New field added here
+    });
+    await consultation.save();
+
+    // (Optional) Update the reservation with a reference to the consultation.
+    reservation.consultation = consultation._id;
     await reservation.save();
-    res.json({ success: true, reservation });
+
+    res.json({ success: true, consultation });
   } catch (error) {
     console.error("Error adding consultation details:", error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// -------------------------
-// Save a Follow-Up Schedule for a Reservation (validated)
-// -------------------------
+
+// Save a Follow-Up Schedule for a Reservation
 router.post("/add-schedule", authMiddleware, validateRequest(addScheduleSchema), async (req, res) => {
   try {
     const { reservationId, scheduleDate, scheduleDetails } = req.body;
@@ -261,16 +307,63 @@ router.post("/add-schedule", authMiddleware, validateRequest(addScheduleSchema),
   }
 });
 
-// -------------------------
-// Optional: API Endpoint to Get Doctor's History
-// -------------------------
-router.get("/get-history", authMiddleware, async (req, res) => {
+// List Services by Category
+router.get("/services/listByCategory", authMiddleware, async (req, res) => {
   try {
-    const history = await Reservation.find({ doctor: req.user.userId, status: 'Done' }).lean();
-    res.json({ success: true, history });
-  } catch (err) {
-    console.error("Error fetching history:", err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    const { categoryId } = req.query;
+    if (!categoryId) {
+      return res.json({ success: false, message: "Category ID is required." });
+    }
+    const services = await Service.find({ category: categoryId }).lean();
+    res.json({ success: true, services });
+  } catch (error) {
+    console.error("Error fetching services by category:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// List Inventory Categories
+router.get("/inventory/categories", authMiddleware, async (req, res) => {
+  try {
+    const categories = await Inventory.distinct("category");
+    res.json({ success: true, categories });
+  } catch (error) {
+    console.error("Error fetching inventory categories:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// List Inventory Items by Category
+router.get("/inventory/listByCategory", authMiddleware, async (req, res) => {
+  try {
+    const { category } = req.query;
+    if (!category) {
+      return res.json({ success: false, message: "Category is required." });
+    }
+    const products = await Inventory.find({ category: category }).lean();
+    res.json({ success: true, products });
+  } catch (error) {
+    console.error("Error fetching inventory items by category:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// NEW: Endpoint to Check Inventory Quantity for a Product
+router.get("/inventory/checkQuantity", authMiddleware, async (req, res) => {
+  try {
+    const { product } = req.query;
+    if (!product) {
+      return res.status(400).json({ success: false, message: "Product is required." });
+    }
+    // Find the inventory item by product name
+    const inventoryItem = await Inventory.findOne({ name: product }).lean();
+    if (!inventoryItem) {
+      return res.status(404).json({ success: false, message: "Product not found in inventory." });
+    }
+    res.json({ success: true, availableQty: inventoryItem.quantity });
+  } catch (error) {
+    console.error("Error checking inventory quantity:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
