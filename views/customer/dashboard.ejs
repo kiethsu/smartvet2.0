@@ -1,11 +1,11 @@
 <%
-  // Helper function to format dates as "january 2 2004"
+  // Helper to format dates like "january 2 2004"
   function formatVisitDate(date) {
     const d = new Date(date);
     const month = d.toLocaleString('en-US', { month: 'long' }).toLowerCase();
     const day = d.getDate();
     const year = d.getFullYear();
-    return month + " " + day + " " + year;
+    return `${month} ${day} ${year}`;
   }
 %>
 <!DOCTYPE html>
@@ -14,10 +14,11 @@
   <meta charset="UTF-8">
   <title>Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Include Bootstrap CSS (adjust path as needed) -->
+  <!-- Bootstrap CSS -->
   <link rel="stylesheet" href="/path/to/bootstrap.css">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* Global scrollable page */
     html, body {
       height: 100%;
       margin: 0;
@@ -26,141 +27,123 @@
     .page-wrapper {
       height: 100vh;
       overflow-y: auto;
-      box-sizing: border-box;
       padding: 15px;
-      padding-bottom: 50px;
+      box-sizing: border-box;
     }
-    
-    /* Video container remains inside the normal flow */
-    .video-container {
-      position: relative;
-      margin-top: 15px;
-      height: 300px; /* adjust height as needed */
-      overflow: hidden;
-      display: none; /* hidden by default */
-      background: #000;
-    }
-    .video-container iframe {
-      width: 100%;
-      height: 100%;
-      border: 0;
-      /* Ensures the whole video is visible */
-    }
-    /* Full Screen Button styling */
-    .fs-btn {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      z-index: 3;
-      background: rgba(0,0,0,0.5);
-      color: #fff;
-      border: none;
-      padding: 5px 10px;
+    .card-metric {
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 180px;
+      transition: transform .1s;
       cursor: pointer;
     }
-    
-    /* --- Custom Table Styling for Recent Visits --- */
+    .card-metric:hover {
+      transform: translateY(-2px);
+    }
+    .card-metric h6 {
+      margin-bottom: .5rem;
+      font-size: .9rem;
+      color: #555;
+      text-transform: uppercase;
+    }
+    .card-metric h2 {
+      margin: 0;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #2a9d8f;
+      line-height: 1;
+    }
+    .card-metric i {
+      margin-top: .5rem;
+      color: #2a9d8f;
+    }
     .custom-table {
       table-layout: fixed;
       width: 100%;
-      background-color: #ffffff; /* Table background white */
+      background: #fff;
     }
-    .custom-table thead tr {
-      background-color: #4B9CD3; /* Carolina blue header background */
-      color: #ffffff;            /* White text */
+    .custom-table thead {
+      background: #4B9CD3;
+      color: #fff;
     }
-    .custom-table thead th {
+    .custom-table th, .custom-table td {
       text-align: center;
       padding: 12px;
-      font-weight: 600;
       border: none;
+      white-space: nowrap;
     }
-    .custom-table tbody tr {
-      border-bottom: 1px solid #dee2e6;
-    }
-    .custom-table tbody td {
-      text-align: center;
-      padding: 12px;
-    }
-    /* Optional: hover effect on rows */
     .custom-table tbody tr:hover {
-      background-color: #f9f9f9;
+      background: #f9f9f9;
     }
-    
-    /* --- Watch Tutorial Button Styling --- */
-    #watchTutorialBtn {
-      display: inline-block;
-      text-align: center;
-      width: 220px; /* Adjust the width as needed */
-      background-color: #4B9CD3; /* Carolina blue */
-      border-color: #4B9CD3;
-      color: #fff; /* White text */
-    }
-    
-    /* Remove flex stretching by not using align-items-stretch on the row */
-    .row.no-stretch {
-      align-items: flex-start;
-    }
-    
-    /* Make the Upcoming Visit card sticky so it remains in view */
-    .upcoming-visit {
-      position: sticky;
-      top: 20px; /* Adjust as needed */
-      cursor: pointer;
-    }
-    
-    /* Ensure the left card remains in normal document flow */
-    .card {
-      position: relative;
-      overflow: visible;
+
+    /* Mobile “app-style” tweaks */
+    @media (max-width: 576px) {
+      .card-metric {
+        height: 120px;
+        padding: 0.5rem;
+      }
+      .card-metric h6 {
+        font-size: 0.75rem;
+      }
+      .card-metric h2 {
+        font-size: 1.5rem;
+      }
+      .card-metric i {
+        font-size: 1.5rem !important;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- Scrollable content wrapper -->
   <div class="page-wrapper">
     <div class="container">
-      <!-- Row without stretching so columns maintain their own height -->
-      <div class="row no-stretch">
-        <!-- Left Column: Quick Guide Card -->
-        <div class="col-md-8">
-          <h4 class="font-weight-bold">WELCOME BACK <%= username %></h4>
-          <div class="card p-4 shadow-sm">
-            <!-- Quick Guide Text placed above the description -->
-            <h3 class="font-weight-bold">
-              <%= dashboardSetting && dashboardSetting.quickGuide ? dashboardSetting.quickGuide : "Quick Guide" %>
-            </h3>
-            <p>
-              <%= dashboardSetting && dashboardSetting.welcomeText 
-                    ? dashboardSetting.welcomeText 
-                    : "Manage your appointments and keep track of your pet’s health easily." %>
-            </p>
-  
-            <!-- Watch Tutorial Button (left aligned, Carolina blue background) -->
-            <button id="watchTutorialBtn" class="btn">Watch Tutorial</button>
-  
-            <!-- Hidden Video Container (remains in the document flow) -->
-            <div id="videoContainer" class="video-container">
-              <!-- Full Screen Button -->
-              <button id="fullscreenBtn" class="fs-btn">Full Screen</button>
-              <iframe id="tutorialVideo" src=""></iframe>
-            </div>
+      <!-- Welcome -->
+      <h4 class="font-weight-bold mb-4">WELCOME BACK <%= username %></h4>
+
+      <!-- Four metric cards -->
+      <div class="row mb-4 text-center">
+        <!-- Upcoming Visits -->
+        <div class="col-6 col-md-3 mb-2 mb-md-0">
+          <div class="card-metric" data-toggle="modal" data-target="#upcomingVisitsModal">
+            <h6>Upcoming Visits</h6>
+            <h2><%= upcomingVisits ? upcomingVisits.length : 0 %></h2>
+            <i class="fas fa-calendar-alt fa-2x"></i>
           </div>
         </div>
-  
-        <!-- Right Column: Upcoming Visit Card -->
-        <div class="col-md-4">
-          <div class="card upcoming-visit p-4 shadow-sm text-center w-100" data-toggle="modal" data-target="#upcomingVisitsModal">
-            <h5 class="font-weight-bold">Upcoming Visit</h5>
-            <h1 class="font-weight-bold"><%= upcomingVisits ? upcomingVisits.length : 0 %></h1>
+        <!-- Book New Visit -->
+        <div class="col-6 col-md-3 mb-2 mb-md-0">
+          <div class="card-metric"
+               onclick='document.querySelector(".menu-item[data-content=\"consult\"]").click()'>
+            <h6>Book New Visit</h6>
+            <h2 style="visibility:hidden">0</h2>
+            <i class="fas fa-calendar-plus fa-2x"></i>
+          </div>
+        </div>
+        <!-- Completed Visits -->
+        <div class="col-6 col-md-3 mb-2 mb-md-0">
+          <div class="card-metric">
+            <h6>Completed Visits</h6>
+            <h2><%= recentVisits ? recentVisits.length : 0 %></h2>
+            <i class="fas fa-check-circle fa-2x"></i>
+          </div>
+        </div>
+        <!-- Total Visits -->
+        <div class="col-6 col-md-3 mb-2 mb-md-0">
+          <div class="card-metric">
+            <h6>Total Visits</h6>
+            <h2><%= (upcomingVisits ? upcomingVisits.length : 0) + (recentVisits ? recentVisits.length : 0) %></h2>
+            <i class="fas fa-chart-pie fa-2x"></i>
           </div>
         </div>
       </div>
-  
-      <!-- Recent Visits Section -->
-      <h5 class="font-weight-bold mt-4">Recent Visits</h5>
-      <!-- Only the table (no extra divs) -->
-      <table class="table custom-table">
+
+      <!-- Recent Visits table -->
+      <h5 class="font-weight-bold">Recent Visits</h5>
+      <table class="table custom-table mt-2">
         <thead>
           <tr>
             <th>Pet Name</th>
@@ -181,12 +164,13 @@
                   <% } %>
                 </td>
                 <td>
-                  <button class="btn btn-primary btn-sm" onclick="viewRecentVisit('<%= visit._id %>')">
+                  <button class="btn btn-primary btn-sm"
+                          onclick="viewRecentVisit('<%= visit._id %>')">
                     View Details
                   </button>
                 </td>
               </tr>
-            <% }); %>
+            <% }) %>
           <% } else { %>
             <tr>
               <td colspan="3">No recent visits found.</td>
@@ -194,15 +178,16 @@
           <% } %>
         </tbody>
       </table>
-  
-      <!-- Modal for Upcoming Visits -->
-      <div class="modal fade" id="upcomingVisitsModal" tabindex="-1" role="dialog" aria-labelledby="upcomingVisitsModalLabel" aria-hidden="true">
+
+      <!-- Upcoming Visits Modal -->
+      <div class="modal fade" id="upcomingVisitsModal" tabindex="-1" role="dialog"
+           aria-labelledby="upcomingVisitsModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title" id="upcomingVisitsModalLabel">Upcoming Visits</h5>
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
+              <button type="button" class="close" data-dismiss="modal">
+                <span>&times;</span>
               </button>
             </div>
             <div class="modal-body">
@@ -211,131 +196,94 @@
                   <% upcomingVisits.forEach(function(visit) { %>
                     <li class="list-group-item">
                       <strong>Date:</strong>
-                      <%= formatVisitDate(visit.schedule.scheduleDate) %>
-                      <br>
-                      <strong>Service:</strong> <%= visit.service %>
+                      <%= formatVisitDate(visit.schedule.scheduleDate) %><br>
+                      <strong>Service:</strong>
+                      <%= visit.service %>
                     </li>
-                  <% }); %>
+                  <% }) %>
                 </ul>
               <% } else { %>
                 <p>No upcoming visits found.</p>
               <% } %>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
           </div>
         </div>
       </div>
-  
-      <!-- Modal for Viewing Recent Visit Details -->
-      <div class="modal fade" id="recentVisitModal" tabindex="-1" role="dialog" aria-labelledby="recentVisitModalLabel" aria-hidden="true">
+
+      <!-- Recent Visit Details Modal -->
+      <div class="modal fade" id="recentVisitModal" tabindex="-1" role="dialog"
+           aria-labelledby="recentVisitModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title" id="recentVisitModalLabel">Visit Details</h5>
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
+              <button type="button" class="close" data-dismiss="modal">
+                <span>&times;</span>
               </button>
             </div>
             <div class="modal-body" id="recentVisitDetails">
-              <!-- Visit details loaded via AJAX -->
+              <!-- loaded via AJAX -->
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
           </div>
         </div>
       </div>
-  
+
     </div>
   </div>
-  
-  <!-- Include jQuery, Popper.js, and Bootstrap JS (adjust paths as needed) -->
+
+  <!-- Scripts -->
   <script src="/path/to/jquery.js"></script>
-  <script src="/path/to/popper.js"></script>
   <script src="/path/to/bootstrap.js"></script>
   <script>
-    // Toggle the video container when the Watch Tutorial button is clicked.
-    document.getElementById('watchTutorialBtn').addEventListener('click', function() {
-      var container = document.getElementById('videoContainer');
-      var iframe = document.getElementById('tutorialVideo');
-      var videoUrl = "<%= dashboardSetting && dashboardSetting.videoUrl ? dashboardSetting.videoUrl : '' %>";
-      if (!videoUrl) return; // Do nothing if no video URL provided.
-      
-      // For Google Drive links, convert to preview URL.
-      if (videoUrl.indexOf("drive.google.com/file/d/") > -1) {
-        var match = videoUrl.match(/\/file\/d\/([^\/]+)/);
-        if (match && match[1]) {
-          videoUrl = "https://drive.google.com/file/d/" + match[1] + "/preview";
-        }
-      }
-      
-      // Toggle behavior: if container is hidden, show it,
-      // otherwise hide it and clear the iframe's src.
-      if (container.style.display === "none" || container.style.display === "") {
-        iframe.setAttribute('src', videoUrl);
-        container.style.display = "block";
-      } else {
-        container.style.display = "none";
-        iframe.setAttribute('src', '');
-      }
-    });
-  
-    // Fullscreen toggle for video container.
-    document.getElementById('fullscreenBtn').addEventListener('click', function(e) {
-      e.stopPropagation(); // Prevent triggering container toggle
-      var container = document.getElementById('videoContainer');
-      if (!document.fullscreenElement) {
-        container.requestFullscreen().catch(err => {
-          alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-        });
-      } else {
-        document.exitFullscreen();
-      }
-    });
-  
-    // Function to fetch and display recent visit details via AJAX.
     window.viewRecentVisit = function(id) {
       $.ajax({
         url: '/customer/get-consultation',
         method: 'GET',
         data: { reservationId: id },
-        success: function(response) {
-          if (response.success) {
-            var detailsHtml = '';
-            if (response.reservation.pets && response.reservation.pets.length > 0) {
-              detailsHtml += '<strong>Pet(s):</strong> ' + response.reservation.pets.map(function(p) { return p.petName; }).join(', ') + '<br>';
-            }
-            if (response.reservation.concerns) {
-              detailsHtml += '<strong>Concern:</strong> ' + response.reservation.concerns + '<br>';
-            }
-            detailsHtml += '<hr>';
-            detailsHtml += '<strong>Consultation Notes:</strong><br>' + (response.reservation.consultationNotes || 'N/A') + '<br>';
-            if (response.reservation.medications && response.reservation.medications.length > 0) {
-              detailsHtml += '<hr><strong>Medication Details:</strong><br>';
-              response.reservation.medications.forEach(function(med) {
-                detailsHtml += 'Medication Name: ' + med.medicationName + '<br>';
-                detailsHtml += 'Quantity: ' + (med.quantity ? med.quantity : 'N/A') + '<br>';
-                detailsHtml += 'Dosage: ' + med.dosage + '<br>';
-                detailsHtml += 'Frequency: ' + med.frequency + '<br>';
-                detailsHtml += 'Administration Time: ' + med.adminTime + '<br>';
-                if (med.additionalInstructions)
-                  detailsHtml += 'Additional Instructions: ' + med.additionalInstructions + '<br>';
-                detailsHtml += '<hr>';
-              });
-            }
-            if (response.reservation.doctor) {
-              detailsHtml += '<hr><strong>Doctor:</strong> ' + response.reservation.doctor.username + '<br>';
-            }
-            $("#recentVisitDetails").html(detailsHtml);
-            $("#recentVisitModal").modal("show");
-          } else {
-            alert("Error: " + response.message);
+        success(response) {
+          if (!response.success) {
+            return alert(response.message);
           }
+          let html = '';
+          if (response.reservation.pets.length) {
+            html += '<strong>Pet(s):</strong> '
+                  + response.reservation.pets.map(p => p.petName).join(', ') + '<br>';
+          }
+          if (response.reservation.concerns) {
+            html += '<strong>Concern:</strong> ' + response.reservation.concerns + '<br>';
+          }
+          html += '<hr><strong>Notes:</strong><br>'
+               + (response.reservation.consultationNotes || 'N/A') + '<br>';
+          if (response.reservation.medications.length) {
+            html += '<hr><strong>Medications:</strong><br>';
+            response.reservation.medications.forEach(m => {
+              html += `Name: ${m.medicationName}<br>`
+                   + `Dosage: ${m.dosage}<br>`
+                   + `Frequency: ${m.frequency}<br>`;
+              if (m.adminTime) {
+                html += `Time: ${m.adminTime}<br>`;
+              }
+              if (m.additionalInstructions) {
+                html += `Instructions: ${m.additionalInstructions}<br>`;
+              }
+              html += '<hr>';
+            });
+          }
+          if (response.reservation.doctor) {
+            html += '<strong>Doctor:</strong> '
+                 + response.reservation.doctor.username + '<br>';
+          }
+          $('#recentVisitDetails').html(html);
+          $('#recentVisitModal').modal('show');
         },
-        error: function() {
-          alert("Server error while fetching visit details.");
+        error() {
+          alert('Server error loading visit details.');
         }
       });
     };
