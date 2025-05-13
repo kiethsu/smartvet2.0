@@ -7,7 +7,8 @@ const AppointmentSetting = require('../models/appointmentSetting');
 const User = require('../models/user');
 const Joi = require('joi');
 const nodemailer = require('nodemailer'); // Import Nodemailer
-
+// at the top
+const PetDetailsSetting = require('../models/petDetailsSetting');
 // Helper middleware for validation
 function validateRequest(schema, property = 'body') {
   return (req, res, next) => {
@@ -49,8 +50,15 @@ router.get('/reservation', authMiddleware, async (req, res) => {
     }
 
     const doctors = await User.find({ role: 'Doctor' }).lean();
-    res.render('hr/Reservation', { reservations, doctors });
-  } catch (error) {
+  
+  const petDetails =
+      (await PetDetailsSetting.findOne().lean())
+      || { species: [], speciesBreeds: {}, diseases: [], services: [] };
+      const pets = await Pet.find()
+                        .populate('owner','username')
+                        .lean();
+// ← now include petDetails in the template
+    res.render('hr/Reservation', { reservations, doctors, petDetails,pets });  } catch (error) {
     console.error("Error fetching reservations:", error);
     res.status(500).send("Server error");
   }
@@ -330,6 +338,12 @@ router.get('/get-pet-history', authMiddleware, async (req, res) => {
     console.error("Error fetching pet history (HR):", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
+});
+// at the bottom of hrroutes.js
+router.post('/add-consult-existing', authMiddleware, async (req, res) => {
+  // pull req.body.ownerName, petId, service, date, time, weight, temperature, observations, concerns
+  // create a new Reservation (or Consultation) record
+  // return { success: true }
 });
 
 
