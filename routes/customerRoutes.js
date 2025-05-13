@@ -1,4 +1,6 @@
 // customerRoutes.js
+const CANCEL_THRESHOLD = 2;    // how many cancels before suspension
+const SUSPEND_DAYS     = 1;    // suspension length
 const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
@@ -11,6 +13,30 @@ const DashboardSetting = require('../models/dashboardSetting');
 const Joi = require('joi');
 const nodemailer = require('nodemailer');
 const bcrypt = require("bcryptjs");
+// Helper to send “almost there” warning
+async function sendWarningEmail(toEmail, cancelCount) {
+  const transporter = nodemailer.createTransport({
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.SMTP_EMAIL,
+      pass: process.env.SMTP_PASS
+    }
+  });
+  await transporter.sendMail({
+    from: `"SmartVet Support" <dehe.marquez.au@phinmaed.com>`,
+
+    to: toEmail,
+    subject: "Careful – One More Cancellation Will Suspend You",
+    html: `
+      <p>You’ve cancelled ${cancelCount} out of ${CANCEL_THRESHOLD} allowed consultations.</p>
+      <p>If you cancel one more, your account will be suspended from submitting new consultations for ${SUSPEND_DAYS} day(s).</p>
+      <p>Please make sure you really want to cancel next time.</p>
+    `
+  });
+}
+
 
 // Import the PetDetailsSetting model
 const PetDetailsSetting = require('../models/petDetailsSetting');
@@ -18,7 +44,45 @@ const PetDetailsSetting = require('../models/petDetailsSetting');
 let emailUpdateOtpStore = {};
     // For registration OTP
 // -------------------- Helper Functions --------------------
+// Helper to send suspension email
+async function sendSuspensionEmail(toEmail) {
+  const transporter = nodemailer.createTransport({
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.SMTP_EMAIL,
+      pass: process.env.SMTP_PASS
+    }
+  });
+  await transporter.sendMail({
+   from: `"SmartVet Support" <dehe.marquez.au@phinmaed.com>`,
+    to: toEmail,
+    subject: "Consultation Submission Suspended",
+    html: `
+      <p>You have cancelled too many consultations.</p>
+      <p>Your account is suspended from submitting new consultations for ${SUSPEND_DAYS} days.</p>
+      <p>If you think this is an error, reply to this email.</p>
+    `
+  });
+}
+ // helper → always grab the up-to-date user record
+async function checkNotSuspended(req, res, next) {
+  const freshUser = await User.findById(req.user.userId);
+  if (freshUser.isSuspended) {
+    return res
+      .status(403)
+      .json({
+        success: false,
+        suspended: true,
+        message: 'Your account is suspended from submitting consultations.'
+      });
+  }
+  next();
+}
 
+
+ 
 // Convert video URLs to embed format
 function convertToEmbedUrl(url) {
   if (!url) return url;
@@ -124,6 +188,8 @@ router.get('/mypet', authMiddleware, async (req, res) => {
 });
 
 // Consult route
+// customerRoutes.js
+
 router.get('/consult', authMiddleware, async (req, res) => {
   try {
     const pets = await Pet.find({ owner: req.user.userId });
@@ -131,16 +197,26 @@ router.get('/consult', authMiddleware, async (req, res) => {
                                           .sort({ createdAt: -1 })
                                           .populate('doctor', 'username')
                                           .lean();
-    let petDetails = await PetDetailsSetting.findOne().lean();
-    if (!petDetails) {
-      petDetails = { species: [], breeds: [], diseases: [] };
-    }
-    res.render('customer/consult', { pets, reservations, petDetails });
+    const petDetails = (await PetDetailsSetting.findOne().lean()) 
+                         || { species: [], breeds: [], diseases: [], services: [] };
+
+    // pull the fresh user record
+    const freshUser = await User.findById(req.user.userId).lean();
+
+    res.render('customer/consult', {
+      pets,
+      reservations,
+      petDetails,
+      user: freshUser,
+      error: req.flash('error'),
+        threshold: CANCEL_THRESHOLD 
+    });
   } catch (error) {
     console.error("Error fetching pets/reservations for consult:", error);
     res.status(500).send("Server error");
   }
 });
+
 
 // Profile Details route
 router.get('/profileDetails', authMiddleware, async (req, res) => {
@@ -227,8 +303,12 @@ router.post('/add-pet', authMiddleware, validateRequest(addPetSchema), async (re
 });
 
 // Schema for submitting a reservation
-router.post('/submit-reservation', authMiddleware, validateRequest(submitReservationSchema), async (req, res) => {
-  try {
+router.post(
+  '/submit-reservation',
+  authMiddleware,          // 1) user must be logged in
+  checkNotSuspended,       // 2) block suspended users
+  validateRequest(submitReservationSchema),  // 3) validate the payload
+  async (req, res) => {  try {
     const ownerId = req.user.userId;
     const ownerName = req.user.username || req.user.email;
     const { selectedPets, service, date, time, concerns } = req.body;
@@ -278,6 +358,7 @@ router.post('/submit-reservation', authMiddleware, validateRequest(submitReserva
 // Endpoint to get appointment count for a given time and date
 router.post('/cancel-reservation', authMiddleware, async (req, res) => {
   try {
+    // 1) Find reservation
     const { reservationId } = req.body;
     const reservation = await Reservation.findOne({
       _id: reservationId,
@@ -286,23 +367,43 @@ router.post('/cancel-reservation', authMiddleware, async (req, res) => {
     if (!reservation) {
       return res.status(404).json({ success: false, message: 'Reservation not found.' });
     }
-    
-    // Use a different status if canceling a pending reservation
-    if (reservation.status === 'Pending') {
-      reservation.status = 'CanceledPending';
-    } else {
-      reservation.status = 'Canceled';
-    }
+
+    // 2) Increment & check user suspension
+    const user = await User.findById(req.user.userId);
+    user.cancelCount = (user.cancelCount || 0) + 1;
+
+// 1) just a warning email when they're at threshold-1
+if (user.cancelCount === CANCEL_THRESHOLD - 1) {
+  await sendWarningEmail(user.email, user.cancelCount);
+}
+
+// 2) only suspend once they've reached the full threshold
+if (user.cancelCount >= CANCEL_THRESHOLD) {
+  user.isSuspended = true;
+  user.suspendedAt  = new Date();
+  await sendSuspensionEmail(user.email);
+}
+
+await user.save();
+    // 3) Update reservation status
+    reservation.status = reservation.status === 'Pending'
+      ? 'CanceledPending'
+      : 'Canceled';
     reservation.canceledAt = new Date();
-    reservation.doctor = undefined;
+    reservation.doctor     = undefined;
     await reservation.save();
-    
-    return res.json({ success: true, reservation });
+
+    // 4) Respond
+    const justSuspended = user.isSuspended && user.cancelCount >= CANCEL_THRESHOLD;
+  return res.json({ success: true, reservation, justSuspended,
+  cancelCount: user.cancelCount});
+
   } catch (error) {
     console.error("Error canceling reservation:", error);
-    res.status(500).json({ success: false, message: 'Server error while canceling reservation.' });
+    return res.status(500).json({ success: false, message: 'Server error while canceling reservation.' });
   }
 });
+
 
 
 // Update pet details endpoint
@@ -425,32 +526,7 @@ router.get('/get-pet-history', authMiddleware, async (req, res) => {
 
 
 // In customerRoutes.js, after your other routes:
-router.post('/cancel-reservation', authMiddleware, async (req, res) => {
-  try {
-    const { reservationId } = req.body;
-    const reservation = await Reservation.findOne({
-      _id: reservationId,
-      owner: req.user.userId
-    });
-    if (!reservation) {
-      return res.status(404).json({ success: false, message: 'Reservation not found.' });
-    }
-    // If the consultation is pending, mark it as CanceledPending.
-    if (reservation.status === 'Pending') {
-      reservation.status = 'CanceledPending';
-    } else {
-      reservation.status = 'Canceled';
-    }
-    reservation.canceledAt = new Date();
-    reservation.doctor = undefined; // optional: clear doctor assignment if needed
-    await reservation.save();
-    
-    return res.json({ success: true, reservation });
-  } catch (error) {
-    console.error("Error canceling reservation:", error);
-    res.status(500).json({ success: false, message: 'Server error while canceling reservation.' });
-  }
-});
+
 router.post('/send-email-otp', authMiddleware, async (req, res) => {
   try {
     const { newEmail } = req.body;
@@ -537,6 +613,20 @@ router.post('/update-password', authMiddleware, async (req, res) => {
     console.error(error);
     res.status(500).json({ success: false, message: "Server error." });
   }
+});
+// used by your consult.ejs time-slot checker
+router.get('/consult/appointmentCount', authMiddleware, async (req, res) => {
+  const { time, date } = req.query;
+  const start = new Date(date);
+  const end = new Date(date);
+  end.setDate(end.getDate() + 1);
+
+  const count = await Reservation.countDocuments({
+    time,
+    date: { $gte: start, $lt: end },
+    status: { $in: ['Pending','Approved'] }
+  });
+  res.json({ count });
 });
 
 module.exports = router;
