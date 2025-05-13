@@ -129,7 +129,7 @@
         font-size: 3.5rem;
       }
     }
-    /* Modal & Input Styling Adjustments (unchanged) */
+    /* Modal & Input Styling Adjustments */
     .input-size {
       height: 40px;
       font-size: 16px;
@@ -140,24 +140,36 @@
       line-height: 40px;
       padding: 0 20px;
     }
-    .input-group .btn {
+    .input-group .btn,
+    .input-group-text {
       height: 40px;
       border-radius: 0 5px 5px 0;
+      cursor: pointer;
+      background: #fff;
+      border: 1px solid #ced4da;
     }
     .input-group input {
       border-radius: 5px 0 0 5px;
     }
     .toggle-password,
-    .toggle-password-login {
+    .toggle-password-login,
+    .toggle-password-reset,
+    .toggle-password-reset-confirm {
       display: flex;
       align-items: center;
       justify-content: center;
       width: 40px;
       padding: 0;
+      cursor: pointer;
+      background: #fff;
+      border: 1px solid #ced4da;
     }
     .toggle-password i,
-    .toggle-password-login i {
+    .toggle-password-login i,
+    .toggle-password-reset i,
+    .toggle-password-reset-confirm i {
       font-size: 16px;
+      color: #333;
     }
     #registerBtn, #loginBtn {
       font-size: 16px;
@@ -203,7 +215,7 @@
         max-width: none;
       }
     }
-    /* About Section Styles (Updated) */
+    /* About Section Styles */
     #aboutSection {
       background-color: #f8f9fa;
       color: #333;
@@ -277,7 +289,6 @@
       transform: translateX(-50%);
       color: var(--secondary-color);
     }
-    /* Responsive Adjustments for About Section */
     @media (max-width: 768px) {
       #aboutSection {
         padding: 30px 15px;
@@ -297,8 +308,6 @@
       padding: 60px 0;
     }
   </style>
-  
-  
 </head>
 <body>
   <!-- Navbar -->
@@ -313,10 +322,10 @@
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
-          <li class="nav-item"><a class="nav-link" href="#home" id="homeNav">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="#homeSection" id="homeNav">Home</a></li>
           <li class="nav-item"><a class="nav-link" href="#" id="loginNav" data-bs-toggle="modal" data-bs-target="#loginModal">Login</a></li>
-          <li class="nav-item"><a class="nav-link" href="#about" id="aboutNav">About</a></li>
-          <li class="nav-item"><a class="nav-link" href="#contact" id="contactNav">Contact</a></li>
+          <li class="nav-item"><a class="nav-link" href="#aboutSection" id="aboutNav">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="#contactSection" id="contactNav">Contact</a></li>
         </ul>
       </div>
     </div>
@@ -341,15 +350,12 @@
   </section>
   
   <!-- About Section -->
-<!-- In landing.ejs, About Section -->
-  <!-- About Section -->
   <section id="aboutSection">
     <div class="container">
       <h2 class="mb-4">About Our Clinic</h2>
       <p>
         <%= about && about.aboutDescription ? about.aboutDescription : "Welcome to Smart Vet, where compassionate care meets advanced veterinary services. Our dedicated team is committed to providing your pet with the highest quality care." %>
       </p>
-      <!-- Doctors Subsection -->
       <h3 class="mb-3">Doctors</h3>
       <% if (about && about.doctors && about.doctors.length > 0) { %>
         <div class="doctor-container">
@@ -368,7 +374,6 @@
       <% } else { %>
         <p class="text-center">No doctor information available at the moment.</p>
       <% } %>
-      <!-- Our Services Subsection -->
       <h3 class="mt-4">Our Services</h3>
       <% if (about && about.services && about.services.length > 0) { %>
         <div class="row">
@@ -388,19 +393,15 @@
     </div>
   </section>
 
-
-  
   <!-- Contact Section -->
   <section id="contactSection" style="display:none;">
     <div class="container">
       <h2 class="text-center mb-4">Contact Us</h2>
       <div class="row">
         <div class="col-md-6 mb-4">
-          <!-- Embedded Google Map -->
           <iframe src="https://maps.google.com/maps?q=Vet%20Clinic%20Location&t=&z=13&ie=UTF8&iwloc=&output=embed" width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
         </div>
         <div class="col-md-6">
-          <!-- Contact Form -->
           <form id="contactForm">
             <div class="mb-3">
               <label for="contactName" class="form-label">Name</label>
@@ -440,14 +441,12 @@
                 <label for="login-password" class="form-label">Password</label>
                 <div class="input-group">
                     <input type="password" class="form-control input-size" id="login-password" placeholder="Enter password" />
-                    <button class="btn btn-outline-secondary toggle-password-login" type="button">
-                        <i class="bi bi-eye-slash"></i>
-                    </button>
+                    <span class="input-group-text toggle-password-login"><i class="bi bi-eye-slash"></i></span>
                 </div>
                 <small id="password-error" class="text-danger d-none"></small>
             </div>
             <div class="mb-3">
-              <div class="g-recaptcha" data-sitekey="6LeXLAIrAAAAAAHGheSeTx4xxoy3CJnBP8cBeGWn"></div>
+              <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
             </div>
             <div class="mb-2">
                 <a href="#" id="openForgotPasswordModal" class="text-primary small">Forgot Password?</a>
@@ -490,9 +489,7 @@
                 <label for="reg-password" class="form-label">Password</label>
                 <div class="input-group">
                   <input type="password" class="form-control input-size" id="reg-password" placeholder="Enter password" />
-                  <button class="btn btn-outline-secondary toggle-password" type="button">
-                    <i class="bi bi-eye-slash"></i>
-                  </button>
+                  <span class="input-group-text toggle-password"><i class="bi bi-eye-slash"></i></span>
                 </div>
                 <div id="password-checklist" class="mt-2">
                   <small id="criteria-length" class="d-block text-danger">• 8+ characters</small>
@@ -530,7 +527,7 @@
       </div>
     </div>
   </div>
-
+  
   <!-- Admin OTP Verification Modal -->
   <div class="modal fade" id="adminOTPModal" tabindex="-1" aria-labelledby="adminOTPModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -568,7 +565,7 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title text-dark">Forgot Password</h5>
+          <h5 class="modal-title text-dark" id="forgotPasswordModalLabel">Forgot Password</h5>
           <button type="button" class="btn-close" id="forgotCloseBtn" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -595,7 +592,10 @@
           </div>
           <div id="step3" style="display:none;">
             <label for="new-password" class="form-label">New Password</label>
-            <input type="password" class="form-control input-size" id="new-password" placeholder="Enter new password" />
+            <div class="input-group mb-2">
+              <input type="password" class="form-control input-size" id="new-password" placeholder="Enter new password" />
+              <span class="input-group-text toggle-password-reset"><i class="bi bi-eye-slash"></i></span>
+            </div>
             <small id="new-password-error" class="text-danger d-none">Please fill out this field.</small>
             <div id="password-reset-checklist" class="mt-2">
               <small id="reset-criteria-length" class="d-block text-danger">• 8+ characters</small>
@@ -605,7 +605,10 @@
               <small id="reset-criteria-symbol" class="d-block text-danger">• Special character (!@#$%^&*)</small>
             </div>
             <label for="confirm-new-password" class="form-label mt-2">Confirm New Password</label>
-            <input type="password" class="form-control input-size" id="confirm-new-password" placeholder="Confirm new password" />
+            <div class="input-group mb-2">
+              <input type="password" class="form-control input-size" id="confirm-new-password" placeholder="Confirm new password" />
+              <span class="input-group-text toggle-password-reset-confirm"><i class="bi bi-eye-slash"></i></span>
+            </div>
             <small id="confirm-password-error" class="text-danger d-none">Please fill out this field.</small>
             <small id="password-mismatch-error" class="text-danger d-none">Passwords do not match.</small>
             <button type="button" class="btn btn-primary input-size w-100 mt-3" id="resetPasswordBtn">Reset Password</button>
@@ -618,44 +621,40 @@
       </div>
     </div>
   </div>
-  
-  
-  <!-- JavaScript: Navigation Switching -->
-  <!-- JavaScript: Navigation Switching -->
- <!-- JavaScript: Navigation Switching -->
- <script>
-  document.addEventListener('DOMContentLoaded', function(){
-    const homeSection = document.getElementById('homeSection');
-    const aboutSection = document.getElementById('aboutSection');
-    const contactSection = document.getElementById('contactSection');
-    
-    // Initially show homeSection only
-    homeSection.style.display = 'block';
-    aboutSection.style.display = 'none';
-    contactSection.style.display = 'none';
-    
-    document.getElementById('homeNav').addEventListener('click', function(e){
-      e.preventDefault();
+
+  <!-- Navigation Switching -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      const homeSection = document.getElementById('homeSection');
+      const aboutSection = document.getElementById('aboutSection');
+      const contactSection = document.getElementById('contactSection');
+      
       homeSection.style.display = 'block';
       aboutSection.style.display = 'none';
       contactSection.style.display = 'none';
+      
+      document.getElementById('homeNav').addEventListener('click', function(e){
+        e.preventDefault();
+        homeSection.style.display = 'block';
+        aboutSection.style.display = 'none';
+        contactSection.style.display = 'none';
+      });
+      document.getElementById('aboutNav').addEventListener('click', function(e){
+        e.preventDefault();
+        homeSection.style.display = 'none';
+        aboutSection.style.display = 'block';
+        contactSection.style.display = 'none';
+      });
+      document.getElementById('contactNav').addEventListener('click', function(e){
+        e.preventDefault();
+        homeSection.style.display = 'none';
+        aboutSection.style.display = 'none';
+        contactSection.style.display = 'block';
+      });
     });
-    document.getElementById('aboutNav').addEventListener('click', function(e){
-      e.preventDefault();
-      homeSection.style.display = 'none';
-      aboutSection.style.display = 'block';
-      contactSection.style.display = 'none';
-    });
-    document.getElementById('contactNav').addEventListener('click', function(e){
-      e.preventDefault();
-      homeSection.style.display = 'none';
-      aboutSection.style.display = 'none';
-      contactSection.style.display = 'block';
-    });
-  });
-</script>
+  </script>
   
-  <!-- JavaScript: Existing Modal and Form Logic (from your landing.ejs) -->
+  <!-- JavaScript: Modal & Form Logic -->
   <script>
     /* ---------------------------------------------
        Switching Modals: Login <-> Register
@@ -821,12 +820,19 @@
       });
       let data = await response.json();
       if (data.message === "Successfully registered!") {
-        document.querySelector("#otp-code").classList.remove("is-invalid");
         const registerSuccessDiv = document.getElementById("registerSuccess");
         registerSuccessDiv.textContent = "Successfully registered!";
         registerSuccessDiv.classList.remove("d-none");
         registerBtn.textContent = "Register";
         registerBtn.disabled = false;
+        setTimeout(() => {
+          const registerModalEl = document.getElementById("registerModal");
+          const registerModal = bootstrap.Modal.getInstance(registerModalEl);
+          registerModal.hide();
+          const loginModalEl = document.getElementById("loginModal");
+          const loginModal = new bootstrap.Modal(loginModalEl, { backdrop: "static", keyboard: false });
+          loginModal.show();
+        }, 800);
       }
       else if (data.message.toLowerCase().includes("otp")) {
         document.querySelector("#otp-code").classList.add("is-invalid");
@@ -1226,12 +1232,12 @@
         valid = false;
       }
       const password = newPasswordInput.value;
-      const lengthCriteria = password.length >= 8;
-      const uppercaseCriteria = /[A-Z]/.test(password);
-      const lowercaseCriteria = /[a-z]/.test(password);
-      const numberCriteria = /[0-9]/.test(password);
-      const specialCharCriteria = /[!@#$%^&*]/.test(password);
-      if (!(lengthCriteria && uppercaseCriteria && lowercaseCriteria && numberCriteria && specialCharCriteria)) {
+      const lengthCriteria2 = password.length >= 8;
+      const uppercaseCriteria2 = /[A-Z]/.test(password);
+      const lowercaseCriteria2 = /[a-z]/.test(password);
+      const numberCriteria2 = /[0-9]/.test(password);
+      const specialCharCriteria2 = /[!@#$%^&*]/.test(password);
+      if (!(lengthCriteria2 && uppercaseCriteria2 && lowercaseCriteria2 && numberCriteria2 && specialCharCriteria2)) {
         newPasswordInput.classList.add("is-invalid");
         newPasswordError.textContent = "Password does not meet security requirements.";
         newPasswordError.classList.remove("d-none");
@@ -1249,7 +1255,10 @@
         const data = await response.json();
         if (response.ok) {
           successMessage.classList.remove("d-none");
-          successMessage.textContent = data.message;
+          setTimeout(() => {
+            bootstrap.Modal.getInstance(document.getElementById("forgotPasswordModal")).hide();
+            new bootstrap.Modal(document.getElementById("loginModal"), { backdrop: "static", keyboard: false }).show();
+          }, 800);
         } else {
           alert(data.message);
         }
@@ -1359,6 +1368,29 @@
         mismatchError.classList.add("d-none");
       }
     });
+    document.querySelector(".toggle-password-reset").addEventListener("click", function () {
+    const pwd = document.getElementById("new-password");
+    const icon = this.querySelector("i");
+    if (pwd.type === "password") {
+      pwd.type = "text";
+      icon.classList.replace("bi-eye-slash", "bi-eye");
+    } else {
+      pwd.type = "password";
+      icon.classList.replace("bi-eye", "bi-eye-slash");
+    }
+  });
+
+  document.querySelector(".toggle-password-reset-confirm").addEventListener("click", function () {
+    const pwd = document.getElementById("confirm-new-password");
+    const icon = this.querySelector("i");
+    if (pwd.type === "password") {
+      pwd.type = "text";
+      icon.classList.replace("bi-eye-slash", "bi-eye");
+    } else {
+      pwd.type = "password";
+      icon.classList.replace("bi-eye", "bi-eye-slash");
+    }
+  });
   </script>
 </body>
 </html>
