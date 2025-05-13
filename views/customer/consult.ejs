@@ -2,12 +2,30 @@
   // Fallback for petDetails
   var petDetails = typeof petDetails !== 'undefined' ? petDetails : { species: [], breeds: [], diseases: [] };
 %>
-<div class="container scrollable-content">
+<div id="consultPage" class="container scrollable-content"
+data-threshold="<%= threshold %>">
   <div class="row mt-3">
     <!-- Left Column: Consultation Form -->
     <div class="col-lg-6 col-md-12 mb-4">
       <div class="card p-4 shadow-sm">
         <h4 class="font-weight-bold">Select Pets</h4>
+        
+  <!-- 1) FLASH/BANNER IF SUSPENDED -->
+  <% if (user.isSuspended) { %>
+    <div class="alert alert-danger">
+      You’re currently suspended from submitting consultations.
+    </div>
+  <% } %>
+  <!-- 2) ALMOST-SUSPENDED WARNING -->
+<% if (!user.isSuspended && user.cancelCount >= threshold - 1) { %>
+  <div class="alert alert-warning">
+    You’ve cancelled <strong><%= user.cancelCount %></strong> of <%= threshold %> allowed consultations.  
+    One more and you’ll be suspended.
+  </div>
+<% } %>
+
+
+
         <!-- Horizontal pet selection -->
         <div class="horizontal-scroll">
           <% if (pets && pets.length > 0) { %>
@@ -66,7 +84,16 @@
             <label for="concerns">Concerns</label>
             <textarea class="form-control" id="concerns" rows="3" placeholder="Describe your pet's concern"></textarea>
           </div>
-          <button type="submit" class="btn btn-primary btn-block">Submit</button>
+           <!-- 4) CONDITIONAL SUBMIT BUTTON -->
+    <% if (user.isSuspended) { %>
+      <button type="button" class="btn btn-secondary btn-block" disabled>
+        Submit (Suspended)
+      </button>
+    <% } else { %>
+      <button type="submit" class="btn btn-primary btn-block">
+        Submit
+      </button>
+    <% } %>
         </form>
       </div>
     </div>
@@ -131,30 +158,44 @@
                 <th>Details</th>
               </tr>
             </thead>
-            <tbody id="historyTableBody">
-              <% if (reservations && reservations.length > 0) { %>
-                <% reservations.forEach(function(reservation) { %>
-                  <% if (reservation.status === 'Done' || reservation.status === 'Canceled' || reservation.status === 'CanceledPending') { %>
-                    <tr id="history-<%= reservation._id %>">
-                      <td><%= reservation.pets.map(p => p.petName).join(', ') %></td>
-                      <td>
-                        <%= reservation.doctor ? (typeof reservation.doctor === 'object' ? reservation.doctor.username : reservation.doctor) : 'Not Assigned' %>
-                      </td>
-                      <td>
-                        <% if (reservation.status === 'CanceledPending' || reservation.status === 'Canceled') { %>
-                          <span class="badge badge-secondary">Canceled</span>
-                        <% } else { %>
-                          <button class="btn btn-primary btn-sm" onclick="viewReservation('<%= reservation._id %>')">
-                            View Details
-                          </button>
-                        <% } %>
-                      </td>
-                    </tr>
+               <tbody id="historyTableBody">
+        <% if (reservations && reservations.length > 0) { %>
+          <% reservations.forEach(function(reservation) { %>
+            <% if (['Done','Canceled','CanceledPending','Not Attended'].includes(reservation.status)) { %>
+              <tr id="history-<%= reservation._id %>">
+                <td><%= reservation.pets.map(p => p.petName).join(', ') %></td>
+                <td>
+                  <%= reservation.doctor
+                       ? (typeof reservation.doctor === 'object'
+                          ? reservation.doctor.username
+                          : reservation.doctor)
+                       : 'Not Assigned' %>
+                </td>
+                <td>
+                  <% if (['Canceled','CanceledPending','Not Attended'].includes(reservation.status)) { %>
+                    <span class="badge 
+                      <%= reservation.status === 'Not Attended' ? 'badge-danger' : 'badge-secondary' %>">
+                      <%= reservation.status === 'Not Attended'
+                          ? 'Not Attended'
+                          : 'Canceled' %>
+                    </span>
+                  <% } else { %>
+                    <button class="btn btn-primary btn-sm"
+                            onclick="viewReservation('<%= reservation._id %>')">
+                      View Details
+                    </button>
                   <% } %>
-                <% }); %>
-              <% } %>
-            </tbody>
-            
+                </td>
+              </tr>
+            <% } %>
+          <% }); %>
+        <% } else { %>
+          <tr>
+            <td colspan="3" class="text-center">No history found.</td>
+          </tr>
+        <% } %>
+      </tbody>
+
             
 <!-- Modal for Viewing Consultation Details -->
 <div class="modal fade" id="viewConsultationModal" tabindex="-1" role="dialog" aria-labelledby="viewConsultationModalLabel" aria-hidden="true">
@@ -262,8 +303,33 @@
 <!-- SweetAlert2 -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<% if (user.isSuspended) { %>
+  <script>
+    
+    $(document).ready(function() {
+      // 1) Show the blocking alert
+      Swal.fire({
+        icon: 'warning',
+        title: 'Suspended',
+        text: 'You have been suspended from submitting consultations for excessive cancellations.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        confirmButtonText: 'OK'
+      });
 
+      // 2) Disable every consultation‐related control:
+      // Pet selection cards
+      $('.vetcard').off('click').css('cursor','not-allowed').find('.checkmark-overlay').hide();
+      // Form inputs & button
+      $('#consultForm').find('input, select, textarea, button').prop('disabled', true);
+    });
+  </script>
+<% } %>
 <script>
+  const CANCEL_THRESHOLD = parseInt(
+document.getElementById('consultPage').dataset.threshold,
+10
+);
   $(document).ready(function () {
     let selectedPets = {};
 
@@ -396,12 +462,22 @@ const newRow = `
     });
   
     // ----------------- Time Selection Dropdown -----------------
-    let timeOptions = '';
-    for(let hour = 8; hour <= 17; hour++){
-      let timeStr = (hour < 10 ? '0' + hour : hour) + ":00";
-      timeOptions += `<option value="${timeStr}" id="slot-${timeStr.replace(':','')}">${timeStr}</option>`;
-    }
-    $('#timeSelect').html(timeOptions);
+// ----------------- Time Selection Dropdown -----------------
+let timeOptions = '';
+for (let hour = 8; hour <= 17; hour++) {
+  // decide AM/PM
+  const suffix = hour < 12 ? 'AM' : 'PM';
+  // convert to 12-hour
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  // build the display string
+  const displayTime = `${hour12}:00 ${suffix}`;
+  // give each <option> both a matching value AND text
+  // we just slugify the id to keep it unique
+  const slug = `${hour12}${suffix.toLowerCase()}`; 
+  timeOptions += `<option value="${displayTime}" id="slot-${slug}">${displayTime}</option>`;
+}
+$('#timeSelect').html(timeOptions);
+
   
     let appointmentLimit = 1;
     
@@ -413,7 +489,7 @@ const newRow = `
       $('#timeSelect option').each(function(){
         let timeSlot = $(this).val();
         $.ajax({
-          url: '/consult/appointmentCount',
+            url: '/customer/consult/appointmentCount',
           method: 'GET',
           data: { time: timeSlot, date: selectedDate },
           success: function(data){
@@ -606,7 +682,8 @@ const newRow = `
   });
 };
 
-  function cancelReservation(reservationId) {
+
+function cancelReservation(reservationId) {
   Swal.fire({
     title: 'Cancel Reservation?',
     text: 'Are you sure you want to cancel this reservation?',
@@ -615,51 +692,79 @@ const newRow = `
     confirmButtonText: 'Yes, cancel it',
     cancelButtonText: 'No, keep it'
   }).then((result) => {
-    if (result.isConfirmed) {
-      $.ajax({
-        url: '/customer/cancel-reservation',
-        method: 'POST',
-        data: { reservationId: reservationId },
-        success: function(response) {
-          if (response.success) {
-            Swal.fire({
-              icon: 'success',
-              title: 'Canceled',
-              text: 'Your reservation has been canceled.'
-            });
-            // Remove the row from the pending table
-            $('#reservation-' + reservationId).remove();
-            // Append/update in the history table (if desired)
-            const historyRow = `
-              <tr id="history-${response.reservation._id}">
-                <td>${response.reservation.pets.map(p => p.petName).join(', ')}</td>
-                <td>
-                  ${response.reservation.doctor ? response.reservation.doctor.username : 'Not Assigned'}
-                </td>
-                <td>
-                  <span class="badge badge-secondary">Canceled</span>
-                </td>
-              </tr>`;
-            $('#historyTableBody').append(historyRow);
-          } else {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: response.message || 'Unable to cancel the reservation.'
-            });
+    if (!result.isConfirmed) return;
+
+    $.ajax({
+      url: '/customer/cancel-reservation',
+      method: 'POST',
+      data: { reservationId },
+      success: function(response) {
+        if (!response.success) {
+          return Swal.fire('Error', response.message || 'Unable to cancel.', 'error');
+        }
+
+        // ➤ 1) Move row instantly
+        $(`#reservation-${reservationId}`).remove();
+        $('#historyTableBody').append(`
+          <tr id="history-${response.reservation._id}">
+            <td>${response.reservation.pets.map(p=>p.petName).join(', ')}</td>
+            <td>${response.reservation.doctor?.username || 'Not Assigned'}</td>
+            <td><span class="badge badge-secondary">Canceled</span></td>
+          </tr>
+        `);
+
+        // ➤ 2) Last-safe-cancel warning
+        if (response.cancelCount === (CANCEL_THRESHOLD - 1) && !response.justSuspended) {
+          // inject banner if not already there
+          if (!$('#almostSuspendedBanner').length) {
+            $('.card.p-4.shadow-sm').first().prepend(`
+              <div id="almostSuspendedBanner" class="alert alert-warning">
+                Warning: you’ve cancelled <strong>${response.cancelCount}</strong> of ${CANCEL_THRESHOLD} allowed consultations.  
+                One more and you’ll be suspended.
+              </div>
+            `);
           }
-        },
-        error: function() {
-          Swal.fire({
-            icon: 'error',
-            title: 'Server Error',
-            text: 'There was a problem cancelling the reservation.'
+          return Swal.fire({
+            icon: 'warning',
+            title: 'Heads up!',
+            text: `You’ve cancelled ${response.cancelCount} of ${CANCEL_THRESHOLD}. One more and you’ll be suspended.`
           });
         }
-      });
-    }
+
+        // ➤ 3) Just hit the threshold → suspend
+        if (response.justSuspended) {
+          if (!$('#suspendedBanner').length) {
+            $('.card.p-4.shadow-sm').first().prepend(`
+              <div id="suspendedBanner" class="alert alert-danger">
+                You’re currently suspended from submitting consultations.
+              </div>
+            `);
+          }
+          Swal.fire({
+            icon: 'warning',
+            title: 'Suspended',
+            text: 'You have been suspended from submitting consultations for excessive cancellations.',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            confirmButtonText: 'OK'
+          });
+          $('.vetcard').off('click').css('cursor','not-allowed');
+          $('#consultForm').find('input, select, textarea, button').prop('disabled', true);
+          return;
+        }
+
+        // ➤ 4) Otherwise just a normal “Canceled” toast
+        Swal.fire('Canceled', 'Your reservation has been canceled.', 'success');
+      },
+      error: function() {
+        Swal.fire('Server Error','There was a problem cancelling the reservation.','error');
+      }
+    });
   });
 }
+
+
+
 function formatVisitDate(date) {
   const d = new Date(date);
   const month = d.toLocaleString('en-US', { month: 'long' }).toLowerCase();
