@@ -10,7 +10,18 @@ const UserSchema = new mongoose.Schema({
   profilePic: { type: String },
   address:    { type: String },
   cellphone:  { type: String },
-  otpEnabled: { type: Boolean, default: false }  // NEW FIELD
-});
+  otpEnabled: { type: Boolean, default: false },
+   cancelCount: {
+    type: Number,
+    default: 0
+  },
+  isSuspended: {
+    type: Boolean,
+    default: false
+  },
+  suspendedAt: {
+    type: Date
+  }
+}); // NEW FIELD
 
 module.exports = mongoose.model("User", UserSchema);
