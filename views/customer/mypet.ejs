@@ -10,14 +10,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>My Pet</title>
-  <!-- Bootstrap CSS from CDN -->
+  <!-- Bootstrap CSS -->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
-  <!-- Font Awesome CSS from CDN -->
+  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  
-  <!-- SweetAlert2 CSS (NEW) -->
+  <!-- SweetAlert2 CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-
   <style>
     html, body {
       height: 100%;
@@ -26,126 +24,121 @@
     .page-wrapper {
       height: 100vh;
       overflow-y: auto;
-      box-sizing: border-box;
       padding: 15px;
-      padding-bottom: 50px;
-    }
-    .pet-card {
-      width: 100px;
-      text-align: center;
-      cursor: pointer;
-      padding: 10px;
+      padding-bottom: 100px; /* extra bottom padding to avoid overlap */
       box-sizing: border-box;
     }
-    @media (max-width: 576px) {
-      .pet-card {
-        width: 80px;
-      }
-    }
-    #myPetsContainer {
-      max-height: 500px;
-      overflow-y: auto;
+    .section-heading {
+      font-weight: bold;
+      margin-bottom: 1rem;
     }
     .card {
       border-radius: 0.5rem;
-    }
-    .section-heading {
-      text-align: left;
-      font-weight: bold;
-      margin-bottom: 10px;
     }
     .btn-carolina {
       background-color: #4B9CD3;
       border-color: #4B9CD3;
       color: #fff;
     }
-    .default-pet-icon {
-      border: 2px solid #4B9CD3;
-      border-radius: 50%;
-      width: 80px;
-      height: 80px;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 40px;
-      color: #4B9CD3;
+    .pet-card {
+      width: 100px;
+      text-align: center;
+      padding: 10px;
+      cursor: pointer;
+      box-sizing: border-box;
     }
+    #myPetsContainer {
+      max-height: 500px;
+      overflow-y: auto;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+    }
+    .default-pet-icon,
     .default-pet-icon-modal {
       border: 2px solid #4B9CD3;
       border-radius: 50%;
-      width: 100px;
-      height: 100px;
-      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 50px;
       color: #4B9CD3;
     }
-    .pet-name {
+    .default-pet-icon {
       width: 80px;
-      margin: 0 auto;
-      text-align: center;
+      height: 80px;
+      font-size: 40px;
+    }
+    .default-pet-icon-modal {
+      width: 100px;
+      height: 100px;
+      font-size: 50px;
+    }
+
+    /* Mobile adjustments */
+    @media (max-width: 576px) {
+      .pet-card {
+        width: 70px !important;
+        margin: 5px !important;
+      }
+      .pet-card img,
+      .default-pet-icon {
+        width: 60px !important;
+        height: 60px !important;
+      }
+      .pet-card p {
+        width: 60px !important;
+        font-size: 0.75rem;
+      }
+      #myPetsContainer {
+        justify-content: center !important;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- Use the same content wrapper as dashboard -->
   <div class="page-wrapper">
-    <div class="container mt-4">
+    <div class="container">
       <div class="row">
-        <!-- Pet Details Form (for adding/updating pet) -->
+        <!-- PET DETAILS -->
         <div class="col-md-6 mb-4">
           <h4 class="section-heading">PET DETAILS</h4>
           <div class="card p-4 shadow-sm">
-            <form id="petForm" onsubmit="return false;">
-              <!-- Pet Name -->
+            <form id="petForm" class="text-left" onsubmit="return false;">
               <div class="form-group">
                 <label for="petName">Pet Name</label>
                 <input type="text" class="form-control" id="petName" placeholder="Enter pet name" />
               </div>
-              <!-- Species Dropdown -->
               <div class="form-group">
                 <label for="species">Species</label>
                 <select class="form-control" id="species">
                   <option value="">Select species</option>
-                  <% if (petDetails.species && petDetails.species.length > 0) { %>
-                    <% petDetails.species.forEach(function(sp) { %>
-                      <option value="<%= sp %>"><%= sp %></option>
-                    <% }); %>
-                  <% } %>
+                  <% petDetails.species.forEach(sp => { %>
+                    <option value="<%= sp %>"><%= sp %></option>
+                  <% }); %>
                 </select>
               </div>
-              <!-- Pet Breed Dropdown -->
               <div class="form-group">
                 <label for="petBreed">Pet Breed</label>
                 <select class="form-control" id="petBreed">
                   <option value="">Select breed</option>
                 </select>
               </div>
-              <!-- Birthday -->
               <div class="form-group">
                 <label for="petBirthday">Birthday</label>
                 <input type="date" class="form-control" id="petBirthday" />
               </div>
-              <!-- Existing Disease -->
               <div class="form-group">
                 <label for="existingDisease">Existing Disease</label>
                 <select class="form-control" id="existingDisease">
                   <option value="">Select disease</option>
                   <option value="None">None</option>
                   <option value="Other">Other</option>
-                  <% if (petDetails.diseases && petDetails.diseases.length > 0) { %>
-                    <% petDetails.diseases.forEach(function(item) { %>
-                      <option value="<%= item %>"><%= item %></option>
-                    <% }); %>
-                  <% } %>
+                  <% petDetails.diseases.forEach(d => { %>
+                    <option value="<%= d %>"><%= d %></option>
+                  <% }); %>
                 </select>
-                <!-- Hidden text input appears when "Other" is selected -->
                 <input type="text" class="form-control mt-2 d-none" id="otherDisease" placeholder="Specify disease" />
               </div>
-              <!-- Sex Dropdown -->
               <div class="form-group">
                 <label for="sex">Sex</label>
                 <select class="form-control" id="sex">
@@ -154,51 +147,46 @@
                   <option value="Female">Female</option>
                 </select>
               </div>
-              <!-- Pet Picture Upload -->
               <div class="form-group">
                 <label for="petPic">Pet Picture</label>
-                <input type="file" class="form-control-file" id="petPic" accept="image/*" />
+                <input type="file" class="form-control-file" id="petPic" />
                 <div id="petPicPreview" class="mt-2"></div>
               </div>
-              <!-- Add Pet Button using Carolina blue styling -->
               <button type="button" class="btn btn-carolina btn-block" id="addPetButton">Add Pet</button>
             </form>
           </div>
         </div>
-        
-        <!-- My Pets Section -->
+
+        <!-- MY PETS -->
         <div class="col-md-6 mb-4">
           <h4 class="section-heading">MY PETS</h4>
           <div class="card p-4 shadow-sm">
-            <div class="d-flex flex-wrap justify-content-start" id="myPetsContainer">
+            <div id="myPetsContainer">
               <% if (pets && pets.length) { %>
-                <% pets.forEach(function(pet) { %>
+                <% pets.forEach(pet => { %>
                   <div class="pet-card m-2"
-                    data-id="<%= pet._id %>"
-                    data-petname="<%= pet.petName %>"
-                    data-species="<%= pet.species %>"
-                    data-breed="<%= pet.breed %>"
-                    data-birthday="<%= pet.birthday %>"
-                    data-existingdisease="<%= pet.existingDisease %>"
-                    data-sex="<%= pet.sex %>"
-                    data-petpic="<%= pet.petPic ? pet.petPic : '' %>">
-                    <div class="pet-image mb-2">
-                      <% if (pet.petPic) { %>
-                        <img src="<%= pet.petPic %>" alt="Pet" class="img-fluid rounded-circle"
-                             style="width:80px; height:80px; object-fit:cover; border: 2px solid #4B9CD3;">
-                      <% } else { %>
-                        <div class="default-pet-icon">
-                          <i class="fa-solid fa-paw"></i>
-                        </div>
-                      <% } %>
-                    </div>
-                    <p class="mb-0 pet-name"><%= pet.petName %></p>
+                       data-id="<%= pet._id %>"
+                       data-petname="<%= pet.petName %>"
+                       data-species="<%= pet.species %>"
+                       data-breed="<%= pet.breed %>"
+                       data-birthday="<%= pet.birthday %>"
+                       data-existingdisease="<%= pet.existingDisease %>"
+                       data-sex="<%= pet.sex %>"
+                       data-petpic="<%= pet.petPic || '' %>">
+                    <% if (pet.petPic) { %>
+                      <img src="<%= pet.petPic %>" 
+                           class="img-fluid rounded-circle mb-2"
+                           style="width:80px; height:80px; object-fit:cover; border:2px solid #4B9CD3;">
+                    <% } else { %>
+                      <div class="default-pet-icon mb-2">
+                        <i class="fa-solid fa-paw"></i>
+                      </div>
+                    <% } %>
+                    <p class="mb-0 text-center" style="width:80px;"><%= pet.petName %></p>
                   </div>
                 <% }); %>
               <% } else { %>
-                <div class="w-100 text-center">
-                  <p class="mb-0">You have no pets.</p>
-                </div>
+                <p class="text-center w-100 mb-0">You have no pets.</p>
               <% } %>
             </div>
           </div>
