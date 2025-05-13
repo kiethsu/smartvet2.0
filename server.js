@@ -6,7 +6,8 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const path = require("path");
 const cron = require('node-cron');
-
+const session = require('express-session');
+const flash   = require('connect-flash');
 const axios = require('axios');         // For SMS API calls
 const nodemailer = require('nodemailer'); // For sending emails
 const chatbotRoutes = require("./routes/chatbot");
@@ -27,7 +28,12 @@ const Reservation = require("./models/reservation");
 
 const app = express();
 
-
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'a very secret key',
+  resave: false,
+  saveUninitialized: false
+}));
+app.use(flash());
 
 
 // Configure CORS for production (allowing all origins temporarily; update later with your client URL)
@@ -238,19 +244,23 @@ cron.schedule('*/1 * * * *', async () => {
     });
     console.log(`Old canceled reservations cleared: ${canceledResult.deletedCount} removed.`);
 
-    // Delete approved reservations that have no doctor assigned and were created more than one minute ago.
-    const approvedResult = await Reservation.deleteMany({
+     // MARK stale approved (no doctor) after 1 minute as Not Attended
+    const staleApproved = await Reservation.find({
       status: 'Approved',
       $or: [{ doctor: { $exists: false } }, { doctor: null }],
       createdAt: { $lte: oneMinuteAgo }
     });
-    console.log(`Old unassigned approved reservations cleared: ${approvedResult.deletedCount} removed.`);
-    
-  } catch (error) {
-    console.error("Error clearing old reservations:", error);
-  }
-});
-
+    for (let res of staleApproved) {
+      res.status     = 'Not Attended';
+      res.canceledAt = new Date();           // optional timestamp
+      await res.save();
+   }
+   console.log(`Stale approved without doctor: ${staleApproved.length} marked as Not Attended.`);
+     
+   } catch (error) {
+     console.error("Error clearing old reservations:", error);
+   }
+ });
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
@@ -265,3 +275,6 @@ app.get('/logout', (req, res) => {
   res.clearCookie('refreshToken');
   res.redirect('/');
 });
+
+
+
