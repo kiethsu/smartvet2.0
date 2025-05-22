@@ -157,43 +157,72 @@
           </div>
         </div>
 
-        <!-- MY PETS -->
-        <div class="col-md-6 mb-4">
-          <h4 class="section-heading">MY PETS</h4>
-          <div class="card p-4 shadow-sm">
-            <div id="myPetsContainer">
-              <% if (pets && pets.length) { %>
-                <% pets.forEach(pet => { %>
-                  <div class="pet-card m-2"
-                       data-id="<%= pet._id %>"
-                       data-petname="<%= pet.petName %>"
-                       data-species="<%= pet.species %>"
-                       data-breed="<%= pet.breed %>"
-                       data-birthday="<%= pet.birthday %>"
-                       data-existingdisease="<%= pet.existingDisease %>"
-                       data-sex="<%= pet.sex %>"
-                       data-petpic="<%= pet.petPic || '' %>">
-                    <% if (pet.petPic) { %>
-                      <img src="<%= pet.petPic %>" 
-                           class="img-fluid rounded-circle mb-2"
-                           style="width:80px; height:80px; object-fit:cover; border:2px solid #4B9CD3;">
-                    <% } else { %>
-                      <div class="default-pet-icon mb-2">
-                        <i class="fa-solid fa-paw"></i>
-                      </div>
-                    <% } %>
-                    <p class="mb-0 text-center" style="width:80px;"><%= pet.petName %></p>
-                  </div>
-                <% }); %>
-              <% } else { %>
-                <p class="text-center w-100 mb-0">You have no pets.</p>
+<!-- MY PETS -->
+<div class="col-md-6 mb-4">
+  <h4 class="section-heading">MY PETS</h4>
+  <div class="card p-4 shadow-sm">
+    <div id="myPetsContainer">
+      <%
+        // build a Set of the real Pet names
+        const existingNames = new Set((pets || []).map(p => p.petName));
+
+        // only include walk-in entries whose petName is not in existingNames
+        const walkinPets = (petListEntries || [])
+          .filter(e => !existingNames.has(e.petName))
+          .map(e => ({
+            _id:                    `list-${e._id}`,
+            petName:                e.petName,
+            species:                e.species || '',
+            breed:                  e.breed   || '',
+            birthday:               '',
+            existingDisease:        '',
+            sex:                    '',
+            petPic:                 '',
+            addedFromReservation:   true
+          }));
+
+        // merge them
+        const allPets = [...(pets || []), ...walkinPets];
+      %>
+
+      <% if (allPets.length > 0) { %>
+        <% allPets.forEach(pet => { %>
+          <div class="pet-card m-2"
+               data-id="<%= pet._id %>"
+               data-petname="<%= pet.petName %>"
+               data-species="<%= pet.species %>"
+               data-breed="<%= pet.breed %>"
+               data-birthday="<%= pet.birthday %>"
+               data-existingdisease="<%= pet.existingDisease %>"
+               data-sex="<%= pet.sex %>"
+               data-petpic="<%= pet.petPic || '' %>"
+               data-addedfromreservation="<%= pet.addedFromReservation ? 'true' : 'false' %>">
+            
+            <% if (pet.petPic) { %>
+              <img src="<%= pet.petPic %>"
+                   class="img-fluid rounded-circle mb-2"
+                   style="width:80px; height:80px; object-fit:cover; border:2px solid #4B9CD3;">
+            <% } else { %>
+              <div class="default-pet-icon mb-2">
+                <i class="fa-solid fa-paw"></i>
+              </div>
+            <% } %>
+
+            <p class="mb-0 text-center" style="width:80px;">
+              <%= pet.petName %>
+              <% if (pet.addedFromReservation) { %>
+                <small class="d-block text-muted">Walk-in</small>
               <% } %>
-            </div>
+            </p>
           </div>
-        </div>
-      </div><!-- end row -->
-    </div><!-- end container -->
-  </div><!-- end page-wrapper -->
+        <% }); %>
+      <% } else { %>
+        <p class="text-center w-100 mb-0">You have no pets.</p>
+      <% } %>
+    </div>
+  </div>
+</div>
+
 
   <!-- Pet Details Modal (for update, history & vetcard) -->
   <div class="modal fade" id="petDetailsModal" tabindex="-1" role="dialog" aria-labelledby="petDetailsModalLabel" aria-hidden="true">
@@ -390,23 +419,25 @@
               const petPicHtml = petData.petPic
                 ? `<img src="${petData.petPic}" alt="Pet" class="img-fluid rounded-circle" style="width:80px; height:80px; object-fit:cover; border: 2px solid #4B9CD3;">`
                 : `<div class="default-pet-icon"><i class="fa-solid fa-paw"></i></div>`;
-              const newPetCard = `
-                <div class="pet-card m-2"
-                  data-id="${response.pet._id || ''}"
-                  data-petname="${petData.petName}"
-                  data-species="${petData.species}"
-                  data-breed="${petData.breed}"
-                  data-birthday="${petData.birthday}"
-                  data-existingdisease="${petData.existingDisease}"
-                  data-sex="${petData.sex}"
-                  data-petpic="${petData.petPic}"
-                >
-                  <div class="pet-image mb-2">
-                    ${petPicHtml}
-                  </div>
-                  <p class="mb-0 pet-name">${petData.petName}</p>
-                </div>
-              `;
+            const newPetCard = `
+  <div class="pet-card m-2"
+       data-id="${response.pet._id}"
+       data-petname="${petData.petName}"
+       data-species="${petData.species}"
+       data-breed="${petData.breed}"
+       data-birthday="${petData.birthday}"
+       data-existingdisease="${petData.existingDisease}"
+       data-sex="${petData.sex}"
+       data-petpic="${petData.petPic}"
+       data-addedfromreservation="false"   <!-- always false for manual adds -->
+  >
+    ${ petData.petPic
+       ? `<img src="${petData.petPic}" …>`
+       : `<div class="default-pet-icon"><i class="fa-solid fa-paw"></i></div>`
+    }
+    <p class="mb-0 pet-name">${petData.petName}</p>
+  </div>
+`;
               $('#myPetsContainer').append(newPetCard);
               $('#petForm')[0].reset();
               $('#petForm input, #petForm select').removeClass('is-invalid');
@@ -440,48 +471,58 @@
       // ----------------- PET MODAL FUNCTIONALITY -----------------
       
       // Delegated click handler for pet cards so that even newly added cards are clickable
-      $(document).on('click', '.pet-card', function () {
-        var petId = $(this).data('id');
-        var petName = $(this).data('petname');
-        var species = $(this).data('species');
-        var breed = $(this).data('breed');
-        var birthday = $(this).data('birthday');
-        var existingDisease = $(this).data('existingdisease');
-        var sex = $(this).data('sex');
-        var petPic = $(this).data('petpic');
-  
-        // Update modal pet picture: if petPic is empty, replace image with default icon div
-        if (!petPic) {
-          $('#modalPetPicContainer').html(
-            '<div id="modalPetPic" class="default-pet-icon-modal"><i class="fa-solid fa-paw"></i></div>'
-          );
-        } else {
-          $('#modalPetPicContainer').html(
-            '<img id="modalPetPic" src="'+petPic+'" alt="Pet Picture" class="img-thumbnail rounded-circle" style="width:100px; height:100px; object-fit:cover; border: 2px solid #4B9CD3;">'
-          );
-        }
-  
-        $('#modalPetNameInput').val(petName);
-        $('#modalSpeciesInput').val(species);
-        $('#modalBreedInput').val(breed);
-        $('#modalBirthdayInput').val(birthday);
-        $('#modalExistingDiseaseInput').val(existingDisease);
-        $('#modalSexInput').val(sex);
-  
-        // Set fields as readonly/disabled for edit view
-        $('#modalPetNameInput, #modalSpeciesInput, #modalBreedInput, #modalBirthdayInput, #modalExistingDiseaseInput')
-          .prop('readonly', true);
-        $('#modalSexInput').prop('disabled', true);
-  
-        // Store the pet id on the update, save, and delete buttons for later use
-        $('#updatePetBtn').data('id', petId).data('petname', petName);
-        $('#savePetBtn').data('id', petId);
-        $('#deletePetBtn').data('id', petId);
-  
-        // Default: show Edit tab
-        $('#tabEdit').trigger('click');
-        $('#petDetailsModal').modal('show');
-      });
+     $(document).on('click', '.pet-card', function () {
+    const $card   = $(this);
+    const petId   = $card.data('id');
+    const petName = $card.data('petname');
+    const species = $card.data('species');
+    const breed   = $card.data('breed');
+    const birthday= $card.data('birthday');
+    const existingDisease = $card.data('existingdisease');
+    const sex     = $card.data('sex');
+    const petPic  = $card.data('petpic');
+    const added   = $card.data('addedfromreservation'); // ← new flag
+
+    // Render pet picture or default icon
+    if (!petPic) {
+      $('#modalPetPicContainer').html(
+        '<div id="modalPetPic" class="default-pet-icon-modal"><i class="fa-solid fa-paw"></i></div>'
+      );
+    } else {
+      $('#modalPetPicContainer').html(
+        `<img id="modalPetPic" src="${petPic}" alt="Pet Picture"
+              class="img-thumbnail rounded-circle"
+              style="width:100px;height:100px;object-fit:cover;
+                     border:2px solid #4B9CD3;">`
+      );
+    }
+
+    // Populate form fields
+    $('#modalPetNameInput').val(petName);
+    $('#modalSpeciesInput').val(species);
+    $('#modalBreedInput').val(breed);
+    $('#modalBirthdayInput').val(birthday);
+    $('#modalExistingDiseaseInput').val(existingDisease);
+    $('#modalSexInput').val(sex);
+
+    // Make them read-only
+    $('#modalPetNameInput, #modalSpeciesInput, #modalBreedInput, ' +
+      '#modalBirthdayInput, #modalExistingDiseaseInput')
+      .prop('readonly', true);
+    $('#modalSexInput').prop('disabled', true);
+
+    // Store IDs & the new flag on your buttons
+    $('#updatePetBtn')
+      .data('id', petId)
+      .data('petname', petName)
+      .data('addedfromreservation', added);
+    $('#savePetBtn').data('id', petId);
+    $('#deletePetBtn').data('id', petId);
+
+    // Show the Edit tab by default
+    $('#tabEdit').trigger('click');
+    $('#petDetailsModal').modal('show');
+  });
       
       // Toggle history details on clicking a history date
       $(document).on('click', '.history-date', function() {
@@ -498,67 +539,88 @@
       
       // History tab click: show history content and load history via AJAX
       $(document).on('click', '#tabHistory', function() {
-  $('#modalHistoryContent').removeClass('d-none');
-  $('#modalEditContent, #modalVetcardContent').addClass('d-none');
-  $('#modalEditFooter').addClass('d-none');
-  $('#modalOtherCloseBtn').removeClass('d-none');
-  
-  var petId = $('#updatePetBtn').data('id');
-  var petName = $('#updatePetBtn').data('petname');
-  
-  if (petId || petName) {
-    $.ajax({
-      url: '/customer/get-pet-history',
-      method: 'GET',
-      data: { petId: petId, petName: petName },
-      success: function(response) {
-        if(response.success) {
-          var historyHtml = '';
-          var containerClass = response.history.length >= 5 ? 'history-container' : '';
-          historyHtml += `<div class="${containerClass}">`;
-          
-            response.history.forEach(function(record, index) {
-  historyHtml += 
-    `<div class="history-record mb-2">
-      <div class="history-date bg-light p-2" data-toggle="collapse" data-target="#historyRecord${index}" aria-expanded="false" aria-controls="historyRecord${index}" style="cursor:pointer;">
-        ${formatVisitDate(record.date)}
-      </div>
-      <div class="collapse" id="historyRecord${index}">
-        <div class="card card-body position-relative">
-          <button type="button" class="close position-absolute" style="top:10px; right:10px;" onclick="$('#historyRecord${index}').collapse('hide')">
-            <span aria-hidden="true">&times;</span>
-          </button>
-          <p><strong>Doctor:</strong> ${record.doctor && record.doctor.username ? record.doctor.username : 'Not Assigned'}</p>
-          <p><strong>Consultation Notes:</strong> ${record.consultationNotes || 'N/A'}</p>
-          <ul class="list-unstyled mb-0">
-            ${record.medications.map(med => 
-              `<li>
-                <p><strong>Medication:</strong> ${med.medicationName}</p>
-                <p><strong>Dosage:</strong> ${med.dosage}</p>
-                <p><strong>Frequency:</strong> ${med.frequency}</p>
-                ${ med.adminTime ? `<p><strong>Administration Time:</strong> ${med.adminTime}</p>` : '' }
-                ${ med.additionalInstructions ? `<p><strong>Instructions:</strong> ${med.additionalInstructions}</p>` : '' }
-                <p><strong>Quantity:</strong> ${med.quantity ? med.quantity : 'N/A'}</p>
-              </li>`
-            ).join('')}
-          </ul>
-        </div>
-      </div>
-    </div>`;
-});
+    $('#modalHistoryContent').removeClass('d-none');
+    $('#modalEditContent, #modalVetcardContent').addClass('d-none');
+    $('#modalEditFooter').addClass('d-none');
+    $('#modalOtherCloseBtn').removeClass('d-none');
 
-          historyHtml += `</div>`;
-          $('#petHistoryContainer').html(historyHtml);
-        } else {
-          $('#petHistoryContainer').html('<p>No history available.</p>');
+    const petId   = $('#updatePetBtn').data('id');
+    const petName = $('#updatePetBtn').data('petname');
+    const added   = $('#updatePetBtn').data('addedfromreservation'); // ← grab it
+
+    if (petId || petName) {
+      $.ajax({
+        url: '/customer/get-pet-history',
+        method: 'GET',
+        data: {
+          petId: petId,
+          petName: petName,
+          addedFromReservation: added   // ← include it here
+        },
+        success: function(response) {
+          if (response.success) {
+            let historyHtml = '';
+            const cls = response.history.length >= 5 ? 'history-container' : '';
+            historyHtml += `<div class="${cls}">`;
+
+            response.history.forEach((record, idx) => {
+              historyHtml +=
+                `<div class="history-record mb-2">
+                   <div class="history-date bg-light p-2"
+                        data-toggle="collapse"
+                        data-target="#historyRecord${idx}"
+                        aria-expanded="false"
+                        aria-controls="historyRecord${idx}"
+                        style="cursor:pointer;">
+                     ${formatVisitDate(record.date)}
+                   </div>
+                   <div class="collapse" id="historyRecord${idx}">
+                     <div class="card card-body position-relative">
+                       <button type="button" class="close position-absolute"
+                               style="top:10px;right:10px;"
+                               onclick="$('#historyRecord${idx}').collapse('hide')">
+                         <span aria-hidden="true">&times;</span>
+                       </button>
+                       <p><strong>Doctor:</strong>
+                          ${record.doctor?.username || 'Not Assigned'}</p>
+                       <p><strong>Notes:</strong>
+                          ${record.consultationNotes || 'N/A'}</p>
+                       <ul class="list-unstyled mb-0">
+                         ${record.medications.map(med =>
+                           `<li>
+                              <p><strong>Medication:</strong> ${med.medicationName}</p>
+                              <p><strong>Dosage:</strong> ${med.dosage}</p>
+                              <p><strong>Frequency:</strong> ${med.frequency}</p>
+                              ${ med.adminTime
+                                  ? `<p><strong>Admin Time:</strong> ${med.adminTime}</p>`
+                                  : ''
+                              }
+                              ${ med.additionalInstructions
+                                  ? `<p><strong>Instructions:</strong>
+                                       ${med.additionalInstructions}</p>`
+                                  : ''
+                              }
+                              <p><strong>Qty:</strong> ${med.quantity || 'N/A'}</p>
+                            </li>`
+                         ).join('')}
+                       </ul>
+                     </div>
+                   </div>
+                 </div>`;
+            });
+
+            historyHtml += `</div>`;
+            $('#petHistoryContainer').html(historyHtml);
+          } else {
+            $('#petHistoryContainer').html('<p>No history available.</p>');
+          }
+        },
+        error: function() {
+          $('#petHistoryContainer').html('<p>Error loading history.</p>');
         }
-      },
-      error: function() {
-        $('#petHistoryContainer').html('<p>Error loading history.</p>');
-      }
-    });
-  }
-});
+      });
+    }
+  });
 
       // Vetcard tab click: show vetcard content with a "Coming soon" message
       $('#tabVetcard').on('click', function() {
