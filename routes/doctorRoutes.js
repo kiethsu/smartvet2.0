@@ -249,14 +249,20 @@ router.post("/add-consultation", authMiddleware, upload.any(), validateRequest(a
     // Parse medicationsData if provided.
     const medications = medicationsData ? JSON.parse(medicationsData) : [];
     // Parse servicesData if provided.
-    let services = servicesData ? JSON.parse(servicesData) : [];
-    // For each service, attach the file path if a file was uploaded for its serviceId.
-    services = services.map(service => {
-      if (service.serviceId && fileMap[service.serviceId]) {
-        return { ...service, file: fileMap[service.serviceId] };
-      }
-      return service;
-    });
+  // Parse servicesData if provided.
+   // Parse and enrich servicesData with real category and file path
+   let services = servicesData ? JSON.parse(servicesData) : [];
+   services = await Promise.all(services.map(async svc => {
+     const full = await Service.findById(svc.serviceId)
+                               .populate('category', 'name')
+                               .lean();
+     return {
+       category:    full.category?.name    || 'Uncategorized',
+       serviceName: full.serviceName       || svc.serviceName,
+       details:     svc.details,
+       file:        fileMap[svc.serviceId] || null
+     };
+   }));
 
     // Create the consultation record.
     const consultation = new Consultation({
@@ -275,9 +281,28 @@ router.post("/add-consultation", authMiddleware, upload.any(), validateRequest(a
     });
     await consultation.save();
 
-    // (Optional) Update the reservation with a reference to the consultation.
-    reservation.consultation = consultation._id;
-    await reservation.save();
+reservation.medications = consultation.medications.map(med => ({
+  productId:      med.productId,
+  medicationName: med.name,
+  dosage:         med.dosage,
+  remarks:        med.remarks,
+  quantity:       med.quantity
+}));
+   // If you want to keep the same enriched services on the Reservation:
+   reservation.services = services.map(srv => ({
+     category:    srv.category,
+     serviceName: srv.serviceName,
+     details:     srv.details,
+     file:        srv.file
+   }));
+// optional follow-up scheduling
+if (req.body.scheduleDate && req.body.scheduleDetails) {
+  reservation.schedule = {
+    scheduleDate:   new Date(req.body.scheduleDate),
+    scheduleDetails: req.body.scheduleDetails
+  };
+}
+await reservation.save();
 
     res.json({ success: true, consultation });
   } catch (error) {
