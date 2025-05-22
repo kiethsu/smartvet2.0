@@ -4,532 +4,671 @@
   <meta charset="UTF-8">
   <title>Inventory Management</title>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-  <!-- SweetAlert2 CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
   <style>
-    /* Position the search bar and filter on the right */
-    .filter-container {
-      max-width: 500px;
-      float: right;
+    body {
+      background: #f7faff;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    .main-header {
+      margin-top: 30px;
       margin-bottom: 10px;
+      font-weight: 700;
+      color: #1669bb;
     }
-    .filter-container .form-control {
-      display: inline-block;
-      width: auto;
-      vertical-align: middle;
+    .analytics-cards {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
     }
-    .filter-container select {
-      margin-left: 5px;
+    .analytic-card {
+      background: #fff;
+      border-radius: 1rem;
+      box-shadow: 0 2px 10px rgba(22,105,187,0.06);
+      padding: 1rem 1.7rem;
+      min-width: 170px;
+      flex: 1;
+      text-align: center;
+      color: #1669bb;
     }
-    /* Pagination styling */
-    #paginationControls {
-      margin-top: 15px;
+    .analytic-card span {
+      font-size: 2rem;
+      font-weight: 700;
+      display: block;
+      color: #2a5298;
+    }
+    .filter-container {
+      display: flex;
+      gap: .5rem;
+      align-items: center;
+      margin-bottom: 18px;
+      justify-content: flex-end;
+    }
+    .table-inventory {
+      background: #fff;
+      border-radius: 1.2rem;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(22,105,187,0.07);
+      margin-bottom: 30px;
+    }
+    .table-inventory th, .table-inventory td {
+      vertical-align: middle !important;
+      text-align: center;
+    }
+    .table-inventory th {
+      background: #e5f1fb;
+      color: #1669bb;
+      border-bottom: 2px solid #1669bb;
+      font-weight: 600;
+    }
+    .table-inventory tbody tr {
+      transition: background 0.2s;
+    }
+    .table-inventory tbody tr:hover {
+      background: #f1f7fd;
+    }
+    .table-inventory .btn-info {
+      background: #1669bb;
+      border: none;
+    }
+    .table-inventory .btn-info:hover {
+      background: #155a9c;
+    }
+    .table-inventory .btn-danger {
+      background: #3570af;
+      border: none;
+    }
+    .table-inventory .btn-danger:hover {
+      background: #285a88;
+    }
+    .badge-low {
+      background: #3570af;
+      color: #fff;
+    }
+    .badge-instock {
+      background: #1669bb;
+      color: #fff;
+    }
+    .badge-expiry {
+      background: #a4caef;
+      color: #1669bb;
+    }
+    .chart-container {
+      background: #fff;
+      border-radius: 1rem;
+      padding: 1rem;
+      box-shadow: 0 2px 10px rgba(22,105,187,0.08);
+      margin-bottom: 1.5rem;
+    }
+
+    /* Modal Redesign for Add & Edit */
+    .modal-content.inventory-modal {
+      border-radius: 18px;
+      box-shadow: 0 4px 24px rgba(22,105,187,0.16);
+      background: #fafdff;
+      border: 1.5px solid #e5f1fb;
+    }
+    .inventory-modal .modal-header {
+      border-bottom: none;
+      background: #e5f1fb;
+      border-top-left-radius: 18px;
+      border-top-right-radius: 18px;
+      padding-bottom: 0.6rem;
+    }
+    .inventory-modal .modal-title {
+      color: #1669bb;
+      font-weight: 600;
+      font-size: 1.4rem;
+      letter-spacing: 0.5px;
+    }
+    .inventory-modal .modal-body {
+      padding: 2rem 1.5rem 1.5rem 1.5rem;
+    }
+    .inventory-modal .form-row {
+      margin-bottom: 1.3rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px 0;
+    }
+    .inventory-modal .form-group {
+      margin-bottom: 0;
+      padding: 0 8px;
+    }
+    .inventory-modal label {
+      font-weight: 600;
+      color: #1669bb;
+      font-size: 1rem;
+      margin-bottom: 0.4rem;
+    }
+    .inventory-modal .form-control {
+      border-radius: 10px;
+      border: 1.2px solid #b2cbe9;
+      font-size: 1.03rem;
+      background: #f6faff;
+      color: #194673;
+    }
+    .inventory-modal .form-control:focus {
+      border-color: #1669bb;
+      box-shadow: 0 0 0 0.15rem rgba(22,105,187,0.14);
+      background: #fafdff;
+    }
+    .inventory-modal .section-title {
+      color: #2a5298;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: .1rem;
+      margin-bottom: 1rem;
+      margin-top: .1rem;
+    }
+    .inventory-modal .modal-footer {
+      border-top: none;
+      background: #e5f1fb;
+      border-bottom-left-radius: 18px;
+      border-bottom-right-radius: 18px;
+      padding-top: 1rem;
+    }
+    .inventory-modal .btn-primary {
+      background: #1669bb;
+      border: none;
+      border-radius: 8px;
+      padding: .48rem 2.1rem;
+      font-weight: 600;
+      font-size: 1.08rem;
+    }
+    .inventory-modal .btn-outline-secondary {
+      border-radius: 8px;
+      font-weight: 500;
+    }
+    .expiration-inputs {
+      background: #f3f7fc;
+      border-radius: 8px;
+      padding: 0.8rem;
+      margin-top: 0.25rem;
+      min-height: 46px;
+    }
+    @media (max-width: 990px) {
+      .analytics-cards {
+        flex-direction: column;
+        gap: 0.7rem;
+      }
+      .chart-container {
+        margin: 1rem 0;
+      }
+      .filter-container {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .inventory-modal .modal-body {
+        padding: 1.2rem 0.7rem 1rem 0.7rem;
+      }
     }
   </style>
 </head>
 <body>
-<div class="container mt-4">
-  <h2>Inventory Management</h2>
-  <!-- Form to add new inventory item -->
-  <form id="inventoryForm">
-    <div class="form-group">
-      <label for="itemName">Name</label>
-      <input type="text" class="form-control" id="itemName" name="name" required>
-    </div>
-    <div class="form-group">
-      <label for="itemCategory">Category</label>
-      <select class="form-control" id="itemCategory" name="category" required>
-        <option value="">Select Category</option>
-        <option value="pet grooming">Pet Grooming</option>
-        <option value="pet accessories">Pet Accessories</option>
-        <option value="pet essentials">Pet Essentials</option>
-        <option value="pet medication">Pet Medication</option>
-        <option value="pet vaccination">Pet Vaccination</option>
-        <option value="heartworm preventive">Heartworm Preventive</option>
-        <option value="anti-thick and flea preventive">Anti-thick and Flea Preventive</option>
-        <option value="injectable meds">Injectable Meds</option>
-        <option value="clinic needs">Clinic Needs</option>
-        <option value="surgery">Surgery</option>
-        <option value="cbc">CBC</option>
-        <option value="blood chemistry">Blood Chemistry</option>
-        <option value="gas anesthesia">Gas Anesthesia</option>
-        <option value="cbc/blood chemistry">CBC/Blood Chemistry</option>
-        <option value="urinalysis">Urinalysis</option>
-        <option value="ultrasounds">Ultrasounds</option>
-        <option value="blood collection">Blood Collection</option>
-        <option value="syringe">Syringe</option>
-        <option value="needle">Needle</option>
-        <option value="test kits">Test Kits</option>
-        <option value="petfood">Petfood</option>
-        <option value="dewormer">Dewormer</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="itemPrice">Price (in Peso)</label>
-      <input type="number" step="0.01" class="form-control" id="itemPrice" name="price" required>
-    </div>
-    <div class="form-group">
-      <label for="itemQuantity">Quantity</label>
-      <input type="number" class="form-control" id="itemQuantity" name="quantity" required>
-    </div>
-    <div class="form-group">
-      <label>Expiration Dates (Optional)</label>
-      <div id="expirationDatesContainer"></div>
-    </div>
-    <button type="submit" class="btn btn-primary">Add Inventory Item</button>
-  </form>
-
-  <hr>
+<div class="container">
   <div class="d-flex justify-content-between align-items-center">
-    <h3>Inventory List</h3>
-    <div class="filter-container">
-      <input type="text" id="searchBar" class="form-control" placeholder="Search by name">
-      <select id="categoryFilter" class="form-control">
-        <option value="">All Categories</option>
-        <option value="pet grooming">Pet Grooming</option>
-        <option value="pet accessories">Pet Accessories</option>
-        <option value="pet essentials">Pet Essentials</option>
-        <option value="pet medication">Pet Medication</option>
-        <option value="pet vaccination">Pet Vaccination</option>
-        <option value="heartworm preventive">Heartworm Preventive</option>
-        <option value="anti-thick and flea preventive">Anti-thick and Flea Preventive</option>
-        <option value="injectable meds">Injectable Meds</option>
-        <option value="clinic needs">Clinic Needs</option>
-        <option value="surgery">Surgery</option>
-        <option value="cbc">CBC</option>
-        <option value="blood chemistry">Blood Chemistry</option>
-        <option value="gas anesthesia">Gas Anesthesia</option>
-        <option value="cbc/blood chemistry">CBC/Blood Chemistry</option>
-        <option value="urinalysis">Urinalysis</option>
-        <option value="ultrasounds">Ultrasounds</option>
-        <option value="blood collection">Blood Collection</option>
-        <option value="syringe">Syringe</option>
-        <option value="needle">Needle</option>
-        <option value="test kits">Test Kits</option>
-        <option value="petfood">Petfood</option>
-        <option value="dewormer">Dewormer</option>
-      </select>
-    </div>
+    <h2 class="main-header">Inventory Management</h2>
+    <button class="btn btn-primary" data-toggle="modal" data-target="#addModal" style="background:#1669bb;border:none;">+ Add Item</button>
   </div>
-  <table class="table table-bordered" id="inventoryTable">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Category</th>
-        <th>Price</th>
-        <th>Quantity</th>
-        <th>Expiration Dates</th>
-        <th>Stocks Near Expiry</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Inventory items will be populated here -->
-    </tbody>
-  </table>
-  <!-- Pagination Controls -->
+
+  <!-- Analytics Cards -->
+  <div class="analytics-cards" id="analytics-cards"></div>
+
+  <!-- Inventory Trend Line Chart -->
+  <div class="chart-container">
+    <h5 style="font-weight:600; color:#1669bb;">Inventory Trend (Total Stock per Month)</h5>
+    <canvas id="inventoryLineChart" height="75"></canvas>
+  </div>
+
+  <div class="filter-container">
+    <input type="text" id="searchBar" class="form-control" placeholder="Search by name" style="max-width:170px;">
+    <select id="categoryFilter" class="form-control" style="max-width:160px;">
+      <option value="">All Categories</option>
+      <% [
+        "pet grooming", "pet accessories", "pet essentials", "pet medication", "pet vaccination",
+        "heartworm preventive", "anti-thick and flea preventive", "injectable meds", "clinic needs",
+        "surgery", "cbc", "blood chemistry", "gas anesthesia", "cbc/blood chemistry", "urinalysis",
+        "ultrasounds", "blood collection", "syringe", "needle", "test kits", "petfood", "dewormer"
+      ].forEach(cat => { %>
+        <option value="<%= cat %>"><%= cat[0].toUpperCase()+cat.slice(1) %></option>
+      <% }); %>
+    </select>
+    <select id="statusFilter" class="form-control" style="max-width:170px;">
+      <option value="">All Status</option>
+      <option value="lowstock">Low Stock (≤10)</option>
+      <option value="nearexpiry">Near Expiry (30d)</option>
+    </select>
+  </div>
+
+  <!-- Inventory Table -->
+  <div style="overflow-x:auto;">
+    <table class="table table-inventory table-hover">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Price</th>
+          <th>Quantity</th>
+          <th>Status</th>
+          <th>Expiration</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="inventoryTableBody"></tbody>
+    </table>
+  </div>
   <nav>
     <ul class="pagination justify-content-center" id="paginationControls"></ul>
   </nav>
 </div>
 
-<!-- Modal for Editing Inventory Items -->
-<div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <form id="editForm">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="editModalLabel">Edit Inventory Item</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-          </button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" id="editId" name="id">
-          <div class="form-group">
-            <label for="editName">Name</label>
-            <input type="text" class="form-control" id="editName" name="name" required>
+<!-- ADD MODAL -->
+<div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <form id="inventoryForm" class="modal-content inventory-modal">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addModalLabel">Add New Inventory Item</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span style="font-size:2rem;">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="section-title">Basic Details</div>
+        <div class="form-row">
+          <div class="form-group col-md-6">
+            <label for="itemName">Item Name</label>
+            <input type="text" class="form-control" id="itemName" name="name" required autocomplete="off">
           </div>
-          <div class="form-group">
-            <label for="editCategory">Category</label>
-            <select class="form-control" id="editCategory" name="category" required>
+          <div class="form-group col-md-6">
+            <label for="itemCategory">Category</label>
+            <select class="form-control" id="itemCategory" name="category" required>
               <option value="">Select Category</option>
-              <option value="pet grooming">Pet Grooming</option>
-              <option value="pet accessories">Pet Accessories</option>
-              <option value="pet essentials">Pet Essentials</option>
-              <option value="pet medication">Pet Medication</option>
-              <option value="pet vaccination">Pet Vaccination</option>
-              <option value="heartworm preventive">Heartworm Preventive</option>
-              <option value="anti-thick and flea preventive">Anti-thick and Flea Preventive</option>
-              <option value="injectable meds">Injectable Meds</option>
-              <option value="clinic needs">Clinic Needs</option>
-              <option value="surgery">Surgery</option>
-              <option value="cbc">CBC</option>
-              <option value="blood chemistry">Blood Chemistry</option>
-              <option value="gas anesthesia">Gas Anesthesia</option>
-              <option value="cbc/blood chemistry">CBC/Blood Chemistry</option>
-              <option value="urinalysis">Urinalysis</option>
-              <option value="ultrasounds">Ultrasounds</option>
-              <option value="blood collection">Blood Collection</option>
-              <option value="syringe">Syringe</option>
-              <option value="needle">Needle</option>
-              <option value="test kits">Test Kits</option>
-              <option value="petfood">Petfood</option>
-              <option value="dewormer">Dewormer</option>
+              <% [
+                "pet grooming", "pet accessories", "pet essentials", "pet medication", "pet vaccination",
+                "heartworm preventive", "anti-thick and flea preventive", "injectable meds", "clinic needs",
+                "surgery", "cbc", "blood chemistry", "gas anesthesia", "cbc/blood chemistry", "urinalysis",
+                "ultrasounds", "blood collection", "syringe", "needle", "test kits", "petfood", "dewormer"
+              ].forEach(cat => { %>
+                <option value="<%= cat %>"><%= cat[0].toUpperCase()+cat.slice(1) %></option>
+              <% }); %>
             </select>
           </div>
-          <div class="form-group">
-            <label for="editPrice">Price (in Peso)</label>
-            <input type="number" step="0.01" class="form-control" id="editPrice" name="price" required>
+        </div>
+        <div class="section-title">Inventory & Expiration</div>
+        <div class="form-row">
+          <div class="form-group col-md-4">
+            <label for="itemPrice">Price (₱)</label>
+            <input type="number" step="0.01" class="form-control" id="itemPrice" name="price" required min="0">
           </div>
-          <div class="form-group">
-            <label for="editQuantity">Quantity</label>
-            <input type="number" class="form-control" id="editQuantity" name="quantity" required>
+          <div class="form-group col-md-4">
+            <label for="itemQuantity">Quantity</label>
+            <input type="number" class="form-control" id="itemQuantity" name="quantity" required min="1">
           </div>
-          <div class="form-group">
-            <label>Expiration Dates (Optional)</label>
-            <div id="editExpirationDatesContainer"></div>
+          <div class="form-group col-md-4">
+            <label>Expiration Dates</label>
+            <div class="expiration-inputs" id="expirationDatesContainer">
+              <small class="text-muted">Optional • Auto-generate based on quantity</small>
+            </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Save Changes</button>
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">Add Item</button>
+        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- Modal for Viewing Expiration Dates -->
-<div class="modal fade" id="viewDatesModal" tabindex="-1" role="dialog" aria-labelledby="viewDatesModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
+<!-- EDIT MODAL (Redesigned for Consistency) -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <form id="editForm" class="modal-content inventory-modal">
       <div class="modal-header">
-        <h5 class="modal-title" id="viewDatesModalLabel">Expiration Dates</h5>
+        <h5 class="modal-title" id="editModalLabel">Edit Inventory Item</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
+          <span style="font-size:2rem;">&times;</span>
         </button>
       </div>
-      <div class="modal-body" id="viewDatesContent">
-        <!-- Expiration dates will be shown here -->
+      <div class="modal-body">
+        <input type="hidden" id="editId" name="id">
+        <div class="section-title">Basic Details</div>
+        <div class="form-row">
+          <div class="form-group col-md-6">
+            <label for="editName">Item Name</label>
+            <input type="text" class="form-control" id="editName" name="name" required autocomplete="off">
+          </div>
+          <div class="form-group col-md-6">
+            <label for="editCategory">Category</label>
+            <select class="form-control" id="editCategory" name="category" required>
+              <option value="">Select Category</option>
+              <% [
+                "pet grooming", "pet accessories", "pet essentials", "pet medication", "pet vaccination",
+                "heartworm preventive", "anti-thick and flea preventive", "injectable meds", "clinic needs",
+                "surgery", "cbc", "blood chemistry", "gas anesthesia", "cbc/blood chemistry", "urinalysis",
+                "ultrasounds", "blood collection", "syringe", "needle", "test kits", "petfood", "dewormer"
+              ].forEach(cat => { %>
+                <option value="<%= cat %>"><%= cat[0].toUpperCase()+cat.slice(1) %></option>
+              <% }); %>
+            </select>
+          </div>
+        </div>
+        <div class="section-title">Inventory & Expiration</div>
+        <div class="form-row">
+          <div class="form-group col-md-4">
+            <label for="editPrice">Price (₱)</label>
+            <input type="number" step="0.01" class="form-control" id="editPrice" name="price" required min="0">
+          </div>
+          <div class="form-group col-md-4">
+            <label for="editQuantity">Quantity</label>
+            <input type="number" class="form-control" id="editQuantity" name="quantity" required min="1">
+          </div>
+          <div class="form-group col-md-4">
+            <label>Expiration Dates</label>
+            <div class="expiration-inputs" id="editExpirationDatesContainer"></div>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Expiry Modal -->
+<div class="modal fade" id="viewDatesModal" tabindex="-1" aria-labelledby="viewDatesModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#e5f1fb;">
+        <h5 class="modal-title" id="viewDatesModalLabel" style="color:#1669bb;">Expiration Dates</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span style="font-size:2rem;">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id="viewDatesContent"></div>
+      <div class="modal-footer" style="background:#e5f1fb;">
+        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- jQuery and Bootstrap JS -->
+<!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-<!-- SweetAlert2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 <script>
-  (function(){
-    // Global pagination variables (scoped locally)
-    let currentPage = 1;
-    const itemsPerPage = 10;
+(function(){
+  let currentPage = 1, itemsPerPage = 10, allInventory = [];
+  const LOW_STOCK = 10;
 
-    // ------------------------------
-    // Dynamic Expiration Date Inputs for Add Form
-    // ------------------------------
-    $('#itemQuantity').on('change', function() {
-      let qty = parseInt($(this).val()) || 0;
-      let container = $('#expirationDatesContainer');
-      container.empty();
-      for (let i = 1; i <= qty; i++) {
-        container.append(
-          '<label>Expiration Date ' + i + '</label>' +
-          '<input type="date" class="form-control mb-2" name="expirationDates[]">'
-        );
-      }
+  // --- Analytics & Line Chart ---
+  function renderAnalytics(items) {
+    const total = items.length;
+    const lowStock = items.filter(i => i.quantity <= LOW_STOCK).length;
+    const nearExpiry = items.filter(i =>
+      (i.expirationDates||[]).some(date=>{
+        let d = new Date(date), diff = (d-new Date())/(1000*60*60*24);
+        return diff > 0 && diff <= 30;
+      })
+    ).length;
+    const totalValue = items.reduce((sum, i) => sum + (i.price*i.quantity), 0);
+    $('#analytics-cards').html(`
+      <div class="analytic-card"><div>Total Items</div><span>${total}</span></div>
+      <div class="analytic-card"><div>Low Stock (&le;${LOW_STOCK})</div><span>${lowStock}</span></div>
+      <div class="analytic-card"><div>Near Expiry (30d)</div><span>${nearExpiry}</span></div>
+      <div class="analytic-card"><div>Total Value (₱)</div><span>₱${totalValue.toLocaleString()}</span></div>
+    `);
+
+    // --- Blue Line Chart: Inventory Trend ---
+    let months = [], stockTotals = {};
+    for(let i=0; i<6; i++) {
+      let dt = new Date();
+      dt.setMonth(dt.getMonth() - (5-i));
+      let label = dt.toLocaleString('default', { month: 'short', year: '2-digit' });
+      months.push(label);
+      stockTotals[label] = 0;
+    }
+    items.forEach(item=>{
+      let date = item.createdAt ? new Date(item.createdAt) : new Date();
+      let label = date.toLocaleString('default', { month: 'short', year: '2-digit' });
+      if (!stockTotals[label]) stockTotals[label] = 0;
+      stockTotals[label] += Number(item.quantity) || 0;
     });
+    let stockData = months.map(m=>stockTotals[m]||0);
 
-    // ------------------------------
-    // Dynamic Expiration Date Inputs for Edit Form
-    // ------------------------------
-    $('#editQuantity').on('change', function() {
-      let qty = parseInt($(this).val()) || 0;
-      let container = $('#editExpirationDatesContainer');
-      // Get current values if any
-      let currentDates = [];
-      container.find('input').each(function() {
-        currentDates.push($(this).val());
-      });
-      container.empty();
-      for (let i = 1; i <= qty; i++) {
-        let val = currentDates[i - 1] || "";
-        container.append(
-          '<label>Expiration Date ' + i + '</label>' +
-          '<input type="date" class="form-control mb-2" name="expirationDates[]" value="'+ val +'">'
-        );
-      }
-    });
-
-    // ------------------------------
-    // Render Inventory Table with Search, Category Filter, and Pagination
-    // ------------------------------
-    function loadInventory() {
-      $.ajax({
-        url: '/admin/inventory/list',
-        method: 'GET',
-        dataType: 'json',
-        success: function(data) {
-          renderTable(data);
+    let ctx = document.getElementById('inventoryLineChart').getContext('2d');
+    if(window.invLineChart) window.invLineChart.destroy();
+    window.invLineChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: months,
+        datasets: [{
+          label: 'Total Stock',
+          data: stockData,
+          fill: true,
+          backgroundColor: 'rgba(22,105,187,0.08)',
+          borderColor: '#1669bb',
+          pointBackgroundColor: '#1669bb',
+          pointBorderColor: '#fff',
+          tension: 0.35
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: true }
         },
-        error: function(err) {
+        scales: {
+          x: { grid: { color: '#e5f1fb' }, ticks: { color: '#1669bb', font: { weight: 500 } } },
+          y: { grid: { color: '#e5f1fb' }, ticks: { color: '#1669bb' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // --- Table Render ---
+  function renderTable(data) {
+    // Filters
+    const searchText = $('#searchBar').val().toLowerCase();
+    const categoryFilter = $('#categoryFilter').val();
+    const statusFilter = $('#statusFilter').val();
+    let filtered = data.filter(item =>
+      item.name.toLowerCase().includes(searchText) &&
+      (!categoryFilter || item.category === categoryFilter)
+    );
+    if(statusFilter === "lowstock") {
+      filtered = filtered.filter(item => item.quantity <= LOW_STOCK);
+    }
+    if(statusFilter === "nearexpiry") {
+      filtered = filtered.filter(item =>
+        (item.expirationDates||[]).some(date=>{
+          let d = new Date(date), diff = (d-new Date())/(1000*60*60*24);
+          return diff > 0 && diff <= 30;
+        })
+      );
+    }
+
+    // Pagination
+    const total = filtered.length, totalPages = Math.ceil(total/itemsPerPage);
+    if(currentPage>totalPages) currentPage=totalPages||1;
+    let paginated = filtered.slice((currentPage-1)*itemsPerPage, currentPage*itemsPerPage);
+    let tbody = '';
+    paginated.forEach(item=>{
+      let status = '';
+      if(item.quantity <= LOW_STOCK) status += `<span class="badge badge-low mr-1">Low</span>`;
+      else status += `<span class="badge badge-instock mr-1">In Stock</span>`;
+      if((item.expirationDates||[]).some(date=>{
+        let d = new Date(date), diff = (d-new Date())/(1000*60*60*24);
+        return diff > 0 && diff <= 30;
+      })) status += `<span class="badge badge-expiry">Expiring</span>`;
+      let expDates = (item.expirationDates||[]).length
+        ? `<button class="btn btn-sm btn-outline-info view-dates-btn" data-expdates='${JSON.stringify(item.expirationDates).replace(/"/g,'&quot;')}'><span class="fa fa-calendar"></span> View</button>`
+        : 'N/A';
+      tbody += `
+      <tr>
+        <td>${item.name}</td>
+        <td>${item.category}</td>
+        <td>₱${parseFloat(item.price).toFixed(2)}</td>
+        <td>${item.quantity}</td>
+        <td>${status}</td>
+        <td>${expDates}</td>
+        <td>
+          <button class="btn btn-sm btn-info edit-btn" data-id="${item._id}">Edit</button>
+          <button class="btn btn-sm btn-danger delete-btn" data-id="${item._id}">Delete</button>
+        </td>
+      </tr>
+      `;
+    });
+    $('#inventoryTableBody').html(tbody);
+    renderPagination(totalPages);
+    renderAnalytics(filtered.length ? filtered : data);
+  }
+  function renderPagination(totalPages) {
+    let html = '';
+    if(totalPages<=1){$('#paginationControls').html('');return;}
+    html += `<li class="page-item ${currentPage===1?'disabled':''}"><a class="page-link" href="#" data-page="${currentPage-1}">Previous</a></li>`;
+    for(let i=1;i<=totalPages;i++) html += `<li class="page-item ${currentPage===i?'active':''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+    html += `<li class="page-item ${currentPage===totalPages?'disabled':''}"><a class="page-link" href="#" data-page="${currentPage+1}">Next</a></li>`;
+    $('#paginationControls').html(html);
+  }
+  function loadInventory() {
+    $.get('/admin/inventory/list', d=>{
+      allInventory = d;
+      renderTable(d);
+    });
+  }
+
+  // Search/filter
+  $('#searchBar,#categoryFilter,#statusFilter').on('keyup change',()=>{currentPage=1;renderTable(allInventory);});
+  $('#paginationControls').on('click','a',function(e){
+    e.preventDefault();
+    let page = parseInt($(this).data('page'));
+    if(!isNaN(page)) { currentPage=page; renderTable(allInventory); }
+  });
+
+  // Add inventory - FIXED: freeze bug
+  $('#inventoryForm').on('submit', function(e){
+    e.preventDefault();
+    var form = this;
+    $.post('/admin/inventory/add', $(form).serialize())
+      .done(function(res){
+        $('#addModal').modal('hide');
+        setTimeout(function() {
           Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Error loading inventory items.'
-          });
-        }
-      });
-    }
-
-    function renderTable(data) {
-      // Apply search filter and category filter
-      const searchText = $('#searchBar').val().toLowerCase();
-      const categoryFilter = $('#categoryFilter').val();
-      let filteredData = data.filter(item => {
-        const matchName = item.name.toLowerCase().includes(searchText);
-        const matchCategory = categoryFilter === "" || item.category === categoryFilter;
-        return matchName && matchCategory;
-      });
-      
-      // Calculate pagination values
-      const totalItems = filteredData.length;
-      const totalPages = Math.ceil(totalItems / itemsPerPage);
-      if(currentPage > totalPages) currentPage = totalPages || 1;
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
-      
-      let tbody = '';
-      paginatedData.forEach(item => {
-        let expDates = item.expirationDates || [];
-        // Count near expiry dates (within 30 days)
-        let nearExpiryCount = expDates.filter(dateStr => {
-          let expDate = new Date(dateStr);
-          let diff = (expDate - new Date()) / (1000 * 60 * 60 * 24);
-          return diff <= 30;
-        }).length;
-        
-        // "View Dates" button if expiration dates exist
-        let viewDatesBtn = expDates.length > 0 ?
-          `<button class="btn btn-sm btn-secondary view-dates-btn" data-expdates='${JSON.stringify(expDates).replace(/"/g, '&quot;')}'>View Dates</button>`
-          : "N/A";
-        
-        tbody += `<tr>
-                    <td>${item.name}</td>
-                    <td>${item.category}</td>
-                    <td>₱${parseFloat(item.price).toFixed(2)}</td>
-                    <td>${item.quantity}</td>
-                    <td>${viewDatesBtn}</td>
-                    <td>${nearExpiryCount}</td>
-                    <td>
-                      <button class="btn btn-sm btn-info edit-btn" data-id="${item._id}">Edit</button>
-                      <button class="btn btn-sm btn-danger delete-btn" data-id="${item._id}">Delete</button>
-                    </td>
-                  </tr>`;
-      });
-      $('#inventoryTable tbody').html(tbody);
-      renderPagination(totalPages);
-    }
-
-    function renderPagination(totalPages) {
-      let paginationHTML = '';
-      if(totalPages <= 1) {
-        $('#paginationControls').html('');
-        return;
-      }
-      // Previous button
-      paginationHTML += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-                           <a class="page-link" href="#" data-page="${currentPage - 1}">Previous</a>
-                         </li>`;
-      // Page numbers
-      for(let i = 1; i <= totalPages; i++){
-        paginationHTML += `<li class="page-item ${currentPage === i ? 'active' : ''}">
-                             <a class="page-link" href="#" data-page="${i}">${i}</a>
-                           </li>`;
-      }
-      // Next button
-      paginationHTML += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-                           <a class="page-link" href="#" data-page="${currentPage + 1}">Next</a>
-                         </li>`;
-      $('#paginationControls').html(paginationHTML);
-    }
-
-    // ------------------------------
-    // Document Ready and Event Handlers
-    // ------------------------------
-    $(document).ready(function() {
-      loadInventory();
-
-      // Filter when search text or category filter changes
-      $('#searchBar, #categoryFilter').on('keyup change', function() {
-        currentPage = 1;
-        loadInventory();
-      });
-
-      // Pagination click handler
-      $('#paginationControls').on('click', 'a', function(e) {
-        e.preventDefault();
-        const page = parseInt($(this).data('page'));
-        if(!isNaN(page)) {
-          currentPage = page;
-          loadInventory();
-        }
-      });
-
-      // Add Inventory Form submission
-      $('#inventoryForm').on('submit', function(e) {
-        e.preventDefault();
-        $.ajax({
-          url: '/admin/inventory/add',
-          method: 'POST',
-          data: $(this).serialize(),
-          success: function(response) {
-            Swal.fire({
-              icon: 'success',
-              title: 'Success',
-              text: response.message
-            });
-            loadInventory();
-            $('#inventoryForm')[0].reset();
+            icon:'success',
+            title:'Success',
+            text:res.message,
+            timer:1500,
+            showConfirmButton:false
+          }).then(()=>{
+            form.reset();
             $('#expirationDatesContainer').empty();
-          },
-          error: function(err) {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: 'Error adding inventory item.'
-            });
-          }
-        });
-      });
-
-      // Edit button click handler
-      $('#inventoryTable').on('click', '.edit-btn', function() {
-        var id = $(this).data('id');
-        $.ajax({
-          url: '/admin/inventory/item/' + id,
-          method: 'GET',
-          success: function(item) {
-            $('#editId').val(item._id);
-            $('#editName').val(item.name);
-            $('#editCategory').val(item.category);
-            $('#editPrice').val(item.price);
-            $('#editQuantity').val(item.quantity);
-            let container = $('#editExpirationDatesContainer');
-            container.empty();
-            if(item.expirationDates && item.expirationDates.length > 0) {
-              item.expirationDates.forEach(function(date, index) {
-                container.append(
-                  '<label>Expiration Date ' + (index+1) + '</label>' +
-                  '<input type="date" class="form-control mb-2" name="expirationDates[]" value="'+ date.split("T")[0] +'">'
-                );
-              });
-            }
-            $('#editModal').modal('show');
-          },
-          error: function() {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: 'Error fetching inventory item details.'
-            });
-          }
-        });
-      });
-
-      // Edit form submission
-      $('#editForm').on('submit', function(e) {
-        e.preventDefault();
-        $.ajax({
-          url: '/admin/inventory/edit',
-          method: 'POST',
-          data: $(this).serialize(),
-          success: function(response) {
-            Swal.fire({
-              icon: 'success',
-              title: 'Success',
-              text: response.message
-            });
-            $('#editModal').modal('hide');
             loadInventory();
-          },
-          error: function() {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: 'Error updating inventory item.'
-            });
-          }
-        });
+          });
+          $('.modal-backdrop').remove();
+          $('body').removeClass('modal-open');
+          $('body').css('padding-right','');
+        }, 400);
+      })
+      .fail(function(){
+        Swal.fire('Error','Error adding item.','error');
       });
+  });
 
-      // Delete button handler with SweetAlert2 confirmation
-      $('#inventoryTable').on('click', '.delete-btn', function() {
-        var id = $(this).data('id');
-        Swal.fire({
-          title: 'Are you sure you want to delete this inventory item?',
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Yes, delete it!',
-          cancelButtonText: 'Cancel'
-        }).then((result) => {
-          if (result.isConfirmed) {
-            $.ajax({
-              url: '/admin/inventory/delete',
-              method: 'POST',
-              data: { id: id },
-              success: function(response) {
-                Swal.fire({
-                  icon: 'success',
-                  title: 'Deleted!',
-                  text: response.message
-                });
-                loadInventory();
-              },
-              error: function() {
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Error',
-                  text: 'Error deleting inventory item.'
-                });
-              }
-            });
-          }
-        });
-      });
+  // Dynamic expiration dates for add
+  $('#itemQuantity').on('change', function() {
+    let qty = parseInt($(this).val())||0, c = $('#expirationDatesContainer');
+    c.empty();
+    for(let i=1;i<=qty;i++)
+      c.append('<label>Expiration Date '+i+'</label><input type="date" class="form-control mb-2" name="expirationDates[]">');
+  });
 
-      // View Dates button handler
-      $(document).on('click', '.view-dates-btn', function() {
-        let expDates = $(this).data('expdates');
-        if (!Array.isArray(expDates)) {
-          try {
-            expDates = JSON.parse(expDates);
-          } catch(e) { expDates = []; }
-        }
-        let content = '';
-        expDates.forEach((date, index) => {
-          let formatted = new Date(date).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'});
-          content += `<p>Expiration Date ${index+1}: ${formatted}</p>`;
-        });
-        $('#viewDatesContent').html(content);
-        $('#viewDatesModal').modal('show');
-      });
+  // Edit inventory - modal-based
+  $('#inventoryTableBody').on('click','.edit-btn',function(){
+    let id=$(this).data('id');
+    $.get('/admin/inventory/item/'+id, item=>{
+      $('#editId').val(item._id);
+      $('#editName').val(item.name);
+      $('#editCategory').val(item.category);
+      $('#editPrice').val(item.price);
+      $('#editQuantity').val(item.quantity);
+      let c = $('#editExpirationDatesContainer'); c.empty();
+      let qty = item.quantity || 0;
+      for(let i=0;i<qty;i++) {
+        let val = (item.expirationDates&&item.expirationDates[i]) ? item.expirationDates[i].split("T")[0] : "";
+        c.append('<label>Expiration Date '+(i+1)+'</label><input type="date" class="form-control mb-2" name="expirationDates[]" value="'+val+'">');
+      }
+      $('#editModal').modal('show');
+    }).fail(()=>Swal.fire('Error','Error fetching item.','error'));
+  });
+  $('#editQuantity').on('change', function() {
+    let qty = parseInt($(this).val()) || 0;
+    let container = $('#editExpirationDatesContainer');
+    let currentDates = [];
+    container.find('input').each(function() {
+      currentDates.push($(this).val());
     });
+    container.empty();
+    for (let i = 1; i <= qty; i++) {
+      let val = currentDates[i - 1] || "";
+      container.append(
+        '<label>Expiration Date ' + i + '</label>' +
+        '<input type="date" class="form-control mb-2" name="expirationDates[]" value="'+ val +'">'
+      );
+    }
+  });
+  $('#editForm').on('submit',function(e){
+    e.preventDefault();
+    $.post('/admin/inventory/edit',$(this).serialize())
+      .done(res=>{
+        Swal.fire('Success',res.message,'success');
+        $('#editModal').modal('hide');
+        setTimeout(loadInventory, 400);
+      }).fail(()=>Swal.fire('Error','Error updating item.','error'));
+  });
 
-    // Reload inventory when navigating back (pageshow event)
-    $(window).on('pageshow', function(e) {
-      if (e.originalEvent.persisted) {
-        loadInventory();
+  // Delete
+  $('#inventoryTableBody').on('click','.delete-btn',function(){
+    let id=$(this).data('id');
+    Swal.fire({
+      title:'Are you sure to delete this item?',
+      icon:'warning',
+      showCancelButton:true
+    }).then(r=>{
+      if(r.isConfirmed){
+        $.post('/admin/inventory/delete',{id},res=>{
+          Swal.fire('Deleted',res.message,'success');
+          loadInventory();
+        }).fail(()=>Swal.fire('Error','Error deleting item.','error'));
       }
     });
-  })();
+  });
+
+  // View Expiration Dates
+  $(document).on('click', '.view-dates-btn', function() {
+    let expDates = $(this).data('expdates');
+    if (!Array.isArray(expDates)) {
+      try { expDates = JSON.parse(expDates); } catch(e) { expDates = []; }
+    }
+    let content = '';
+    expDates.forEach((date, i) => {
+      let formatted = new Date(date).toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
+      content += `<p>Expiration Date ${i+1}: ${formatted}</p>`;
+    });
+    $('#viewDatesContent').html(content);
+    $('#viewDatesModal').modal('show');
+  });
+
+  // Initial Load
+  $(function(){loadInventory();});
+  $(window).on('pageshow', function(e){if(e.originalEvent.persisted)loadInventory();});
+})();
 </script>
 </body>
 </html>
