@@ -26,34 +26,43 @@ data-threshold="<%= threshold %>">
 
 
 
-        <!-- Horizontal pet selection -->
-        <div class="horizontal-scroll">
-          <% if (pets && pets.length > 0) { %>
-            <% pets.forEach(function(pet) { %>
-              <% if (!pet.addedFromReservation) { %>
-                <div class="vetcard" data-petid="<%= pet._id %>" data-petname="<%= pet.petName %>">
-                  <div class="circle">
-                    <% if (pet.petPic) { %>
-                      <img src="<%= pet.petPic %>" 
-                           alt="<%= pet.petName %>" 
-                           style="width:50px; height:50px; object-fit:cover; border-radius:50%;">
-                    <% } else { %>
-                      <div class="default-pet-icon" style="width:50px; height:50px; display:flex; align-items:center; justify-content:center; border:2px solid #4B9CD3; border-radius:50%;">
-                        <i class="fa-solid fa-paw"></i>
-                      </div>
-                    <% } %>
-                    <div class="checkmark-overlay">
-                      <i class="fas fa-check"></i>
-                    </div>
-                  </div>
-                  <p><%= pet.petName %></p>
-                </div>
-              <% } %>
-            <% }); %>
+       <!-- Horizontal pet selection -->
+<div class="horizontal-scroll">
+  <% if (pets && pets.length > 0) { %>
+    <% pets.forEach(function(pet) { %>
+      <div class="vetcard"
+           data-petid="<%= pet._id %>"
+           data-petname="<%= pet.petName %>">
+        <div class="circle">
+          <% if (pet.petPic) { %>
+            <img src="<%= pet.petPic %>"
+                 alt="<%= pet.petName %>"
+                 style="width:50px; height:50px; object-fit:cover; border-radius:50%;">
           <% } else { %>
-            <p>No pets available. Please add a pet in the My Pet section.</p>
+            <div class="default-pet-icon"
+                 style="width:50px; height:50px; display:flex;
+                        align-items:center; justify-content:center;
+                        border:2px solid #4B9CD3; border-radius:50%;">
+              <i class="fa-solid fa-paw"></i>
+            </div>
           <% } %>
+          <div class="checkmark-overlay">
+            <i class="fas fa-check"></i>
+          </div>
         </div>
+        <p style="margin:0;">
+          <%= pet.petName %>
+          <% if (pet.addedFromReservation) { %>
+            <br><small class="text-muted">Walk-in</small>
+          <% } %>
+        </p>
+      </div>
+    <% }); %>
+  <% } else { %>
+    <p>No pets available. Please add a pet in the My Pet section.</p>
+  <% } %>
+</div>
+
 
         <p class="mt-2">Selected Pets</p>
         <div id="selectedPetsContainer"></div>
