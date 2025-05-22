@@ -13,6 +13,7 @@ const DashboardSetting = require('../models/dashboardSetting');
 const Joi = require('joi');
 const nodemailer = require('nodemailer');
 const bcrypt = require("bcryptjs");
+const PetList = require('../models/petlist');
 // Helper to send “almost there” warning
 async function sendWarningEmail(toEmail, cancelCount) {
   const transporter = nodemailer.createTransport({
@@ -171,21 +172,55 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
     res.status(500).send("Server error");
   }
 });
+// customerRoutes.js
 
-// My Pet route
+// customerRoutes.js
+
 router.get('/mypet', authMiddleware, async (req, res) => {
   try {
-    const pets = await Pet.find({ owner: req.user.userId, addedFromReservation: { $ne: true } });
+    // 1) fetch real pets
+    const pets = await Pet.find({ owner: req.user.userId }).lean();
+
+    // 2) fetch walk-in entries
+    const petListEntries = await PetList.find({ owner: req.user.userId }).lean();
+
+    // 3) de-dupe by name
+    const existingNames = new Set(pets.map(p => p.petName));
+    const walkInPets = petListEntries
+      .filter(e => !existingNames.has(e.petName))
+      .map(e => ({
+        _id:                    `list-${e._id}`,
+        petName:                e.petName,
+        species:                e.species    || '',
+        breed:                  e.breed      || '',
+        birthday:               '',
+        existingDisease:        '',
+        sex:                    '',
+        petPic:                 '',
+        addedFromReservation:   true
+      }));
+
+    // 4) merge
+    const allPets = [ ...pets, ...walkInPets ];
+
+    // 5) fetch dropdown settings
     let petDetails = await PetDetailsSetting.findOne().lean();
     if (!petDetails) {
       petDetails = { species: [], speciesBreeds: {}, diseases: [], services: [] };
     }
-    res.render('customer/mypet', { pets, petDetails });
+
+    // 6) render **and** pass petListEntries so the template can still see it if it needs to
+    res.render('customer/mypet', {
+      pets:             allPets,
+      petListEntries,              // ← now defined in your EJS
+      petDetails
+    });
   } catch (error) {
     console.error("Error fetching My Pet data:", error);
     res.status(500).send("Server error");
   }
 });
+
 
 // Consult route
 // customerRoutes.js
@@ -491,39 +526,36 @@ router.get('/get-consultation', authMiddleware, validateRequest(reservationIdSch
 
 router.get('/get-pet-history', authMiddleware, async (req, res) => {
   try {
-    const { petId, petName, addedFromReservation } = req.query;
-    if (!petId && !petName) {
-      return res.json({ success: false, message: 'petId or petName is required' });
-    }
-    
-    let query = { status: 'Done' };
+    let { petId, petName, addedFromReservation } = req.query;
 
-    // For customers, if the pet was manually added (addedFromReservation = "false")
-    // or no petId is provided, match by petName and restrict to the logged-in owner.
-    if (addedFromReservation === 'false' || !petId) {
+    // if you see your synthetic prefix, or the flag is false, do name-only:
+    const isWalkIn = addedFromReservation === 'true'
+                   && petId
+                   && String(petId).startsWith('list-');
+
+    let query = { status: 'Done', owner: req.user.userId };
+
+    if (addedFromReservation === 'false' || !petId || isWalkIn) {
+      // always match by petName only
       query['pets.petName'] = petName;
-      query.owner = req.user.userId;
     } else {
-      // If the pet was added via a reservation, try to match either by petId or petName,
-      // still ensuring it belongs to the logged-in customer.
+      // only when it's a “real” Pet._id that we can cast:
       query.$or = [
         { 'pets.petId': petId },
         { 'pets.petName': petName }
       ];
-      query.owner = req.user.userId;
     }
-    
+
     const history = await Reservation.find(query)
-      .populate('doctor', 'username')
-      .lean();
-      
+                                     .populate('doctor', 'username')
+                                     .lean();
     return res.json({ success: true, history });
-  } catch (error) {
-    console.error("Error fetching pet history (customer):", error);
+  }
+  catch (err) {
+    console.error("Error fetching pet history (customer):", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 });
-
 
 // In customerRoutes.js, after your other routes:
 
@@ -627,6 +659,18 @@ router.get('/consult/appointmentCount', authMiddleware, async (req, res) => {
     status: { $in: ['Pending','Approved'] }
   });
   res.json({ count });
+});
+// in customerRoutes.js, above your module.exports
+router.get('/get-pets', authMiddleware, async (req, res) => {
+  try {
+    const pets = await Pet.find({ owner: req.user.userId })
+                          .lean()
+                          .sort({ petName: 1 });
+    res.json({ success: true, pets });
+  } catch (err) {
+    console.error("Error fetching pets:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
 });
 
 module.exports = router;
