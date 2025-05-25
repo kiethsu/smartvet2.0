@@ -14,6 +14,9 @@ const Joi = require('joi');
 const nodemailer = require('nodemailer');
 const bcrypt = require("bcryptjs");
 const PetList = require('../models/petlist');
+const Consultation = require('../models/consultation');
+const pdf = require('html-pdf');
+
 // Helper to send “almost there” warning
 async function sendWarningEmail(toEmail, cancelCount) {
   const transporter = nodemailer.createTransport({
@@ -499,30 +502,44 @@ router.get('/get-pet-details', authMiddleware, async (req, res) => {
   }
 });
 
-// Get consultation details for a reservation (with validation)
-router.get('/get-consultation', authMiddleware, validateRequest(reservationIdSchema, 'query'), async (req, res) => {
-  try {
-    const { reservationId } = req.query;
-    const reservation = await Reservation.findById(reservationId)
-    .populate('doctor', 'username') // Populate doctor's username
-    .lean();    if (!reservation) {
-      return res.status(404).json({ success: false, message: 'Reservation not found.' });
+// Get consultation details for a reservation
+router.get(
+  '/get-consultation',
+  authMiddleware,
+  validateRequest(reservationIdSchema, 'query'),
+  async (req, res) => {
+    try {
+      const { reservationId } = req.query;
+
+      // 1) fetch the reservation
+      const reservation = await Reservation.findById(reservationId)
+        .populate('doctor', 'username')
+        .lean();
+      if (!reservation) {
+        return res.status(404).json({ success: false, message: 'Reservation not found.' });
+      }
+
+      // 2) fetch the consultation
+      const consult = await Consultation.findOne({ reservation: reservationId }).lean();
+
+      // 3) merge its fields onto reservation
+      if (consult) {
+        reservation.physicalExam     = consult.physicalExam;
+        reservation.diagnosis        = consult.diagnosis;
+        reservation.services         = consult.services;
+        reservation.medications      = consult.medications;
+        reservation.notes            = consult.notes;
+        reservation.confinementStatus = consult.confinementStatus;
+      }
+
+      return res.json({ success: true, reservation });
+    } catch (error) {
+      console.error("Error fetching consultation details:", error);
+      return res.status(500).json({ success: false, message: 'Server error' });
     }
-    if (reservation.medications && reservation.medications.length > 0) {
-      reservation.medications = reservation.medications.map(med => {
-        if (!med.quantity) {
-          med.quantity = "N/A";
-        }
-        return med;
-      });
-    }
-    
-    res.json({ success: true, reservation });
-  } catch (error) {
-    console.error("Error fetching consultation details:", error);
-    res.status(500).json({ success: false, message: 'Server error' });
   }
-});
+);
+
 
 router.get('/get-pet-history', authMiddleware, async (req, res) => {
   try {
@@ -670,6 +687,43 @@ router.get('/get-pets', authMiddleware, async (req, res) => {
   } catch (err) {
     console.error("Error fetching pets:", err);
     res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+router.get('/prescription/:reservationId', authMiddleware, async (req, res) => {
+  try {
+   const { reservationId } = req.params;
+    const reservation = await Reservation.findById(reservationId)
+      .populate('doctor', 'username')
+      .lean();
+    if (!reservation) return res.status(404).send('Reservation not found');
+
+    const consult = await Consultation.findOne({ reservation: reservationId }).lean();
+    if (consult) reservation.medications = consult.medications;
+
+    // render the EJS to a HTML string
+    res.render('customer/prescription', { reservation }, (err, html) => {
+      if (err) {
+       console.error('EJS render error:', err);
+        return res.status(500).send('Error rendering prescription');
+      }
+      // convert HTML to PDF
+      pdf.create(html, { format: 'A4' }).toStream((err, stream) => {
+        if (err) {
+         console.error('PDF creation error:', err);
+          return res.status(500).send('Error generating PDF');
+        }
+        // set headers so browser will download
+        res.setHeader('Content-Type', 'application/pdf');
+       res.setHeader(
+          'Content-Disposition',
+         `attachment; filename=prescription_${reservationId}.pdf`
+        );
+        stream.pipe(res);
+      });
+    });
+  } catch (err) {
+    console.error('Prescription route error:', err);
+    res.status(500).send('Server error generating prescription');
   }
 });
 
