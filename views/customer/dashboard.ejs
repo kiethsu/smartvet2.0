@@ -19,7 +19,7 @@
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    html, body {
+       html, body {
       height: 100%;
       margin: 0;
       overflow: hidden;
@@ -96,6 +96,95 @@
         font-size: 1.5rem !important;
       }
     }
+    /* Improved modal details layout */
+    #recentVisitDetails .detail-row {
+      display: flex;
+      margin-bottom: .75rem;
+    }
+    #recentVisitDetails .detail-label {
+      width: 35%;
+      font-weight: 700;
+      color: #1669bb;
+    }
+    #recentVisitDetails .detail-value {
+      width: 65%;
+    }
+    /* ---------- Services Table Styling ---------- */
+    #recentVisitDetails .services-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1rem;
+    }
+    .services-table th,
+    .services-table td {
+      border: 1px solid #dee2e6;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    .services-table thead {
+      background-color: #4B9CD3;
+      color: #fff;
+    }
+    /* ---------- “Notebook” Note Box ---------- */
+    .note-box {
+      background: url('https://i.imgur.com/6X9X5qg.png') repeat-y;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: 'Courier New', Courier, monospace;
+      position: relative;
+    }
+    .note-box:before {
+      content: '';
+      position: absolute;
+      left: 10px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #ff6347;
+    }
+    /* ---------- Physical Exam Table Styling ---------- */
+#recentVisitDetails .physical-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+.physical-table th,
+.physical-table td {
+  border: 1px solid #dee2e6;
+  padding: 0.5rem;
+  text-align: left;
+}
+.physical-table thead {
+  background-color: #4B9CD3;
+  color: #fff;
+}
+/* ---------- Diagnosis Card Styling ---------- */
+.diagnosis-card {
+  background: #f1f9ff;
+  border-left: 4px solid #4B9CD3;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+}
+
+/* ---------- Medication Table Styling ---------- */
+#recentVisitDetails .medication-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+.medication-table th,
+.medication-table td {
+  border: 1px solid #dee2e6;
+  padding: 0.5rem;
+  text-align: left;
+}
+.medication-table thead {
+  background-color: #4B9CD3;
+  color: #fff;
+}
   </style>
 </head>
 <body>
@@ -213,80 +302,232 @@
         </div>
       </div>
 
+
       <!-- Recent Visit Details Modal -->
       <div class="modal fade" id="recentVisitModal" tabindex="-1" role="dialog"
            aria-labelledby="recentVisitModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
           <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header bg-primary text-white">
               <h5 class="modal-title" id="recentVisitModalLabel">Visit Details</h5>
-              <button type="button" class="close" data-dismiss="modal">
+              <button type="button" class="close text-white" data-dismiss="modal">
                 <span>&times;</span>
               </button>
             </div>
-            <div class="modal-body" id="recentVisitDetails">
-              <!-- loaded via AJAX -->
+            <div class="modal-body p-4" id="recentVisitDetails">
+              <!-- Dynamically injected -->
             </div>
             <div class="modal-footer">
-              <button class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button class="btn btn-secondary px-4" data-dismiss="modal">Close</button>
             </div>
           </div>
         </div>
       </div>
 
+
     </div>
   </div>
 
-  <!-- Scripts -->
-  <script src="/path/to/jquery.js"></script>
-  <script src="/path/to/bootstrap.js"></script>
-  <script>
-    window.viewRecentVisit = function(id) {
-      $.ajax({
-        url: '/customer/get-consultation',
-        method: 'GET',
-        data: { reservationId: id },
-        success(response) {
-          if (!response.success) {
-            return alert(response.message);
-          }
-          let html = '';
-          if (response.reservation.pets.length) {
-            html += '<strong>Pet(s):</strong> '
-                  + response.reservation.pets.map(p => p.petName).join(', ') + '<br>';
-          }
-          if (response.reservation.concerns) {
-            html += '<strong>Concern:</strong> ' + response.reservation.concerns + '<br>';
-          }
-          html += '<hr><strong>Notes:</strong><br>'
-               + (response.reservation.consultationNotes || 'N/A') + '<br>';
-          if (response.reservation.medications.length) {
-            html += '<hr><strong>Medications:</strong><br>';
-            response.reservation.medications.forEach(m => {
-              html += `Name: ${m.medicationName}<br>`
-                   + `Dosage: ${m.dosage}<br>`
-                   + `Frequency: ${m.frequency}<br>`;
-              if (m.adminTime) {
-                html += `Time: ${m.adminTime}<br>`;
-              }
-              if (m.additionalInstructions) {
-                html += `Instructions: ${m.additionalInstructions}<br>`;
-              }
-              html += '<hr>';
-            });
-          }
-          if (response.reservation.doctor) {
-            html += '<strong>Doctor:</strong> '
-                 + response.reservation.doctor.username + '<br>';
-          }
-          $('#recentVisitDetails').html(html);
-          $('#recentVisitModal').modal('show');
-        },
-        error() {
-          alert('Server error loading visit details.');
+<script src="/path/to/jquery.js"></script>
+<script src="/path/to/bootstrap.js"></script>
+<script>
+  // client-side date helper
+  function formatVisitDate(date) {
+    const d     = new Date(date);
+    const month = d.toLocaleString('en-US', { month: 'long' }).toLowerCase();
+    const day   = d.getDate();
+    const year  = d.getFullYear();
+    return `${month} ${day} ${year}`;
+  }
+
+  window.viewRecentVisit = function(id) {
+    $.ajax({
+      url: '/customer/get-consultation',
+      method: 'GET',
+      data: { reservationId: id },
+      success(response) {
+        if (!response.success) return alert(response.message);
+
+        const r = response.reservation;
+        let html = '<div class="container-fluid">';
+
+        // Pets
+        html +=
+          '<div class="detail-row">' +
+            '<div class="detail-label">Pet(s):</div>' +
+            '<div class="detail-value">' +
+              (r.pets.map(p => p.petName).join(', ') || 'N/A') +
+            '</div>' +
+          '</div>';
+
+        // Concern
+        html +=
+          '<div class="detail-row">' +
+            '<div class="detail-label">Concern:</div>' +
+            '<div class="detail-value">' + (r.concerns || 'N/A') + '</div>' +
+          '</div>';
+
+        // Date & Time
+        const visitDate = r.schedule?.scheduleDate || r.createdAt;
+        html +=
+          '<div class="detail-row">' +
+            '<div class="detail-label">Date:</div>' +
+            `<div class="detail-value">${formatVisitDate(visitDate)}</div>` +
+          '</div>' +
+          '<div class="detail-row">' +
+            '<div class="detail-label">Time:</div>' +
+            '<div class="detail-value">' + (r.time || 'N/A') + '</div>' +
+          '</div>';
+
+        // Physical Exam
+        if (r.physicalExam) {
+          html +=
+            '<div class="detail-row">' +
+              '<div class="detail-label">Physical Exam:</div>' +
+              '<div class="detail-value"></div>' +
+            '</div>' +
+            '<table class="physical-table">' +
+              '<thead>' +
+                '<tr><th>Weight</th><th>Temperature</th><th>Observations</th></tr>' +
+              '</thead>' +
+              '<tbody>' +
+                '<tr>' +
+                  '<td>' + (r.physicalExam.weight     || 'N/A') + '</td>' +
+                  '<td>' + (r.physicalExam.temperature || 'N/A') + '</td>' +
+                  '<td>' + (r.physicalExam.observations|| 'N/A') + '</td>' +
+                '</tr>' +
+              '</tbody>' +
+            '</table>';
         }
-      });
-    };
-  </script>
+
+        // Diagnosis
+        if (r.diagnosis) {
+          html +=
+            '<div class="detail-row">' +
+              '<div class="detail-label">Diagnosis:</div>' +
+              '<div class="detail-value"></div>' +
+            '</div>' +
+            '<div class="diagnosis-card">' +
+              r.diagnosis +
+            '</div>';
+        }
+
+        // Services
+        if (r.services?.length) {
+          html +=
+            '<div class="detail-row">' +
+              '<div class="detail-label">Services:</div>' +
+              '<div class="detail-value"></div>' +
+            '</div>' +
+            '<table class="services-table">' +
+              '<thead>' +
+                '<tr><th>Service</th><th>Details</th><th>Download</th></tr>' +
+              '</thead>' +
+              '<tbody>';
+          r.services.forEach(s => {
+            let fileUrl = s.file || '';
+            if (fileUrl) {
+              fileUrl = fileUrl.replace(/^public/, '');
+              if (!fileUrl.startsWith('/')) fileUrl = '/' + fileUrl;
+              if (!/^https?:\/\//.test(fileUrl)) {
+                fileUrl = window.location.origin + fileUrl;
+              }
+            }
+            html +=
+              '<tr>' +
+                '<td>' + s.serviceName + '</td>' +
+                '<td>' + (s.details || '—') + '</td>' +
+                '<td>' + (fileUrl
+                            ? '<a href="' + fileUrl + '" download>Download</a>'
+                            : '—') +
+                '</td>' +
+              '</tr>';
+          });
+          html += '</tbody></table>';
+        }
+
+     // Medications (with Download Prescription button)
+if (r.medications?.length) {
+  html +=
+    '<div class="detail-row">' +
+      '<div class="detail-label">Medications:</div>' +
+      '<div class="detail-value">' +
+        '<button class="btn btn-outline-secondary btn-sm" ' +
+                'onclick="downloadPrescription(\'' + r._id + '\')">' +
+          '<i class="fas fa-file-download"></i> Download Prescription' +
+        '</button>' +
+      '</div>' +
+    '</div>' +
+    '<table class="medication-table">' +
+      '<thead>' +
+        '<tr>' +
+          '<th>Name</th>' +
+          '<th>Qty</th>' +
+          '<th>Dosage</th>' +
+          '<th>Remarks</th>' +
+        '</tr>' +
+      '</thead>' +
+      '<tbody>';
+  r.medications.forEach(m => {
+    html +=
+      '<tr>' +
+        '<td>' + (m.name || m.medicationName || '—') + '</td>' +
+        '<td>' + (m.quantity || '—') + '</td>' +
+        '<td>' + (m.dosage || '—') + '</td>' +
+        '<td>' + (m.remarks || '—') + '</td>' +
+      '</tr>';
+  });
+  html +=
+      '</tbody>' +
+    '</table>';
+}
+
+
+        // Confinement
+        if (r.confinementStatus?.length) {
+          html +=
+            '<div class="detail-row">' +
+              '<div class="detail-label">Confinement:</div>' +
+              '<div class="detail-value">' + r.confinementStatus.join(', ') + '</div>' +
+            '</div>';
+        }
+
+        // Notes
+        if (r.notes) {
+          html +=
+            '<div class="detail-row">' +
+              '<div class="detail-label">Additional Notes:</div>' +
+              '<div class="detail-value">' + r.notes + '</div>' +
+            '</div>';
+        }
+
+        // Doctor
+        if (r.doctor) {
+          html +=
+            '<div class="detail-row">' +
+              '<div class="detail-label">Doctor:</div>' +
+              '<div class="detail-value">' + r.doctor.username + '</div>' +
+            '</div>';
+        }
+
+        html += '</div>'; // container end
+        $('#recentVisitDetails').html(html);
+        $('#recentVisitModal').modal('show');
+      },
+      error() {
+        alert('Server error loading visit details.');
+      }
+    });
+  };
+
+  // opens the prescription in a new tab
+  window.downloadPrescription = function(reservationId) {
+    console.log('Download prescription for', reservationId);
+    window.open('/customer/prescription/' + reservationId, '_blank');
+  };
+</script>
+
+
+
 </body>
 </html>
