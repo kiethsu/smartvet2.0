@@ -4,431 +4,546 @@
   <meta charset="UTF-8">
   <title>Admin Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <!-- Bootstrap CSS -->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-  <!-- Custom CSS for a modern dashboard -->
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <!-- Daterangepicker CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"/>
+
   <style>
     body {
       background-color: #f8f9fa;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     }
-    h2 {
-      margin: 20px 0;
-      font-weight: 600;
+    .top-header { margin: 1.5rem 0; }
+
+.user-retention-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.stats-metric-card {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(30,34,90,0.07);
+  border: 1px solid #e9ecef;
+  min-width: 165px;
+  max-width: 175px;
+  padding: 14px 15px 11px 17px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  margin-right: 0.7rem;
+  margin-bottom: 0;
+}
+
+.stats-metric-card:last-child { margin-right: 0; }
+
+.stats-label {
+  font-size: 0.93rem;
+  color: #8c98a4;
+  font-weight: 500;
+  margin-bottom: 0.15rem;
+}
+
+.stats-main-value {
+  font-size: 1.20rem;
+  font-weight: 700;
+  color: #1c2c45;
+  margin-bottom: 2px;
+}
+
+.stats-change {
+  font-size: 0.97rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  margin-top: 1px;
+}
+
+.stats-change.up {
+  color: #28a745;
+}
+.stats-change.down {
+  color: #e74c3c;
+}
+.stats-change.neutral {
+  color: #adb5bd;
+}
+.stats-change .arrow {
+  font-size: 1.1em;
+  margin-left: 3px;
+}
+
+@media (max-width: 991.98px) {
+  .user-retention-row { flex-direction: column; gap: 0.7rem; }
+  .stats-metric-card { max-width: 100%; width: 100%; margin-right: 0; }
+}
+
+    /* Navigation Pills */
+    .sticky-nav {
+      position: sticky; top: 0; z-index: 1000;
+      background: #f8f9fa;
+      padding: .5rem 0;
+      border-bottom: 1px solid #e0e0e0;
+      margin-bottom: 1rem;
     }
-    /* Card styles for a modern, flat design */
-    .card {
-      border: none;
+    .sticky-nav .nav-pills {
+      justify-content: flex-start;
+      gap: .5rem;
+    }
+    .sticky-nav .nav-link {
+      border-radius: 20px;
+      padding: .5rem 1rem;
+      font-weight: 500;
+      color: #555;
+    }
+    .sticky-nav .nav-link.active {
+      background: #007bff;
+      color: #fff;
+    }
+    /* Filters row */
+    .filters {
+      padding-left: 1.25rem;
+    }
+    .filters .form-control-sm {
+      width: auto;
+      min-width: 5ch;
+    }
+
+    /* Card styling */
+    .card { border: none; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 1.5rem; }
+    .card-header { background: #fff; border-bottom: 1px solid #eee; padding: .75rem 1.25rem; }
+    .card-header h5, .card-header h6 { margin: 0; font-weight: 600; font-size: 1.1rem;}
+    .card-body { background: #fff; padding: 1.15rem; }
+
+    /* Sales Overview KPIs */
+    .kpi-card {
+      background: #fff;
       border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.11);
+      padding: 1rem;
+      min-width: 140px;
+      flex: 1 1 140px;
+      text-align: center;
+      margin-bottom: 0;
     }
-    .card-header {
-      background-color: #fff;
-      border-bottom: 1px solid #eee;
-      padding: 15px 20px;
+    .kpi-card i { font-size: 1.5rem; color: #007bff; margin-bottom: .3rem; }
+    .kpi-card h4 { margin: .15rem 0; font-weight: 600; font-size: 1.15rem; }
+    .kpi-card small { display: block; color: #777; margin-bottom: .25rem; text-transform: uppercase; font-size: .75rem; }
+    .kpi-card .change { font-size: .85rem; color: #28a745; }
+
+    /* Sales Chart, Revenue, Top SKU */
+    #salesTrendChart { height: 200px !important; }
+    .chart, .heatmap { height: 200px; margin-bottom: 1rem; }
+    .minimalist-table th, .minimalist-table td { padding: .5rem; }
+    .minimalist-table tbody tr:hover { background: #f1f1f1; }
+
+    /* Top 10 SKUs Table */
+    #topSkuTable {
+      font-size: 0.98rem;
+      width: 100%;
+      margin-bottom: 0;
     }
-    .card-header h5 {
-      margin: 0;
-      font-weight: 600;
-    }
-    .card-body {
-      background-color: #fff;
-      padding: 20px;
-    }
-    /* Activity Feed styling */
-    .list-group-item {
+    #topSkuTable th,
+    #topSkuTable td {
+      vertical-align: middle;
       border: none;
-      border-bottom: 1px solid #eee;
-      padding: 10px 15px;
+      padding: 0.4rem 0.5rem 0.4rem 0.2rem;
     }
-    .list-group-item:last-child {
-      border-bottom: none;
+    #topSkuTable thead th {
+      font-weight: 600;
+      color: #333;
+      background: transparent;
+      border-bottom: 1px solid #e9ecef;
     }
-    /* Chart container styling */
-    .chart-container {
-      position: relative;
-      height: 300px;
+    #topSkuTable tbody tr:not(:last-child) td {
+      border-bottom: 1px solid #f3f4f6;
     }
+    .sku-name {
+      max-width: 110px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .sku-units { color: #888; }
+    .sku-revenue { font-weight: bold; color: #007bff; text-align: right; }
+
+    /* Make Top 10 SKUs card fit contents, no scroll! */
+    .top-sku-card .card-body {
+      padding: 0.8rem 0.5rem 0.8rem 0.5rem;
+      max-height: none !important;
+      overflow-y: visible !important;
+    }
+    @media (max-width: 991.98px) {
+      .user-retention-row {
+        flex-direction: column;
+      }
+      .user-stats-card, .retention-card {
+        min-width: 100%;
+        max-width: 100%;
+        height: 95px;
+      }
+    }
+    .svc-dot {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: middle;
+}
+
   </style>
 </head>
 <body>
   <div class="container-fluid">
-    <h2>Dashboard Overview</h2>
-    <!-- Row 1: Appointment Trends & User Account Statistics -->
+    <!-- Top Header -->
+    <div class="top-header">
+      <h2 class="mb-0">Dashboard</h2>
+      <!-- User stats + Retention row -->
+    <div class="user-retention-row">
+  <!-- Doctors -->
+  <div class="stats-metric-card">
+    <div class="stats-label">Doctors</div>
+    <div class="stats-main-value" id="doctorsCountSmall">1</div>
+    <div class="stats-change up">
+      <span>+0%</span>
+      <span class="arrow">&#8599;</span> <!-- Unicode ↗ -->
+    </div>
+  </div>
+  <!-- HR -->
+  <div class="stats-metric-card">
+    <div class="stats-label">HR</div>
+    <div class="stats-main-value" id="hrCountSmall">2</div>
+    <div class="stats-change down">
+      <span>-0%</span>
+      <span class="arrow">&#8600;</span> <!-- Unicode ↘ -->
+    </div>
+  </div>
+  <!-- Customers -->
+  <div class="stats-metric-card">
+    <div class="stats-label">Customers</div>
+    <div class="stats-main-value" id="customersCountSmall">3</div>
+    <div class="stats-change up">
+      <span>+0%</span>
+      <span class="arrow">&#8599;</span>
+    </div>
+  </div>
+  <!-- Retention/New -->
+  <div class="stats-metric-card">
+    <div class="stats-label">New vs Retention</div>
+    <div class="stats-main-value" id="kpiNewPct">0%</div>
+    <div class="stats-change neutral">
+      <span id="kpiRetPct">0% Ret</span>
+      <span class="arrow">&#8594;</span> <!-- Unicode → -->
+    </div>
+  </div>
+</div>
 
-    <a href="/admin/generate-report" class="btn btn-success">
-      <i class="fas fa-file-excel"></i> Generate Report
-    </a>
-    <div class="row">
-      <!-- Appointment Trends Chart -->
-      <div class="col-lg-8 col-md-12">
+
+    <!-- Navigation Pills (restored function) -->
+    <nav class="sticky-nav">
+      <ul class="nav nav-pills">
+        <li class="nav-item">
+          <a class="nav-link active" data-toggle="pill" href="#salesOverview">Sales Overview</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-toggle="pill" href="#inventoryOverview">Inventory Overview</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-toggle="pill" href="#appointmentTrends">Appointment Trends</a>
+        </li>
+      </ul>
+    </nav>
+    <!-- Filters -->
+    <div class="filters d-flex align-items-center mb-3">
+      <select id="presetRange" class="form-control form-control-sm mr-2">
+        <option value="7d">Last 7 Days</option>
+        <option value="30d">Last 30 Days</option>
+        <option value="mtd">Month-to-Date</option>
+        <option value="ytd">Year-to-Date</option>
+      </select>
+      <input type="text" id="customRange" class="form-control form-control-sm mr-2" placeholder="Custom range"/>
+      <select id="compareMode" class="form-control form-control-sm">
+        <option value="prev">Compare Previous</option>
+        <option value="yoy">Year-over-Year</option>
+      </select>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- 1) Sales Overview (pane) -->
+      <div class="tab-pane fade show active" id="salesOverview">
         <div class="card">
-          <div class="card-header">
-            <h5>Appointment Trends (Past 7 Days)</h5>
-          </div>
-          <div class="card-body chart-container">
-            <canvas id="appointmentTrendsChart"></canvas>
+          <div class="card-body">
+            <!-- KPI Row -->
+            <div class="d-flex flex-wrap mb-4">
+              <div class="kpi-card mr-3 mb-3">
+                <i class="fas fa-coins"></i>
+                <h4 id="kpiRevenue">₱6,845</h4>
+                <small>Total Revenue</small>
+                <div id="kpiRevChange" class="change">+0.0%</div>
+              </div>
+              <div class="kpi-card mr-3 mb-3">
+                <i class="fas fa-receipt"></i>
+                <h4 id="kpiTxns">2</h4>
+                <small>Total Txns</small>
+                <div id="kpiTxnChange" class="change">+0.0%</div>
+              </div>
+              <div class="kpi-card mr-3 mb-3">
+                <i class="fas fa-shopping-cart"></i>
+                <h4 id="kpiAov">₱3,423</h4>
+                <small>Avg Order</small>
+              </div>
+              <div class="kpi-card mb-3">
+                <i class="fas fa-percentage"></i>
+                <h4 id="kpiConv">100.0%</h4>
+                <small>Conv Rate</small>
+              </div>
+            </div>
+
+            <!-- Grid Row: Chart + Revenue + Top 10 SKU -->
+            <div class="row">
+              <!-- Sales Trend Chart -->
+              <div class="col-lg-4 col-md-12 mb-4">
+                <div class="card h-100 shadow-sm">
+                  <div class="card-header py-2 px-3">
+                    <h6 class="mb-0">Sales Trend</h6>
+                  </div>
+                  <div class="card-body p-2">
+                    <div id="salesTrendChart" class="chart"></div>
+                  </div>
+                </div>
+              </div>
+              <!-- Revenue by Service (Donut + Table) -->
+              <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card h-100 shadow-sm">
+                  <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Revenue by Service</h6>
+                    <select id="serviceRevenueRange" class="form-control form-control-sm" style="width:auto;">
+                      <option value="today">Today</option>
+                      <option value="7d" selected>Last 7 Days</option>
+                      <option value="month">Month</option>
+                      <option value="year">Year</option>
+                    </select>
+                  </div>
+                  <div class="card-body p-2">
+                    <div class="d-flex flex-column align-items-center">
+                      <div style="width: 160px; min-width: 100px; margin-bottom: 12px;">
+                        <div id="serviceRevenueChart"></div>
+                      </div>
+                      <div class="w-100">
+                        <table class="table table-sm table-borderless mb-0" id="serviceRevenueTable" style="font-size: 0.95rem;">
+                          <thead>
+                            <tr>
+                              <th style="width:28px;"></th>
+                              <th>Service</th>
+                              <th class="text-right">Revenue</th>
+                            </tr>
+                          </thead>
+                          <tbody></tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Top 10 SKUs (Fixed!) -->
+              <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card h-100 shadow-sm top-sku-card">
+                  <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Top 10 SKUs</h6>
+                    <span class="badge badge-primary" style="font-size:.7rem">By Revenue</span>
+                  </div>
+                  <div class="card-body">
+                    <table class="table table-sm table-borderless mb-0" id="topSkuTable">
+                      <thead>
+                        <tr>
+                          <th>SKU</th>
+                          <th class="text-right">Units Sold</th>
+                          <th class="text-right">Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- END SALES OVERVIEW -->
           </div>
         </div>
       </div>
-      <!-- User Account Statistics -->
-      <div class="col-lg-4 col-md-12">
-        <div class="card">
-          <div class="card-header">
-            <h5>User Account Statistics</h5>
+<!-- 2) Inventory Overview -->
+<div class="tab-pane fade" id="inventoryOverview">
+  <!-- Card for KPIs (just like Sales Overview) -->
+  <div class="card">
+    <div class="card-body">
+      <!-- KPI Row -->
+      <div class="d-flex flex-wrap mb-4">
+        <div class="kpi-card mr-3 mb-3">
+          <i class="fas fa-boxes"></i>
+          <h4 id="invTotalSKUs">0</h4>
+          <small>Total SKUs</small>
+        </div>
+        <div class="kpi-card mr-3 mb-3">
+          <i class="fas fa-money-bill-wave"></i>
+          <h4 id="invTotalValue">₱0</h4>
+          <small>Total Stock Value</small>
+        </div>
+        <div class="kpi-card mr-3 mb-3">
+          <i class="fas fa-th-large"></i>
+          <h4 id="invCategories">0</h4>
+          <small>Categories</small>
+        </div>
+        <div class="kpi-card mr-3 mb-3">
+          <i class="fas fa-exclamation-triangle text-danger"></i>
+          <h4 id="invLowStockCount">0</h4>
+          <small>Low Stock (≤10)</small>
+        </div>
+        <div class="kpi-card mb-3">
+          <i class="fas fa-clock text-warning"></i>
+          <h4 id="invExpiringCount">0</h4>
+          <small>Expiring Soon</small>
+        </div>
+      </div>
+      <!-- Range Selector (top right, optional) -->
+      <div class="d-flex justify-content-end mb-3">
+        <select id="inventoryRange" class="form-control form-control-sm" style="width:140px">
+          <option value="all">All Time</option>
+          <option value="30d">Last 30 Days</option>
+        </select>
+      </div>
+      <!-- Chart Section -->
+      <div class="row">
+        <div class="col-lg-6 mb-4">
+          <div id="stockByCategoryChart" class="chart"></div>
+        </div>
+        <div class="col-lg-6 mb-4">
+          <div id="valueByCategoryChart" class="chart"></div>
+        </div>
+      </div>
+      <div class="row text-center">
+        <div class="col-lg-4 mb-4">
+          <h6>Top 5 Best-Sellers</h6>
+          <ul class="list-group list-group-flush" id="topSoldList"></ul>
+        </div>
+        <div class="col-lg-4 mb-4">
+          <h6>Low Stock Items</h6>
+          <h2 id="invLowStockCountLarge" class="text-danger">0</h2>
+        </div>
+        <div class="col-lg-4 mb-4">
+          <h6>Expiring Soon</h6>
+          <h2 id="invExpiringCountLarge" class="text-warning">0</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+      <!-- 3) Appointment Trends + Analytics -->
+      <div class="tab-pane fade" id="appointmentTrends">
+        <div class="row">
+          <div class="col-lg-8">
+            <div class="card">
+              <div class="card-header"><h5>Appointment Trends (Past 7 Days)</h5></div>
+              <div class="card-body chart-container">
+                <canvas id="appointmentTrendsChart"></canvas>
+              </div>
+            </div>
           </div>
-          <div class="card-body">
-            <div class="row text-center">
-              <div class="col-12 mb-3">
-                <h6>Doctors</h6>
-                <h3 id="doctorsCount">0</h3>
+          <div class="col-lg-4">
+            <!-- User Stats -->
+            <div class="card mb-4">
+              <div class="card-header"><h5>User Account Statistics</h5></div>
+              <div class="card-body text-center">
+                <h6>Doctors</h6><h3 id="doctorsCount">0</h3>
+                <h6>HR</h6><h3 id="hrCount">0</h3>
+                <h6>Customers</h6><h3 id="customersCount">0</h3>
               </div>
-              <div class="col-12 mb-3">
-                <h6>HR</h6>
-                <h3 id="hrCount">0</h3>
+            </div>
+            <!-- Most Used Services -->
+            <div class="card mb-4">
+              <div class="card-header"><h5>Most Used Services</h5></div>
+              <div class="card-body chart-container">
+                <canvas id="servicesChart"></canvas>
               </div>
-              <div class="col-12">
-                <h6>Customers</h6>
-                <h3 id="customersCount">0</h3>
+            </div>
+            <!-- Pets by Species -->
+            <div class="card mb-4">
+              <div class="card-header"><h5>Pets by Species</h5></div>
+              <div class="card-body chart-container">
+                <canvas id="petsChart"></canvas>
+              </div>
+            </div>
+            <!-- Disease Analytics -->
+            <div class="card mb-4">
+              <div class="card-header"><h5>Disease Analytics</h5></div>
+              <div class="card-body chart-container">
+                <canvas id="diseaseChart"></canvas>
+              </div>
+            </div>
+            <!-- Predicted Appointments -->
+            <div class="card mb-4">
+              <div class="card-header"><h5>Predicted Appointments (Next 3 Days)</h5></div>
+              <div class="card-body">
+                <table class="table table-hover mb-2" id="predictionTable">
+                  <thead><tr><th>Date</th><th>Count</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+                <div class="chart-container">
+                  <canvas id="predictionChart"></canvas>
+                </div>
+              </div>
+            </div>
+            <!-- Peak Day-of-Week -->
+            <div class="card">
+              <div class="card-header"><h5>Peak Day-of-Week (Last 30 Days)</h5></div>
+              <div class="card-body">
+                <p id="peakDayTitle" class="text-muted mb-2"></p>
+                <table class="table table-bordered table-sm mb-2" id="dayOfWeekTable">
+                  <thead><tr><th>Day</th><th>Count</th></tr></thead>
+                  <tbody></tbody>
+                </table>
+                <div class="chart-container">
+                  <canvas id="dayOfWeekChart"></canvas>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-    <!-- Row 2: Actionable Alerts -->
-    <div class="row">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h5>Recent Activity</h5>
-          </div>
-          <div class="card-body">
-            <ul class="list-group" id="activityFeed">
-              <!-- Activity feed items will be loaded here -->
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- Row 3: Additional Analytics -->
-    <div class="row">
-      <!-- Most Used Services (Pie Chart) -->
-      <div class="col-lg-4 col-md-6">
-        <div class="card">
-          <div class="card-header">
-            <h5>Most Used Services</h5>
-          </div>
-          <div class="card-body chart-container">
-            <canvas id="servicesChart"></canvas>
-          </div>
-        </div>
-      </div>
-      <!-- Pets by Species & Breed (Stacked Bar Chart) -->
-      <div class="col-lg-4 col-md-6">
-        <div class="card">
-          <div class="card-header">
-            <h5>Pets Species</h5>
-          </div>
-          <div class="card-body chart-container">
-            <canvas id="petsChart"></canvas>
-          </div>
-        </div>
-      </div>
-      <!-- Disease Analytics (Bar Chart) -->
-      <div class="col-lg-4 col-md-12">
-        <div class="card">
-          <div class="card-header">
-            <h5>Disease Analytics</h5>
-          </div>
-          <div class="card-body chart-container">
-            <canvas id="diseaseChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- Row 4: Predictive Analytics -->
-<!-- Predicted Appointments (Next 3 Days) -->
+      </div> <!-- End Appointment Trends -->
+
+    </div><!-- /.tab-content -->
+  </div><!-- /.container-fluid -->
+
+  <!-- JS includes -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
+  ></script>
+  <script
+    src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
+  ></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"
+  ></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- instead of inline JS, load the unified dashboard.js -->
+<script src="/js/dashboard.js"></script>
 
 
 
 
-  <!-- Left Column: Predicted Appointments -->
-<!-- The row that holds both cards -->
-<div class="row mt-4">
-
-  <!-- LEFT CARD: Predicted Appointments -->
-  <div class="col-md-6 d-flex align-items-stretch">
-    <div class="card w-100">
-      <div class="card-header">
-        <h5>Predicted Appointments (Next 3 Days)</h5>
-      </div>
-      <div class="card-body">
-        <!-- 1) Table for predictions -->
-        <table class="table table-hover mb-4" id="predictionTable">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Predicted Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Filled by loadPredictions() -->
-          </tbody>
-        </table>
-
-        <!-- 2) Chart for predictions -->
-        <div style="height: 300px;">
-          <canvas id="predictionChart"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- RIGHT CARD: Peak Day-of-Week (Last 30 Days) -->
-  <div class="col-md-6 d-flex align-items-stretch">
-    <div class="card w-100">
-      <div class="card-header">
-        <h5>Peak Day-of-Week (Last 30 Days)</h5>
-      </div>
-      <div class="card-body">
-        <!-- This small text will say e.g. "Peak: Thursday (4 appointments)" -->
-        <p class="mb-1 text-muted" id="peakDayTitle"></p>
-
-        <!-- 1) Table for day-of-week aggregator -->
-        <table class="table table-bordered table-sm mb-4" id="dayOfWeekTable">
-          <thead>
-            <tr>
-              <th>Day</th>
-              <th>Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Filled by loadDayOfWeekStats() -->
-          </tbody>
-        </table>
-
-        <!-- 2) Chart for day-of-week aggregator -->
-        <div style="height: 300px;">
-          <canvas id="dayOfWeekChart"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<!-- Make sure jQuery is loaded BEFORE this script -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- If not already included -->
-<script>
-  // We'll keep references to both bar charts so we can destroy them if we reload data
-  let predictionBarChart = null;
-  let dayOfWeekChart = null;
-
-  /**
-   * Convert "YYYY-MM-DD" into "march 21 2025" (month spelled out).
-   */
-  function formatDateWords(isoDate) {
-    const d = new Date(isoDate + "T00:00:00");
-    const month = d.toLocaleString("en-US", { month: "long" }).toLowerCase();
-    const day = d.getDate();
-    const year = d.getFullYear();
-    return `${month} ${day} ${year}`;
-  }
-
-  /**
-   * Load next-3-days predictions from /admin/predict-appointments,
-   * fill the #predictionTable, and build a bar chart in #predictionChart.
-   */
-  function loadPredictions() {
-    $.ajax({
-      url: "/admin/predict-appointments",
-      method: "GET",
-      dataType: "json",
-      success: function(data) {
-        console.log("Predictions data:", data);
-        const $tbody = $("#predictionTable tbody");
-        $tbody.empty();
-
-        // Prepare arrays for chart
-        let chartLabels = [];
-        let chartData = [];
-
-        if (data.predictions && data.predictions.length > 0) {
-          data.predictions.forEach(pred => {
-            const niceDate = formatDateWords(pred.date);
-            // Append a row
-            $tbody.append(`
-              <tr>
-                <td>${niceDate}</td>
-                <td>${pred.predictedCount}</td>
-              </tr>
-            `);
-            // Chart arrays
-            chartLabels.push(niceDate);
-            chartData.push(pred.predictedCount);
-          });
-        } else {
-          // fallback if no predictions
-          $tbody.append(`
-            <tr>
-              <td colspan="2" class="text-muted">
-                No predicted data.
-              </td>
-            </tr>
-          `);
-        }
-
-        // Build or update the bar chart
-        if (predictionBarChart) {
-          predictionBarChart.destroy();
-        }
-        const ctx = document.getElementById("predictionChart").getContext("2d");
-        predictionBarChart = new Chart(ctx, {
-          type: "bar",
-          data: {
-            labels: chartLabels,
-            datasets: [{
-              label: "Predicted Count",
-              data: chartData,
-              backgroundColor: "rgba(54, 162, 235, 0.5)",
-              borderColor: "rgba(54, 162, 235, 1)",
-              borderWidth: 1
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              y: { beginAtZero: true }
-            }
-          }
-        });
-      },
-      error: function(xhr, status, error) {
-        console.error("Error fetching predictions:", error);
-        $("#predictionTable tbody").html(`
-          <tr>
-            <td colspan="2" class="text-danger">
-              Failed to load predictions.
-            </td>
-          </tr>
-        `);
-        if (predictionBarChart) {
-          predictionBarChart.destroy();
-          predictionBarChart = null;
-        }
-      }
-    });
-  }
-
-  /**
-   * Load day-of-week aggregator from /admin/peak-day-of-week,
-   * fill #dayOfWeekTable, set #peakDayTitle, and build a bar chart in #dayOfWeekChart.
-   */
-  function loadDayOfWeekStats() {
-    $.ajax({
-      url: "/admin/peak-day-of-week",
-      method: "GET",
-      dataType: "json",
-      success: function(data) {
-        console.log("Peak day-of-week data:", data);
-        const $title = $("#peakDayTitle");
-        const $tbody = $("#dayOfWeekTable tbody");
-        $tbody.empty();
-
-        if (data.peakDayOfWeek) {
-          $title.text(
-            `Peak: ${data.peakDayOfWeek.dayLabel} (${data.peakDayOfWeek.count} appointments)`
-          );
-        } else {
-          $title.text("No data found in the last 30 days.");
-        }
-
-        // Build arrays for chart
-        let dayLabels = [];
-        let dayCounts = [];
-
-        if (data.days && data.days.length > 0) {
-          data.days.forEach(dayObj => {
-            // e.g. dayObj.dayLabel = "Monday", dayObj.count = 3
-            $tbody.append(`
-              <tr>
-                <td>${dayObj.dayLabel}</td>
-                <td>${dayObj.count}</td>
-              </tr>
-            `);
-
-            dayLabels.push(dayObj.dayLabel);
-            dayCounts.push(dayObj.count);
-          });
-        } else {
-          $tbody.append(`
-            <tr>
-              <td colspan="2" class="text-muted">
-                No data for day-of-week.
-              </td>
-            </tr>
-          `);
-        }
-
-        // Build or update the day-of-week bar chart
-        if (dayOfWeekChart) {
-          dayOfWeekChart.destroy();
-        }
-        const ctx2 = document.getElementById("dayOfWeekChart").getContext("2d");
-        dayOfWeekChart = new Chart(ctx2, {
-          type: "bar",
-          data: {
-            labels: dayLabels,
-            datasets: [{
-              label: "Appointments",
-              data: dayCounts,
-              backgroundColor: "rgba(255, 159, 64, 0.5)",
-              borderColor: "rgba(255, 159, 64, 1)",
-              borderWidth: 1
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              y: { beginAtZero: true }
-            }
-          }
-        });
-      },
-      error: function(xhr, status, error) {
-        console.error("Error fetching day-of-week stats:", error);
-        $("#dayOfWeekTable tbody").html(`
-          <tr>
-            <td colspan="2" class="text-danger">
-              Failed to load day-of-week stats.
-            </td>
-          </tr>
-        `);
-        if (dayOfWeekChart) {
-          dayOfWeekChart.destroy();
-          dayOfWeekChart = null;
-        }
-      }
-    });
-  }
-
-  // On page load, load both sets of data
-  $(document).ready(function(){
-    loadPredictions();
-    loadDayOfWeekStats();
-  });
-</script>
-
-
-  
-
-
-
-  
 </body>
 </html>
