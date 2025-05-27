@@ -8,6 +8,12 @@ const Reservation = require("../models/reservation");
 const About = require("../models/about");
 const PetDetailsSetting = require("../models/petDetailsSetting");
 const ExcelJS = require('exceljs');
+const Payment = require('../models/Payment');
+const Inventory = require('../models/inventory');
+const { Parser: Json2csvParser } = require('json2csv');
+const PDFDocument = require('pdfkit');
+
+
 /**
  * Create a new Doctor/HR account
  */
@@ -195,108 +201,353 @@ exports.updateOTPSetting = async (req, res) => {
 /**
  * Get Dashboard Statistics
  */
-/**
- * Get Dashboard Statistics
- */
+
+
+// adminController.js
+// adminController.js
 exports.getDashboardStats = async (req, res) => {
   try {
-    // --- 1. Appointment Trends (Past 7 Days) ---
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    const past7Days = [];
-    for (let i = 6; i >= 0; i--) {
+    console.log("[getDashboardStats] Starting…");
+
+    // 0) parse & normalize range values
+    const rawRange = req.query.range || '7d';
+    let range = rawRange;
+    if (range === '30d' || range === 'mtd') range = 'month';
+    if (range === 'ytd')                     range = 'year';
+    const compare = req.query.compare || 'prev'; // 'prev' or 'yoy'
+    const startQ  = req.query.start;            // for custom
+    const endQ    = req.query.end;              // for custom
+
+    const now = new Date();
+    now.setHours(23,59,59,999);
+
+    //
+    // 1) Appointment Trends (past 7 days)
+    //
+    const today = new Date(now);
+    const past7 = Array.from({length:7}, (_,i) => {
       const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      past7Days.push(d);
-    }
-    const labels = past7Days.map(d => d.toISOString().slice(0, 10));
-    const pendingCounts = [];
-    const approvedCounts = [];
-    const completedCounts = [];
-    for (let d of past7Days) {
-      const start = new Date(d);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(d);
-      end.setHours(23, 59, 59, 999);
-      const pending = await Reservation.countDocuments({ status: "Pending", createdAt: { $gte: start, $lte: end } });
-      const approved = await Reservation.countDocuments({ status: "Approved", createdAt: { $gte: start, $lte: end } });
-      const completed = await Reservation.countDocuments({ status: "Done", createdAt: { $gte: start, $lte: end } });
-      pendingCounts.push(pending);
-      approvedCounts.push(approved);
-      completedCounts.push(completed);
+      d.setDate(today.getDate() - (6 - i));
+      return d;
+    });
+    const labels7 = past7.map(d => d.toISOString().slice(0,10));
+    const pending   = [], approved = [], completed = [];
+    for (let d of past7) {
+      const s = new Date(d); s.setHours(0,0,0,0);
+      const e = new Date(d); e.setHours(23,59,59,999);
+      pending.push(   await Reservation.countDocuments({ status:"Pending",   createdAt:{ $gte:s, $lte:e } }));
+      approved.push(  await Reservation.countDocuments({ status:"Approved",  createdAt:{ $gte:s, $lte:e } }));
+      completed.push(await Reservation.countDocuments({ status:"Done",      createdAt:{ $gte:s, $lte:e } }));
     }
 
-    // --- 2. Most Used Services (Top 3, only counting completed consultations) ---
+    //
+    // 2) Most Used Services
+    //
     const servicesAgg = await Reservation.aggregate([
-      { $match: { status: "Done" } }, // Only count consultations that are completed
-      { $group: { _id: "$service", count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
+      { $match:{ status:"Done" } },
+      { $group:{ _id:"$service", count:{ $sum:1 } } },
+      { $sort:{ count:-1 } }
     ]);
-    const top3Services = servicesAgg.slice(0, 3);
-    const servicesLabels = top3Services.map(item => item._id);
-    const servicesData = top3Services.map(item => item.count);
+    const top3           = servicesAgg.slice(0,3);
+    const servicesLabels = top3.map(x=>x._id);
+    const servicesData   = top3.map(x=>x.count);
 
-    // --- 3. Pets by Species (removing breed text) ---
-    // Aggregate the total count of pets per species.
-    const petsSpeciesAgg = await Pet.aggregate([
-      { $group: { _id: "$species", count: { $sum: 1 } } },
-      { $sort: { _id: 1 } }
+    //
+    // 3) Pets by Species
+    //
+    const speciesAgg    = await Pet.aggregate([
+      { $group:{ _id:"$species", count:{ $sum:1 } } },
+      { $sort:{ _id:1 } }
     ]);
-    const speciesLabels = petsSpeciesAgg.map(item => item._id);
-    const speciesData = petsSpeciesAgg.map(item => item.count);
-    // Create a single dataset for the bar chart.
-    const petsDataset = {
-      label: "Pets", // The label no longer mentions breed
-      data: speciesData,
-      backgroundColor: "rgba(75, 192, 192, 0.7)",
-    };
+    const speciesLabels = speciesAgg.map(x=>x._id);
+    const speciesData   = speciesAgg.map(x=>x.count);
 
-    // --- 4. Disease Analytics ---
-    const diseaseAgg = await Pet.aggregate([
-      { $match: { existingDisease: { $nin: ["", "None"] } } },
-      { $group: { _id: "$existingDisease", count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
+    //
+    // 4) Disease Analytics
+    //
+    const diseaseAgg    = await Pet.aggregate([
+      { $match:{ existingDisease:{ $nin:["","None"] } } },
+      { $group:{ _id:"$existingDisease", count:{ $sum:1 } } },
+      { $sort:{ count:-1 } }
     ]);
-    const diseaseLabels = diseaseAgg.map(item => item._id);
-    const diseaseData = diseaseAgg.map(item => item.count);
+    const diseaseLabels = diseaseAgg.map(x=>x._id);
+    const diseaseData   = diseaseAgg.map(x=>x.count);
 
-    // --- 5. User Account Statistics ---
-    const doctorsCount = await User.countDocuments({ role: "Doctor" });
-    const hrCount = await User.countDocuments({ role: "HR" });
-    const customersCount = await User.countDocuments({ role: "Customer" });
+    //
+    // 5) User Stats
+    //
+    const doctorsCount   = await User.countDocuments({ role:"Doctor" });
+    const hrCount        = await User.countDocuments({ role:"HR" });
+    const customersCount = await User.countDocuments({ role:"Customer" });
 
-    // --- 6. Activity Feed ---
-    const recentReservations = await Reservation.find({})
-      .sort({ createdAt: -1 })
-      .limit(3)
-      .lean();
-    const recentUsers = await User.find({ role: { $in: ["Doctor", "HR", "Customer"] } })
-      .sort({ createdAt: -1 })
-      .limit(2)
-      .lean();
-    const activityFeed = [];
-    recentUsers.forEach(u => {
-      activityFeed.push(`${u.role} ${u.username} account created`);
-    });
-    recentReservations.forEach(r => {
-      activityFeed.push(`Reservation by ${r.ownerName} (${r.service})`);
-    });
+    //
+    // 6) Activity Feed
+    //
+    const recentRes = await Reservation.find().sort({ createdAt:-1 }).limit(3).lean();
+    const recentUsr = await User.find({ role:{ $in:["Doctor","HR","Customer"] } })
+                         .sort({ createdAt:-1 }).limit(2).lean();
+    const activityFeed = [
+      ...recentUsr.map(u => `${u.role} ${u.username} account created`),
+      ...recentRes.map(r => `Reservation by ${r.ownerName} (${r.service})`)
+    ];
 
+    // static sections
     const dashboardStats = {
-      appointmentTrends: { labels, pending: pendingCounts, approved: approvedCounts, completed: completedCounts },
-      servicesData: { labels: servicesLabels, data: servicesData },
-      petsData: { labels: speciesLabels, datasets: [petsDataset] },
-      diseaseData: { labels: diseaseLabels, data: diseaseData },
-      userStats: { doctors: doctorsCount, hr: hrCount, customers: customersCount },
+      appointmentTrends: { labels:labels7, pending, approved, completed },
+      servicesData:      { labels:servicesLabels, data:servicesData },
+      petsData:          { labels:speciesLabels, datasets:[{ label:"Pets", data:speciesData }] },
+      diseaseData:       { labels:diseaseLabels, data:diseaseData },
+      userStats:         { doctors:doctorsCount, hr:hrCount, customers:customersCount },
       activityFeed
     };
 
-    res.json(dashboardStats);
+    //
+    // 7) Sales Overview (range-aware + comparison)
+    //
+    let curFrom, curTo = now, prevFrom, prevTo;
+    const trendLabels = [], trendData = [], prevTrend = [];
+
+    // -- build current & previous periods --
+    if (range === '7d') {
+      curFrom = new Date(now); curFrom.setDate(now.getDate()-6); curFrom.setHours(0,0,0,0);
+      if (compare === 'prev') {
+        prevTo   = new Date(curFrom); prevTo.setDate(curFrom.getDate()-1); prevTo.setHours(23,59,59,999);
+        prevFrom = new Date(prevTo); prevFrom.setDate(prevTo.getDate()-6); prevFrom.setHours(0,0,0,0);
+      } else {
+        prevFrom = new Date(curFrom); prevFrom.setFullYear(curFrom.getFullYear()-1);
+        prevTo   = new Date(curTo);   prevTo.setFullYear(curTo.getFullYear()-1);
+      }
+      // daily loop
+      for (let d=new Date(curFrom); d<=curTo; d.setDate(d.getDate()+1)) {
+        const s = new Date(d); s.setHours(0,0,0,0);
+        const e = new Date(d); e.setHours(23,59,59,999);
+        trendLabels.push(d.toISOString().slice(0,10));
+        const agg = await Payment.aggregate([
+          { $match:{ paidAt:{ $gte:s, $lte:e } } },
+          { $group:{ _id:null, total:{ $sum:"$amount" } } }
+        ]);
+        trendData.push(agg[0]?.total||0);
+
+        if (prevFrom) {
+          const pd = compare==='yoy'
+            ? new Date(s).setFullYear(s.getFullYear()-1)
+            : s.getTime() - (curTo - curFrom) - 86400000;
+          const ps = new Date(pd), pe = new Date(ps); pe.setHours(23,59,59,999);
+          const pagg = await Payment.aggregate([
+            { $match:{ paidAt:{ $gte:ps, $lte:pe } } },
+            { $group:{ _id:null, total:{ $sum:"$amount" } } }
+          ]);
+          prevTrend.push(pagg[0]?.total||0);
+        }
+      }
+
+    } else if (range === 'month') {
+      curFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+      if (compare === 'prev') {
+        prevTo   = new Date(curFrom); prevTo.setDate(0); prevTo.setHours(23,59,59,999);
+        prevFrom = new Date(prevTo.getFullYear(), prevTo.getMonth(), 1);
+      } else {
+        prevFrom = new Date(curFrom); prevFrom.setFullYear(curFrom.getFullYear()-1);
+        prevTo   = new Date(now);     prevTo.setFullYear(now.getFullYear()-1);
+      }
+      for (let d=new Date(curFrom); d<=now; d.setDate(d.getDate()+1)) {
+        const s = new Date(d); s.setHours(0,0,0,0);
+        const e = new Date(d); e.setHours(23,59,59,999);
+        trendLabels.push(d.toISOString().slice(0,10));
+        const agg = await Payment.aggregate([
+          { $match:{ paidAt:{ $gte:s, $lte:e } } },
+          { $group:{ _id:null, total:{ $sum:"$amount" } } }
+        ]);
+        trendData.push(agg[0]?.total||0);
+
+        if (prevFrom) {
+          const pd = compare==='yoy'
+            ? new Date(s).setFullYear(s.getFullYear()-1)
+            : new Date(s).setMonth(s.getMonth()-1);
+          const ps = new Date(pd), pe = new Date(ps); pe.setHours(23,59,59,999);
+          const pagg = await Payment.aggregate([
+            { $match:{ paidAt:{ $gte:ps, $lte:pe } } },
+            { $group:{ _id:null, total:{ $sum:"$amount" } } }
+          ]);
+          prevTrend.push(pagg[0]?.total||0);
+        }
+      }
+
+    } else if (range === 'year') {
+      curFrom = new Date(now.getFullYear(), 0, 1);
+      if (compare === 'prev') {
+        prevFrom = new Date(curFrom); prevFrom.setFullYear(curFrom.getFullYear()-1);
+        prevTo   = new Date(curTo);   prevTo.setFullYear(curTo.getFullYear()-1);
+      } else {
+        prevFrom = new Date(curFrom); prevFrom.setFullYear(curFrom.getFullYear()-1);
+        prevTo   = new Date(curTo);   prevTo.setFullYear(curTo.getFullYear()-1);
+      }
+      for (let m = 0; m <= now.getMonth(); m++) {
+        const ms = new Date(now.getFullYear(), m, 1);
+        const me = new Date(now.getFullYear(), m+1, 0,23,59,59,999);
+        trendLabels.push(String(m+1));
+        const agg = await Payment.aggregate([
+          { $match:{ paidAt:{ $gte:ms, $lte:me } } },
+          { $group:{ _id:null, total:{ $sum:"$amount" } } }
+        ]);
+        trendData.push(agg[0]?.total||0);
+
+        if (prevFrom) {
+          const pms = new Date(ms); pms.setFullYear(ms.getFullYear()-1);
+          const pme = new Date(me); pme.setFullYear(me.getFullYear()-1);
+          const pagg = await Payment.aggregate([
+            { $match:{ paidAt:{ $gte:pms, $lte:pme } } },
+            { $group:{ _id:null, total:{ $sum:"$amount" } } }
+          ]);
+          prevTrend.push(pagg[0]?.total||0);
+        }
+      }
+
+    } else if (range === 'custom' && startQ && endQ) {
+      curFrom = new Date(startQ); curFrom.setHours(0,0,0,0);
+      curTo   = new Date(endQ);   curTo.setHours(23,59,59,999);
+      const diff = curTo - curFrom;
+      if (compare === 'prev') {
+        prevTo   = new Date(curFrom - 1); prevTo.setHours(23,59,59,999);
+        prevFrom = new Date(prevTo - diff); prevFrom.setHours(0,0,0,0);
+      } else {
+        prevFrom = new Date(curFrom); prevFrom.setFullYear(curFrom.getFullYear()-1);
+        prevTo   = new Date(curTo);   prevTo.setFullYear(curTo.getFullYear()-1);
+      }
+      for (let d=new Date(curFrom); d<=curTo; d.setDate(d.getDate()+1)) {
+        const s = new Date(d); s.setHours(0,0,0,0);
+        const e = new Date(d); e.setHours(23,59,59,999);
+        trendLabels.push(d.toISOString().slice(0,10));
+        const agg = await Payment.aggregate([
+          { $match:{ paidAt:{ $gte:s, $lte:e } } },
+          { $group:{ _id:null, total:{ $sum:"$amount" } } }
+        ]);
+        trendData.push(agg[0]?.total||0);
+
+        if (prevFrom) {
+          const pd = compare==='yoy'
+            ? new Date(s).setFullYear(s.getFullYear()-1)
+            : s.getTime() - diff - 86400000;
+          const ps = new Date(pd), pe = new Date(ps); pe.setHours(23,59,59,999);
+          const pagg = await Payment.aggregate([
+            { $match:{ paidAt:{ $gte:ps, $lte:pe } } },
+            { $group:{ _id:null, total:{ $sum:"$amount" } } }
+          ]);
+          prevTrend.push(pagg[0]?.total||0);
+        }
+      }
+    }
+
+    // 8) Totals & comparison
+    const [ currTxns, currRevAgg ] = await Promise.all([
+      Payment.countDocuments({ paidAt:{ $gte:curFrom, $lte:curTo } }),
+      Payment.aggregate([
+        { $match:{ paidAt:{ $gte:curFrom, $lte:curTo } } },
+        { $group:{ _id:null, total:{ $sum:"$amount" } } }
+      ])
+    ]);
+    const currRev = currRevAgg[0]?.total || 0;
+
+    // build heatmap
+    const heatmap = {};
+    trendLabels.forEach((d,i) => heatmap[d] = trendData[i]);
+
+    // build transactions
+    const payments = await Payment.find({ paidAt:{ $gte:curFrom, $lte:curTo } })
+      .populate('by','username')
+      .lean();
+    const transactions = payments.map(p => ({
+      date:      p.paidAt.toISOString().slice(0,10),
+      id:        p._id.toString().slice(-6),
+      customer:  p.by?.username || 'N/A',
+      items:     [...(p.services||[]),...(p.products||[])].map(i=>i.name).join(', '),
+      amount:    p.amount
+    }));
+
+    dashboardStats.sales = {
+      totalTransactions: currTxns,
+      totalRevenue:      currRev,
+      trend:             { labels:trendLabels, data:trendData },
+      prevTrend:         prevTrend.length ? prevTrend : undefined,
+      heatmap,
+      transactions
+    };
+const revenueByService = await Payment.aggregate([
+  { $unwind: "$services" },
+  { $group: {
+      _id: "$services.name",
+      total: { $sum: "$services.lineTotal" }
+  }},
+  { $sort: { total: -1 } },
+  { $limit: 5 } // <-- add this!
+]);
+
+
+// ─── B) Top SKUs by units sold & revenue ────────────────────────────
+const topSKUs = await Payment.aggregate([
+  { $unwind: "$products" },
+  { $group: {
+      _id: "$products.name",
+      unitsSold: { $sum: "$products.quantity" },
+      revenue:   { $sum: { $multiply: ["$products.quantity", "$products.unitPrice"] } } // <--- FIXED!
+  }},
+  { $sort: { revenue: -1 } }, // sort by revenue
+  { $limit: 10 }
+]);
+
+
+    // C) New vs Returning Customers
+    const custAgg = await Payment.aggregate([
+      { $group: {
+          _id: "$by",
+          count:     { $sum: 1 },
+          firstDate: { $min: "$paidAt" }
+      }}
+    ]);
+    const newCustomers = custAgg.filter(c =>
+      new Date(c.firstDate) >= curFrom && new Date(c.firstDate) <= curTo
+    ).length;
+    const returningCustomers = custAgg.length - newCustomers;
+
+    dashboardStats.descriptive = {
+      revenueByService,
+      topSKUs,
+      newCustomers,
+      returningCustomers
+    };
+
+ 
+
+    if (prevFrom) {
+      const [ prevTxns, prevRevAgg ] = await Promise.all([
+        Payment.countDocuments({ paidAt:{ $gte:prevFrom, $lte:prevTo } }),
+        Payment.aggregate([
+          { $match:{ paidAt:{ $gte:prevFrom, $lte:prevTo } } },
+          { $group:{ _id:null, total:{ $sum:"$amount" } } }
+        ])
+      ]);
+      const prevRev = prevRevAgg[0]?.total || 0;
+      dashboardStats.sales.comparison = {
+        currentTransactions:       currTxns,
+        prevTransactions:          prevTxns,
+        transactionsChangePercent: prevTxns ? (currTxns - prevTxns)/prevTxns*100 : 0,
+        currentRevenue:            currRev,
+        prevRevenue:               prevRev,
+        revenueChangePercent:      prevRev ? (currRev - prevRev)/prevRev*100 : 0
+      };
+    }
+
+    console.log("[getDashboardStats] sales →", dashboardStats.sales);
+    console.log("💡 DESCRIPTIVE PAYLOAD:", dashboardStats.descriptive);
+
+    return res.json(dashboardStats);
+
   } catch (error) {
     console.error("Error in getDashboardStats:", error);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error:"Server error" });
   }
 };
+
 
 exports.getAbout = async (req, res) => {
   try {
@@ -680,4 +931,231 @@ exports.generateReport = async (req, res) => {
     console.error("Error generating report:", err);
     res.status(500).json({ error: "Error generating report" });
   }
+};
+exports.getInventoryStats = async (req, res) => {
+  try {
+    const now = new Date();
+    // 1) basic counts & value
+    const allItems      = await Inventory.find().lean();
+    const totalSKUs     = allItems.length;
+    const totalValue    = allItems.reduce((sum,i) => sum + (i.quantity * i.price), 0);
+    const categoriesSet = new Set(allItems.map(i=>i.category));
+    // 2) stock/value by category
+    const stockByCategory = await Inventory.aggregate([
+      { $group:{ _id:'$category', totalStock:{ $sum:'$quantity' } } },
+      { $sort:{ totalStock:-1 } }
+    ]);
+    const valueByCategory = await Inventory.aggregate([
+      { $group:{ _id:'$category', totalValue:{ $sum:{ $multiply:['$quantity','$price'] } } } },
+      { $sort:{ totalValue:-1 } }
+    ]);
+    // 3) top 5 sold
+    const topSold = await Payment.aggregate([
+      { $unwind:'$products' },
+      { $group:{ _id:'$products.name', soldQuantity:{ $sum:'$products.quantity' } } },
+      { $sort:{ soldQuantity:-1 } }, { $limit:5 }
+    ]);
+    // 4) low-stock & expiring soon
+    const lowStock = allItems.filter(i => i.quantity <= 10);
+    // flatten expirations
+    let expirations = [];
+    allItems.forEach(i => {
+      (i.expirationDates||[]).forEach(d => {
+        if (d > now && ((d - now)/(1000*60*60*24)) <= 30) {
+          expirations.push({ name:i.name, expiry:d });
+        }
+      });
+    });
+    // sort soonest first, limit 5
+    const expiringSoon = expirations
+      .sort((a,b)=> a.expiry - b.expiry)
+      .slice(0,5);
+
+    res.json({
+      totalSKUs,
+      totalValue,
+      categoriesCount: categoriesSet.size,
+      stockByCategory,
+      valueByCategory,
+      topSold,
+      lowStock,
+      expiringSoon
+    });
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ message:'Server error' });
+  }
+};
+
+// helper to fetch every payment with both cashier and customer
+async function fetchAllPayments() {
+  return Payment.find()
+    .populate('by',       'username')   // who marked it paid
+    .populate('customer', 'username')   // who paid
+    .lean();
+}
+
+// ─── Download Excel ─────────────────────────────────────────────────
+exports.downloadSalesExcel = async (req, res) => {
+  const payments = await fetchAllPayments();
+
+  // summary stats
+  const totalTxns   = payments.length;
+  const totalRev    = payments.reduce((sum,p)=> sum + p.amount, 0);
+  const avgTxn      = totalTxns ? (totalRev/totalTxns).toFixed(2) : 0;
+
+  // breakdown maps
+  const dailyMap = {}, svcMap = {}, prodMap = {};
+  payments.forEach(p => {
+    // daily revenue
+    const day = p.paidAt.toISOString().slice(0,10);
+    dailyMap[day] = (dailyMap[day]||0) + p.amount;
+
+    // services
+    p.services.forEach(s => {
+      svcMap[s.name] = (svcMap[s.name]||0) + s.lineTotal;
+    });
+
+    // products
+    p.products.forEach(x => {
+      prodMap[x.name] = (prodMap[x.name]||0) + x.lineTotal;
+    });
+  });
+
+  // prepare rows
+  const dailyRows   = Object.entries(dailyMap).sort().map(([d,t])=>({ d,t }));
+  const svcRows     = Object.entries(svcMap).map(([n,t])=>({ n,t }));
+  const prodRows    = Object.entries(prodMap).map(([n,t])=>({ n,t }));
+
+  // build workbook
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'SmartVet'; wb.created = new Date();
+
+  // — Summary sheet
+  const sum = wb.addWorksheet('Summary');
+  sum.addRow(['SmartVet Sales Report']); sum.addRow([]);
+  sum.addRow(['Total Transactions', totalTxns]);
+  sum.addRow(['Total Revenue (₱)', totalRev]);
+  sum.addRow(['Average per Txn (₱)', avgTxn]);
+
+  // — Daily breakdown
+  const w1 = wb.addWorksheet('Daily Rev');
+  w1.addRow(['Date','Revenue (₱)']);
+  dailyRows.forEach(r=> w1.addRow([r.d, r.t]));
+
+  // — Services breakdown
+  const w2 = wb.addWorksheet('By Service');
+  w2.addRow(['Service','Revenue (₱)']);
+  svcRows.forEach(r=> w2.addRow([r.n, r.t]));
+
+  // — Products breakdown
+  const w3 = wb.addWorksheet('By Product');
+  w3.addRow(['Product','Revenue (₱)']);
+  prodRows.forEach(r=> w3.addRow([r.n, r.t]));
+
+  // — Detailed transactions
+  const w4 = wb.addWorksheet('Transactions Detail');
+  w4.addRow([
+    'Payment ID','Reservation ID','Customer','Cashier',
+    'Paid At','Created At','Updated At','Products','Services','Amount (₱)'
+  ]);
+  payments.forEach(p => {
+    const fmtLine = arr => arr.map(x=>
+      `${x.name}×${x.quantity}@${x.unitPrice}=₱${x.lineTotal}`
+    ).join('; ');
+    w4.addRow([
+      p._id.toString(),
+      p.reservation.toString(),
+      p.customer.username,
+      p.by.username,
+      p.paidAt.toISOString(),
+      p.createdAt.toISOString(),
+      p.updatedAt.toISOString(),
+      fmtLine(p.products),
+      fmtLine(p.services),
+      p.amount
+    ]);
+  });
+
+  // auto‐width
+  wb.eachSheet(ws => {
+    ws.columns.forEach(col => {
+      let max=10;
+      col.eachCell(c=> max=Math.max(max,(''+c.value).length));
+      col.width = max+2;
+    });
+  });
+
+  // stream back
+  res.setHeader('Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  res.setHeader('Content-Disposition',
+    'attachment; filename=Sales-Report.xlsx'
+  );
+  await wb.xlsx.write(res);
+  res.end();
+};
+
+// ─── Download CSV ───────────────────────────────────────────────────
+exports.downloadSalesCSV = async (req, res) => {
+  const payments = await fetchAllPayments();
+  const rows = payments.map(p=>({
+    paymentId:     p._id.toString(),
+    reservationId: p.reservation.toString(),
+    customer:      p.customer.username,
+    cashier:       p.by.username,
+    paidAt:        p.paidAt.toISOString(),
+    createdAt:     p.createdAt.toISOString(),
+    updatedAt:     p.updatedAt.toISOString(),
+    products:      p.products.map(x=>`${x.name}×${x.quantity}@${x.unitPrice}`).join('|'),
+    services:      p.services.map(x=>`${x.name}×${x.quantity}@${x.unitPrice}`).join('|'),
+    amount:        p.amount
+  }));
+
+  const parser = new Json2csvParser({ fields: Object.keys(rows[0]) });
+  const csv = parser.parse(rows);
+
+  res.setHeader('Content-Type','text/csv');
+  res.setHeader('Content-Disposition','attachment; filename=Sales-Report.csv');
+  res.send(csv);
+};
+
+// ─── Download PDF ───────────────────────────────────────────────────
+exports.downloadSalesPDF = async (req, res) => {
+  const payments = await fetchAllPayments();
+  const doc = new PDFDocument({ size:'A4', margin:40 });
+  res.setHeader('Content-Type','application/pdf');
+  res.setHeader('Content-Disposition','attachment; filename=Sales-Report.pdf');
+  doc.pipe(res);
+
+  // Title & summary
+  doc.fontSize(18).text('SmartVet Sales Report', { align:'center' }).moveDown();
+  const totalTxns = payments.length;
+  const totalRev  = payments.reduce((s,p)=>s+p.amount,0).toFixed(2);
+  const avgTxn    = (totalRev/totalTxns).toFixed(2);
+  doc.fontSize(12)
+     .text(`Total Transactions: ${totalTxns}`)
+     .text(`Total Revenue: ₱${totalRev}`)
+     .text(`Average per Txn: ₱${avgTxn}`)
+     .moveDown();
+
+  // Table header
+  doc.fontSize(10)
+     .text('PayID', 40, doc.y, { continued:true })
+     .text('Customer', 140, doc.y, { continued:true })
+     .text('Cashier', 260, doc.y, { continued:true })
+     .text('PaidAt', 340, doc.y, { width:100 })
+     .moveDown(0.5);
+
+  // First 25 rows
+  payments.slice(0,25).forEach(p => {
+    doc.text(p._id.toString().slice(-6), 40, doc.y, { continued:true })
+       .text(p.customer.username, 140, doc.y, { continued:true })
+       .text(p.by.username, 260, doc.y, { continued:true })
+       .text(p.paidAt.toISOString().slice(0,10), 340, doc.y);
+    doc.moveDown(0.2);
+  });
+
+  doc.end();
 };
