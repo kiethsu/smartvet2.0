@@ -9,12 +9,28 @@ const lineItemSchema = new mongoose.Schema({
 });
 
 const paymentSchema = new mongoose.Schema({
-  reservation: { type: mongoose.Schema.Types.ObjectId, ref: 'Reservation', required: true },
+  reservation: { 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Reservation',
+    required: true 
+  },
+  // ←–– NEW: who the payment is for (the customer)
+  customer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   paidAt:      { type: Date, default: Date.now },
   amount:      { type: Number, required: true },  // grand total
-  by:          { type: mongoose.Schema.Types.ObjectId, ref: 'User' },  // who marked paid
+  by:          { 
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true    // the HR user who marked it paid
+  },
   products:    [ lineItemSchema ],   // medications
   services:    [ lineItemSchema ]    // services & fees
+}, {
+  timestamps: true
 });
 
 module.exports = mongoose.model('Payment', paymentSchema);
