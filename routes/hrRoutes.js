@@ -753,7 +753,7 @@ router.post(
     try {
       const { reservationId, amount, products, services } = req.body;
 
-      // 1) find & mark reservation paid
+      // 1) Find & mark reservation paid
       const reservation = await Reservation.findById(reservationId);
       if (!reservation) {
         return res.status(404).json({ success: false, message: 'Reservation not found.' });
@@ -761,7 +761,7 @@ router.post(
       reservation.status = 'Paid';
       await reservation.save();
 
-      // 2) decrement each product’s inventory
+      // 2) Decrement each product’s inventory
       for (let { name, quantity } of products) {
         const inv = await Inventory.findOne({ name });
         if (inv) {
@@ -770,14 +770,16 @@ router.post(
         }
       }
 
-      // 3) save the payment record
+      // 3) Save the payment record — now with customer & by
       const payment = new Payment({
         reservation: reservation._id,
-        amount,
-        by:          req.user._id,
+        customer:    reservation.owner,      // ← who the payment is for
+        by:          req.user.userId,        // ← which field holds your HR’s ID?
         products,
-        services
+        services,
+        amount
       });
+
       await payment.save();
 
       return res.json({ success: true, reservation });
@@ -787,6 +789,7 @@ router.post(
     }
   }
 );
+
 
 // 1) Update one medication’s quantity
 router.post(
