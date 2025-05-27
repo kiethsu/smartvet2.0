@@ -5,12 +5,13 @@ const multer = require("multer");
 const adminController = require("../controllers/adminController");
 const DashboardSetting = require('../models/dashboardSetting');
 const Joi = require('joi');
+const Inventory = require("../models/inventory");
+const router = express.Router();
 const Service = require("../models/service");
 const ServiceCategory = require("../models/serviceCategory");
 const mongoose = require("mongoose");
-const Inventory = require("../models/inventory");
+const Payment = require('../models/Payment');
 
-const router = express.Router();
 
 // Helper middleware for validating request bodies
 function validateRequest(schema) {
@@ -292,4 +293,13 @@ router.post("/services/delete", async (req, res) => {
     res.status(500).json({ message: "Error deleting service" });
   }
 });
+router.get('/inventory-stats', adminController.getInventoryStats);
+// in adminRoutes.js, after router.get("/inventory", ...)
+router.get("/sales-report", (req, res) => {
+  // If you have logic to gather data, do it here and pass to the template.
+  res.render("sales-report"); 
+});
+router.get("/download-sales-report.xlsx", adminController.downloadSalesExcel);
+router.get("/download-sales-report.csv",  adminController.downloadSalesCSV);
+router.get("/download-sales-report.pdf",  adminController.downloadSalesPDF);
 module.exports = router;
