@@ -21,6 +21,7 @@ const customerRoutes = require("./routes/customerRoutes");
 const authMiddleware = require("./middleware/authMiddleware");
 const settingRoutes = require('./routes/settingRoutes');
 
+
 // Import models
 const About = require("./models/about");
 const User = require("./models/user");
@@ -70,6 +71,9 @@ mongoose.connection.on('disconnected', () => {
 
 // Serve static files (e.g., images in /public)
 app.use(express.static(path.join(__dirname, "public")));
+// make files in public/uploads downloadable via /uploads/...
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
 
 // Public landing page and auth endpoints
 app.use("/", authRoutes); // login, registration, forgot password, etc.
@@ -275,6 +279,5 @@ app.get('/logout', (req, res) => {
   res.clearCookie('refreshToken');
   res.redirect('/');
 });
-
 
 
