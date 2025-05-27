@@ -1,0 +1,265 @@
+<% /* views/sales-report.ejs */ %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sales Report</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap CSS -->
+  <link
+    rel="stylesheet"
+    href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+  >
+  <!-- FontAwesome -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+  >
+  <!-- Daterangepicker CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"
+  />
+
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    .top-header {
+      margin: 1.5rem 0;
+    }
+    .filters {
+      padding-left: 1.25rem;
+    }
+    .filters .form-control-sm {
+      width: auto;
+      min-width: 6ch;
+      margin-right: .75rem;
+    }
+
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      margin-bottom: 1.5rem;
+    }
+    .card-body {
+      background: #fff;
+      padding: 1.15rem;
+    }
+
+    /* KPI cards */
+    .kpi-card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.11);
+      padding: 1rem;
+      min-width: 140px;
+      flex: 1 1 140px;
+      text-align: center;
+      margin-bottom: .75rem;
+    }
+    .kpi-card i {
+      font-size: 1.5rem;
+      color: #007bff;
+      margin-bottom: .3rem;
+    }
+    .kpi-card h4 {
+      margin: .15rem 0;
+      font-weight: 600;
+      font-size: 1.15rem;
+    }
+    .kpi-card small {
+      display: block;
+      color: #777;
+      margin-bottom: .25rem;
+      text-transform: uppercase;
+      font-size: .75rem;
+    }
+    .kpi-card .change {
+      font-size: .85rem;
+      color: #28a745;
+    }
+
+    .chart {
+      height: 200px;
+      margin-bottom: 1rem;
+    }
+
+    /* Tables inside cards */
+    .card-body table {
+      margin-top: .5rem;
+    }
+    .table-borderless td, .table-borderless th {
+      border: none;
+      padding: .4rem .75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <!-- Top Header -->
+    <div class="top-header">
+      <h2>Sales Report</h2>
+    </div>
+
+    <!-- Filters + Download Buttons -->
+    <div class="d-flex align-items-center mb-3">
+      <div class="filters d-flex align-items-center">
+        <select id="presetRange" class="form-control form-control-sm">
+          <option value="7d">Last 7 Days</option>
+          <option value="30d">Last 30 Days</option>
+          <option value="mtd">Month-to-Date</option>
+          <option value="ytd">Year-to-Date</option>
+        </select>
+        <input
+          type="text"
+          id="customRange"
+          class="form-control form-control-sm"
+          placeholder="Custom range"
+        />
+        <select id="compareMode" class="form-control form-control-sm">
+          <option value="prev">Compare Previous</option>
+          <option value="yoy">Year-over-Year</option>
+        </select>
+      </div>
+      <div class="ml-auto">
+        <a href="/admin/download-sales-report.xlsx" class="btn btn-success btn-sm mr-2">
+          <i class="fas fa-file-excel"></i> Excel
+        </a>
+        <a href="/admin/download-sales-report.csv" class="btn btn-info btn-sm mr-2">
+          <i class="fas fa-file-csv"></i> CSV
+        </a>
+        <a href="/admin/download-sales-report.pdf" class="btn btn-danger btn-sm">
+          <i class="fas fa-file-pdf"></i> PDF
+        </a>
+      </div>
+    </div>
+
+    <!-- Sales Overview Card -->
+    <div class="card">
+      <div class="card-body">
+        <!-- KPI Row -->
+        <div id="summaryRow" class="d-flex flex-wrap mb-4"></div>
+
+        <!-- Charts & Tables Grid -->
+        <div class="row">
+          <!-- Daily Trend -->
+          <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+              <div class="card-body">
+                <h5>Daily Revenue Trend</h5>
+                <canvas id="dailyChart" class="chart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Revenue by Service -->
+          <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+              <div class="card-body">
+                <h5>Revenue by Service</h5>
+                <canvas id="svcChart" class="chart"></canvas>
+                <table class="table table-sm table-borderless" id="svcTable"></table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Products -->
+          <div class="col-lg-4 col-md-12 mb-4">
+            <div class="card h-100">
+              <div class="card-body">
+                <h5>Top 5 Products by Revenue</h5>
+                <table class="table table-sm table-borderless" id="prodTable"></table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="card">
+          <div class="card-body">
+            <h5>Recent Transactions</h5>
+            <table class="table table-sm table-bordered mb-0" id="txTable"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS includes -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- your existing data-binding script — untouched -->
+  <script>
+  $(async function(){
+    const data = await $.getJSON('/admin/get-dashboard-stats');
+
+    const s = data.sales;
+    const desc = data.descriptive;
+    const avg = (s.totalRevenue/s.totalTransactions).toFixed(2);
+
+    // KPI cards
+    $('#summaryRow').html(`
+      <div class="kpi-card mr-3">
+        <i class="fas fa-receipt"></i>
+        <h4>${s.totalTransactions}</h4>
+        <small>Total Transactions</small>
+        <div class="change">${s.comparison?.transactionsChangePercent?.toFixed(1)||'0.0'}%</div>
+      </div>
+      <div class="kpi-card mr-3">
+        <i class="fas fa-coins"></i>
+        <h4>₱${s.totalRevenue}</h4>
+        <small>Total Revenue</small>
+        <div class="change">${s.comparison?.revenueChangePercent?.toFixed(1)||'0.0'}%</div>
+      </div>
+      <div class="kpi-card mr-3">
+        <i class="fas fa-shopping-cart"></i>
+        <h4>₱${avg}</h4>
+        <small>Avg per Txn</small>
+      </div>
+      <div class="kpi-card">
+        <i class="fas fa-percentage"></i>
+        <h4>${desc.newCustomers}</h4>
+        <small>New Customers</small>
+      </div>
+    `);
+
+    // Daily trend
+    new Chart($('#dailyChart'), {
+      type:'line',
+      data:{ labels: s.trend.labels, datasets:[{ label:'Revenue (₱)', data: s.trend.data, fill:false }] }
+    });
+
+    // Service doughnut + table
+    const svc = desc.revenueByService;
+    new Chart($('#svcChart'), {
+      type:'doughnut',
+      data:{ labels: svc.map(x=>x._id), datasets:[{ data: svc.map(x=>x.total) }] }
+    });
+    $('#svcTable').html(svc.map(x=>
+      `<tr><td>${x._id}</td><td class="text-right">₱${x.total}</td></tr>`
+    ).join(''));
+
+    // Products table
+    $('#prodTable').html(desc.topSKUs.slice(0,5).map(x=>
+      `<tr><td>${x._id}</td><td class="text-right">₱${x.revenue.toFixed(2)}</td></tr>`
+    ).join(''));
+
+    // Transactions
+    $('#txTable').html(s.transactions.slice(-10).reverse().map(t=>
+      `<tr>
+        <td>${t.date}</td><td>${t.id}</td>
+        <td>${t.customer}</td><td>${t.by}</td>
+        <td class="text-right">₱${t.amount.toFixed(2)}</td>
+      </tr>`
+    ).join(''));
+  });
+  </script>
+</body>
+</html>
