@@ -1,110 +1,57 @@
-<% /* views/sales-report.ejs */ %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Sales Report</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!-- Bootstrap CSS -->
-  <link
-    rel="stylesheet"
-    href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
-  >
-  <!-- FontAwesome -->
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-  >
-  <!-- Daterangepicker CSS -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"
-  />
-
+  <!-- Bootstrap, FontAwesome, Daterangepicker, Chart.js -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"/>
   <style>
-    body {
-      background-color: #f8f9fa;
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    body { background: #f8f9fa; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+    .top-header { margin: 1.5rem 0; }
+    .filters { padding-left: 1.25rem; }
+    .filters .form-control-sm { width: auto; min-width: 6ch; margin-right: .75rem; }
+    .card { border: none; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); margin-bottom: 1.25rem; }
+    .card-body { background: #fff; padding: 1.05rem 1.15rem; }
+    .kpi-card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.11); padding: 1rem; min-width: 130px; flex: 1 1 130px; text-align: center; margin-bottom: .75rem; }
+    .kpi-card h4 { margin: .10rem 0; font-weight: 600; font-size: 1.11rem; }
+    .kpi-card small { display: block; color: #777; margin-bottom: .22rem; font-size: .74rem; text-transform: uppercase;}
+    .kpi-card .change { font-size: .85rem; }
+    .up { color: #28a745; }
+    .down { color: #e53e3e; }
+    .neutral { color: #666; }
+    /* Responsive Chart Container! */
+    .chart-container {
+      position: relative;
+      width: 100%;
+      min-height: 220px;
+      height: 220px;
+      margin-bottom: .6rem;
     }
-    .top-header {
-      margin: 1.5rem 0;
+    .card-body table { margin-top: .2rem; }
+    .table-borderless td, .table-borderless th { border: none; padding: .30rem .4rem; }
+    .table-sm th, .table-sm td { font-size: 13px; }
+    .scroll-card { max-height: 250px; overflow-y: auto;}
+    .percent-cell { font-size: 0.95em; color: #6c757d; }
+    @media (max-width: 900px) {
+      .chart-container { min-height: 140px; height: 140px; }
+      .kpi-card { min-width: 120px; }
     }
-    .filters {
-      padding-left: 1.25rem;
-    }
-    .filters .form-control-sm {
-      width: auto;
-      min-width: 6ch;
-      margin-right: .75rem;
-    }
-
-    .card {
-      border: none;
-      border-radius: 12px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-      margin-bottom: 1.5rem;
-    }
-    .card-body {
-      background: #fff;
-      padding: 1.15rem;
-    }
-
-    /* KPI cards */
-    .kpi-card {
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.11);
-      padding: 1rem;
-      min-width: 140px;
-      flex: 1 1 140px;
-      text-align: center;
-      margin-bottom: .75rem;
-    }
-    .kpi-card i {
-      font-size: 1.5rem;
-      color: #007bff;
-      margin-bottom: .3rem;
-    }
-    .kpi-card h4 {
-      margin: .15rem 0;
-      font-weight: 600;
-      font-size: 1.15rem;
-    }
-    .kpi-card small {
-      display: block;
-      color: #777;
-      margin-bottom: .25rem;
-      text-transform: uppercase;
-      font-size: .75rem;
-    }
-    .kpi-card .change {
-      font-size: .85rem;
-      color: #28a745;
-    }
-
-    .chart {
-      height: 200px;
-      margin-bottom: 1rem;
-    }
-
-    /* Tables inside cards */
-    .card-body table {
-      margin-top: .5rem;
-    }
-    .table-borderless td, .table-borderless th {
-      border: none;
-      padding: .4rem .75rem;
+    @media (max-width: 500px) {
+      .kpi-card { min-width: 100px; padding: .55rem; }
+      .card-body { padding: .6rem .4rem;}
+      .chart-container { min-height: 100px; height: 100px; }
     }
   </style>
 </head>
 <body>
   <div class="container-fluid">
-    <!-- Top Header -->
+    <!-- Header -->
     <div class="top-header">
       <h2>Sales Report</h2>
     </div>
-
     <!-- Filters + Download Buttons -->
     <div class="d-flex align-items-center mb-3">
       <div class="filters d-flex align-items-center">
@@ -114,74 +61,67 @@
           <option value="mtd">Month-to-Date</option>
           <option value="ytd">Year-to-Date</option>
         </select>
-        <input
-          type="text"
-          id="customRange"
-          class="form-control form-control-sm"
-          placeholder="Custom range"
-        />
+        <input type="text" id="customRange" class="form-control form-control-sm" placeholder="Custom range"/>
         <select id="compareMode" class="form-control form-control-sm">
           <option value="prev">Compare Previous</option>
           <option value="yoy">Year-over-Year</option>
         </select>
       </div>
       <div class="ml-auto">
-        <a href="/admin/download-sales-report.xlsx" class="btn btn-success btn-sm mr-2">
-          <i class="fas fa-file-excel"></i> Excel
-        </a>
-        <a href="/admin/download-sales-report.csv" class="btn btn-info btn-sm mr-2">
-          <i class="fas fa-file-csv"></i> CSV
-        </a>
-        <a href="/admin/download-sales-report.pdf" class="btn btn-danger btn-sm">
-          <i class="fas fa-file-pdf"></i> PDF
-        </a>
+        <a href="/admin/download-sales-report.xlsx" class="btn btn-success btn-sm mr-2"><i class="fas fa-file-excel"></i> Excel</a>
+        <a href="/admin/download-sales-report.csv"  class="btn btn-info btn-sm mr-2"><i class="fas fa-file-csv"></i> CSV</a>
+        <a href="/admin/download-sales-report.pdf"  class="btn btn-danger btn-sm"><i class="fas fa-file-pdf"></i> PDF</a>
       </div>
     </div>
 
-    <!-- Sales Overview Card -->
-    <div class="card">
-      <div class="card-body">
-        <!-- KPI Row -->
-        <div id="summaryRow" class="d-flex flex-wrap mb-4"></div>
+    <!-- KPI Row -->
+    <div class="d-flex flex-wrap mb-3" id="summaryRow"></div>
 
-        <!-- Charts & Tables Grid -->
-        <div class="row">
-          <!-- Daily Trend -->
-          <div class="col-lg-4 col-md-6 mb-4">
-            <div class="card h-100">
-              <div class="card-body">
-                <h5>Daily Revenue Trend</h5>
-                <canvas id="dailyChart" class="chart"></canvas>
-              </div>
-            </div>
-          </div>
-
-          <!-- Revenue by Service -->
-          <div class="col-lg-4 col-md-6 mb-4">
-            <div class="card h-100">
-              <div class="card-body">
-                <h5>Revenue by Service</h5>
-                <canvas id="svcChart" class="chart"></canvas>
-                <table class="table table-sm table-borderless" id="svcTable"></table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Top Products -->
-          <div class="col-lg-4 col-md-12 mb-4">
-            <div class="card h-100">
-              <div class="card-body">
-                <h5>Top 5 Products by Revenue</h5>
-                <table class="table table-sm table-borderless" id="prodTable"></table>
-              </div>
+    <!-- Grid: Charts & Key Breakdowns -->
+    <div class="row">
+      <!-- Daily Trend -->
+      <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6>Daily Revenue Trend</h6>
+            <div class="chart-container">
+              <canvas id="dailyChart"></canvas>
             </div>
           </div>
         </div>
-
-        <!-- Recent Transactions -->
-        <div class="card">
+      </div>
+      <!-- Revenue by Service -->
+      <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100">
           <div class="card-body">
-            <h5>Recent Transactions</h5>
+            <h6>Revenue by Service</h6>
+            <table class="table table-sm table-borderless mb-2" id="svcTable"></table>
+            <div class="chart-container">
+              <canvas id="svcChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Top Products -->
+      <div class="col-lg-4 col-md-12 mb-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6>Top 5 Products by Revenue</h6>
+            <table class="table table-sm table-borderless" id="prodTable"></table>
+            <div class="chart-container">
+              <canvas id="prodChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Only Recent Transactions. Removed Top 5 Customers Card -->
+    <div class="row">
+      <div class="col-lg-12 mb-4">
+        <div class="card h-100 scroll-card">
+          <div class="card-body">
+            <h6>Recent Transactions</h6>
             <table class="table table-sm table-bordered mb-0" id="txTable"></table>
           </div>
         </div>
@@ -189,77 +129,188 @@
     </div>
   </div>
 
-  <!-- JS includes -->
+  <!-- JS -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- your existing data-binding script — untouched -->
   <script>
-  $(async function(){
-    const data = await $.getJSON('/admin/get-dashboard-stats');
+    // ------ Helper: percentage calculation ------
+    function getPercent(val, total) {
+      if (!total || total === 0) return "0.0%";
+      return (val/total*100).toFixed(1) + "%";
+    }
+    function setChange(percent) {
+      if (percent > 0) return `<span class="change up">+${percent.toFixed(1)}% <i class="fas fa-arrow-up"></i></span>`;
+      if (percent < 0) return `<span class="change down">${percent.toFixed(1)}% <i class="fas fa-arrow-down"></i></span>`;
+      return `<span class="change neutral">0.0% <i class="fas fa-arrows-alt-h"></i></span>`;
+    }
+    // Chart instances
+    let dailyChart, svcChart, prodChart;
 
-    const s = data.sales;
-    const desc = data.descriptive;
-    const avg = (s.totalRevenue/s.totalTransactions).toFixed(2);
+    function getParams() {
+      let params = {};
+      const range = $('#presetRange').val();
+      const compare = $('#compareMode').val();
+      params.range = range;
+      params.compare = compare;
+      const custom = $('#customRange').val();
+      if (custom) {
+        const parts = custom.split(' - ');
+        if (parts.length === 2) {
+          params.range = "custom";
+          params.start = parts[0];
+          params.end = parts[1];
+        }
+      }
+      return params;
+    }
 
-    // KPI cards
-    $('#summaryRow').html(`
-      <div class="kpi-card mr-3">
-        <i class="fas fa-receipt"></i>
-        <h4>${s.totalTransactions}</h4>
-        <small>Total Transactions</small>
-        <div class="change">${s.comparison?.transactionsChangePercent?.toFixed(1)||'0.0'}%</div>
-      </div>
-      <div class="kpi-card mr-3">
-        <i class="fas fa-coins"></i>
-        <h4>₱${s.totalRevenue}</h4>
-        <small>Total Revenue</small>
-        <div class="change">${s.comparison?.revenueChangePercent?.toFixed(1)||'0.0'}%</div>
-      </div>
-      <div class="kpi-card mr-3">
-        <i class="fas fa-shopping-cart"></i>
-        <h4>₱${avg}</h4>
-        <small>Avg per Txn</small>
-      </div>
-      <div class="kpi-card">
-        <i class="fas fa-percentage"></i>
-        <h4>${desc.newCustomers}</h4>
-        <small>New Customers</small>
-      </div>
-    `);
+    function loadReport() {
+      $.get('/admin/get-dashboard-stats', getParams(), function(data) {
+        // --- KPIs ---
+        const s = data.sales;
+        const desc = data.descriptive;
+        const avg = (s.totalRevenue/s.totalTransactions || 0).toFixed(2);
+        $('#summaryRow').html(`
+          <div class="kpi-card mr-2"><i class="fas fa-receipt"></i><h4>${s.totalTransactions}</h4><small>Total Txns</small>
+            ${setChange(s.comparison?.transactionsChangePercent||0)}
+          </div>
+          <div class="kpi-card mr-2"><i class="fas fa-coins"></i><h4>₱${s.totalRevenue}</h4><small>Total Revenue</small>
+            ${setChange(s.comparison?.revenueChangePercent||0)}
+          </div>
+          <div class="kpi-card mr-2"><i class="fas fa-shopping-cart"></i><h4>₱${avg}</h4><small>Avg/Txn</small></div>
+          <div class="kpi-card mr-2"><i class="fas fa-user-plus"></i><h4>${desc.newCustomers||0}</h4><small>New Cust.</small></div>
+          <div class="kpi-card"><i class="fas fa-redo"></i><h4>${desc.returningCustomers||0}</h4><small>Returning</small></div>
+        `);
+        // --- Daily Revenue Trend ---
+        if (dailyChart) dailyChart.destroy();
+        dailyChart = new Chart($('#dailyChart'), {
+          type:'line',
+          data:{ labels: s.trend.labels, datasets:[{
+            label:'Revenue (₱)',
+            data: s.trend.data,
+            fill: true,
+            tension: 0.4,
+            borderWidth: 3,
+            pointRadius: 3,
+            pointBackgroundColor: '#3378FF',
+            borderColor: '#3378FF',
+            backgroundColor: 'rgba(51,120,255,0.12)'
+          }] },
+          options: {
+            plugins: { legend: { display: false } },
+            layout: { padding: { left: 10, right: 10, top: 10, bottom: 10 } },
+            scales: {
+              x: { ticks: { color: '#333', font: { size: 13 } }, grid: { display: false } },
+              y: { beginAtZero: true, ticks: { color: '#333', font: { size: 13 } }, grid: { color: '#E8EAF6' } }
+            },
+            maintainAspectRatio: false,
+            responsive: true
+          }
+        });
 
-    // Daily trend
-    new Chart($('#dailyChart'), {
-      type:'line',
-      data:{ labels: s.trend.labels, datasets:[{ label:'Revenue (₱)', data: s.trend.data, fill:false }] }
+        // --- Revenue by Service Table + Chart ---
+        const svc = desc.revenueByService;
+        let svcTotal = svc.reduce((a,b)=>a+b.total,0);
+        $('#svcTable').html(`
+          <thead><tr><th>Service</th><th class="text-right">Revenue</th><th class="text-right">%</th></tr></thead>
+          <tbody>
+          ${svc.map(x=>
+            `<tr><td>${x._id}</td><td class="text-right">₱${x.total}</td><td class="percent-cell text-right">${getPercent(x.total, svcTotal)}</td></tr>`
+          ).join('')}
+          </tbody>
+        `);
+        if (svcChart) svcChart.destroy();
+        svcChart = new Chart($('#svcChart'), {
+          type:'bar',
+          data:{ labels: svc.map(x=>x._id), datasets:[{ data: svc.map(x=>x.total), label:'By Service', backgroundColor:'#90CAF9', borderRadius:6 }] },
+          options: { 
+            plugins:{ legend:{ display:false } },
+            layout: { padding: { left: 5, right: 5, top: 10, bottom: 10 } },
+            scales:{ 
+              x: { ticks: { color: '#555', font: { size: 12 } }, grid: { display: false } }, 
+              y:{ beginAtZero:true, ticks: { color: '#555', font: { size: 12 } }, grid: { color: '#F3E5F5' } } 
+            }, 
+            maintainAspectRatio:false,
+            responsive:true,
+            indexAxis: 'y'
+          }
+        });
+
+        // --- Products Table + Chart ---
+        const prod = desc.topSKUs.slice(0,5);
+        let prodTotal = prod.reduce((a,b)=>a+b.revenue,0);
+        $('#prodTable').html(`
+          <thead><tr><th>Product</th><th class="text-right">Revenue</th><th class="text-right">%</th></tr></thead>
+          <tbody>
+          ${prod.map(x=>
+            `<tr><td>${x._id}</td><td class="text-right">₱${x.revenue.toFixed(2)}</td><td class="percent-cell text-right">${getPercent(x.revenue, prodTotal)}</td></tr>`
+          ).join('')}
+          </tbody>
+        `);
+        if (prodChart) prodChart.destroy();
+        prodChart = new Chart($('#prodChart'), {
+          type:'bar',
+          data:{ labels: prod.map(x=>x._id), datasets:[{ data: prod.map(x=>x.revenue), label:'By Product', backgroundColor:'#FFECB3', borderRadius:6 }] },
+          options: { 
+            plugins:{ legend:{ display:false } },
+            layout: { padding: { left: 5, right: 5, top: 10, bottom: 10 } },
+            scales:{ 
+              x: { ticks: { color: '#555', font: { size: 12 } }, grid: { display: false } }, 
+              y:{ beginAtZero:true, ticks: { color: '#555', font: { size: 12 } }, grid: { color: '#F3E5F5' } } 
+            }, 
+            maintainAspectRatio:false,
+            responsive:true,
+            indexAxis: 'y'
+          }
+        });
+
+        // --- Recent Transactions Table ---
+        $('#txTable').html(`
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>ID</th>
+              <th>Customer</th>
+              <th>Cashier</th>
+              <th>Items</th>
+              <th class="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${s.transactions.slice(-12).reverse().map(t=>
+              `<tr>
+                <td>${t.date}</td>
+                <td>${t.id}</td>
+                <td>${t.customer}</td>
+                <td>${t.cashier}</td>
+                <td>${t.items||''}</td>
+                <td class="text-right">₱${parseFloat(t.amount).toFixed(2)}</td>
+              </tr>`
+            ).join('')}
+          </tbody>
+        `);
+
+      });
+    }
+
+    // --- DateRange picker logic ---
+    $(function(){
+      $('#customRange').daterangepicker({
+        autoUpdateInput: false,
+        opens: 'left',
+        locale: { cancelLabel: 'Clear' }
+      }).on('apply.daterangepicker', function(e, picker){
+        $(this).val(picker.startDate.format('YYYY-MM-DD') + ' - ' + picker.endDate.format('YYYY-MM-DD'));
+        loadReport();
+      }).on('cancel.daterangepicker', function(e, picker){
+        $(this).val('');
+        loadReport();
+      });
+      $('#presetRange, #compareMode').change(loadReport);
+      loadReport();
     });
-
-    // Service doughnut + table
-    const svc = desc.revenueByService;
-    new Chart($('#svcChart'), {
-      type:'doughnut',
-      data:{ labels: svc.map(x=>x._id), datasets:[{ data: svc.map(x=>x.total) }] }
-    });
-    $('#svcTable').html(svc.map(x=>
-      `<tr><td>${x._id}</td><td class="text-right">₱${x.total}</td></tr>`
-    ).join(''));
-
-    // Products table
-    $('#prodTable').html(desc.topSKUs.slice(0,5).map(x=>
-      `<tr><td>${x._id}</td><td class="text-right">₱${x.revenue.toFixed(2)}</td></tr>`
-    ).join(''));
-
-    // Transactions
-    $('#txTable').html(s.transactions.slice(-10).reverse().map(t=>
-      `<tr>
-        <td>${t.date}</td><td>${t.id}</td>
-        <td>${t.customer}</td><td>${t.by}</td>
-        <td class="text-right">₱${t.amount.toFixed(2)}</td>
-      </tr>`
-    ).join(''));
-  });
   </script>
 </body>
 </html>
