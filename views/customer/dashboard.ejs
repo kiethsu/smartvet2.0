@@ -283,12 +283,20 @@
               <% if (upcomingVisits && upcomingVisits.length > 0) { %>
                 <ul class="list-group">
                   <% upcomingVisits.forEach(function(visit) { %>
-                    <li class="list-group-item">
-                      <strong>Date:</strong>
-                      <%= formatVisitDate(visit.schedule.scheduleDate) %><br>
-                      <strong>Service:</strong>
-                      <%= visit.service %>
-                    </li>
+                  <li class="list-group-item">
+  <strong>Date:</strong>
+  <%= formatVisitDate(visit.schedule.scheduleDate) %><br>
+
+  <strong>Pet:</strong>
+  <%= visit.pets
+        .map(p => p.petId ? p.petId.petName : p.petName)
+        .join(', ')
+  %><br>
+
+  <strong>Service:</strong>
+  <%= visit.schedule.scheduleDetails %>
+</li>
+
                   <% }) %>
                 </ul>
               <% } else { %>
