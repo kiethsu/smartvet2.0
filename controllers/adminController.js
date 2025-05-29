@@ -453,25 +453,29 @@ exports.getDashboardStats = async (req, res) => {
     trendLabels.forEach((d,i) => heatmap[d] = trendData[i]);
 
     // build transactions
-    const payments = await Payment.find({ paidAt:{ $gte:curFrom, $lte:curTo } })
-      .populate('by','username')
-      .lean();
-    const transactions = payments.map(p => ({
-      date:      p.paidAt.toISOString().slice(0,10),
-      id:        p._id.toString().slice(-6),
-      customer:  p.by?.username || 'N/A',
-      items:     [...(p.services||[]),...(p.products||[])].map(i=>i.name).join(', '),
-      amount:    p.amount
-    }));
+ const payments = await Payment.find({ paidAt: { $gte: curFrom, $lte: curTo } })
+  .populate('by', 'username')         // Cashier/front desk
+  .populate('customer', 'username')   // Customer/user
+  .lean();
+
+const transactions = payments.map(p => ({
+  date:      p.paidAt.toISOString().slice(0,10),
+  id:        p._id.toString().slice(-6),
+  customer:  p.customer?.username || 'N/A', // ✅ Correct customer name
+  cashier:   p.by?.username || 'N/A',       // ✅ Correct cashier/front desk
+  items:     [...(p.services||[]),...(p.products||[])].map(i=>i.name).join(', '),
+  amount:    p.amount
+}));
 
     dashboardStats.sales = {
-      totalTransactions: currTxns,
-      totalRevenue:      currRev,
-      trend:             { labels:trendLabels, data:trendData },
-      prevTrend:         prevTrend.length ? prevTrend : undefined,
-      heatmap,
-      transactions
-    };
+  totalTransactions: currTxns,
+  totalRevenue:      currRev,
+  trend:             { labels:trendLabels, data:trendData },
+  prevTrend:         prevTrend.length ? prevTrend : undefined,
+  heatmap,
+  transactions      // <-- Now includes customer & cashier fields!
+};
+
 const revenueByService = await Payment.aggregate([
   { $unwind: "$services" },
   { $group: {
@@ -756,53 +760,44 @@ exports.predictAppointments = async (req, res) => {
 // adminController.js
 exports.getPeakDayOfWeek = async (req, res) => {
   try {
-    console.log("[getPeakDayOfWeek] Starting day-of-week analysis...");
-
-    // 1) Determine "30 days ago"
     const now = new Date();
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(now.getDate() - 30);
-
-    // 2) Retrieve reservations in the last 30 days
-    //    (Adjust the field name if needed, e.g. "createdAt")
-    const reservations = await Reservation.find({
-      createdAt: { $gte: thirtyDaysAgo, $lte: now }
-    }).lean();
-
-    // 3) dayOfWeekCounts: an object, keys are [0..6], values are how many
-    //    For easy label, we'll define an array of day names:
-    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    let dayOfWeekCounts = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-
-    // 4) Loop each reservation, find its day-of-week
-    reservations.forEach(resv => {
-      const day = new Date(resv.createdAt).getDay(); 
-      dayOfWeekCounts[day] = (dayOfWeekCounts[day] || 0) + 1;
-    });
-
-    // 5) Convert that object to an array: [ { dayLabel, count } ]
-    let dayArray = [];
-    for (let i = 0; i < 7; i++) {
-      dayArray.push({
-        dayLabel: dayNames[i],
-        count: dayOfWeekCounts[i]
-      });
+    let fromDate;
+    switch (req.query.range) {
+      case '7d':
+        fromDate = new Date(now.getTime() - 6 * 24*60*60*1000);
+        break;
+      case 'month':
+        fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'year':
+        fromDate = new Date(now.getFullYear(), 0, 1);
+        break;
+      case '30d':
+      default:
+        fromDate = new Date(now.getTime() - 29 * 24*60*60*1000);
     }
 
-    // 6) Find the top day (peak) by count
-    let peakDay = dayArray.reduce((max, current) => current.count > max.count ? current : max, dayArray[0]);
+    // Fetch reservations in [fromDate … now]
+    const reservations = await Reservation.find({
+      createdAt: { $gte: fromDate, $lte: now }
+    }).lean();
 
-    // Return the result
-    return res.json({
-      last30daysTotal: reservations.length,
-      days: dayArray,      // e.g. [ { dayLabel:"Monday", count:10 }, ... ]
-      peakDayOfWeek: peakDay // e.g. { dayLabel:"Monday", count:10 }
+    // Count per weekday
+    const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const counts = [0,0,0,0,0,0,0];
+    reservations.forEach(r => {
+      const d = new Date(r.createdAt).getDay();
+      counts[d]++;
     });
+
+    const days = dayNames.map((label,i) => ({ dayLabel: label, count: counts[i] }));
+    res.json({ days });
   } catch (err) {
-    console.error("Error in getPeakDayOfWeek:", err);
-    return res.status(500).json({ error: "Server error analyzing day-of-week." });
+    console.error(err);
+    res.status(500).json({ error: "Server error analyzing day-of-week." });
   }
 };
+
 exports.generateReport = async (req, res) => {
   try {
     // --------- 1) Appointment Trends Data (Dummy example data, replace with actual query as needed) ---------
@@ -940,6 +935,8 @@ exports.getInventoryStats = async (req, res) => {
     const totalSKUs     = allItems.length;
     const totalValue    = allItems.reduce((sum,i) => sum + (i.quantity * i.price), 0);
     const categoriesSet = new Set(allItems.map(i=>i.category));
+    const totalStock    = allItems.reduce((sum, i) => sum + i.quantity, 0);
+
     // 2) stock/value by category
     const stockByCategory = await Inventory.aggregate([
       { $group:{ _id:'$category', totalStock:{ $sum:'$quantity' } } },
@@ -949,12 +946,16 @@ exports.getInventoryStats = async (req, res) => {
       { $group:{ _id:'$category', totalValue:{ $sum:{ $multiply:['$quantity','$price'] } } } },
       { $sort:{ totalValue:-1 } }
     ]);
-    // 3) top 5 sold
+
+    // 3) top 5 sold (last 30 days)
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const topSold = await Payment.aggregate([
+      { $match: { paidAt: { $gte: thirtyDaysAgo } } },
       { $unwind:'$products' },
       { $group:{ _id:'$products.name', soldQuantity:{ $sum:'$products.quantity' } } },
       { $sort:{ soldQuantity:-1 } }, { $limit:5 }
     ]);
+
     // 4) low-stock & expiring soon
     const lowStock = allItems.filter(i => i.quantity <= 10);
     // flatten expirations
@@ -971,6 +972,37 @@ exports.getInventoryStats = async (req, res) => {
       .sort((a,b)=> a.expiry - b.expiry)
       .slice(0,5);
 
+    // --- New Analytics ---
+
+    // Inventory Turnover Rate (times per month)
+    // = (Total units sold in 30d) / (Avg inventory)
+    const totalSold30dAgg = await Payment.aggregate([
+      { $match: { paidAt: { $gte: thirtyDaysAgo } } },
+      { $unwind: "$products" },
+      { $group: { _id: null, sold: { $sum: "$products.quantity" } } }
+    ]);
+    const totalSold30d = totalSold30dAgg[0]?.sold || 0;
+    const avgInventory = totalStock; // or divide by categories for more accuracy, but usually use on-hand
+    const turnoverRate = avgInventory ? (totalSold30d / avgInventory).toFixed(2) : '0.00';
+
+    // Days Inventory Left = totalStock / avg daily sold (last 30d)
+    const avgDailySold = totalSold30d / 30;
+    const daysLeft = avgDailySold > 0 ? Math.round(totalStock / avgDailySold) : '--';
+
+    // Top value category
+    let topCategory = '';
+    let topCategoryValue = 0;
+    if (valueByCategory && valueByCategory.length) {
+      topCategory = valueByCategory[0]._id || '';
+      topCategoryValue = valueByCategory[0].totalValue || 0;
+    }
+
+    // Next expiry date (soonest item)
+    let nextExpiry = null;
+    if (expirations.length > 0) {
+      nextExpiry = expirations[0].expiry;
+    }
+
     res.json({
       totalSKUs,
       totalValue,
@@ -979,13 +1011,20 @@ exports.getInventoryStats = async (req, res) => {
       valueByCategory,
       topSold,
       lowStock,
-      expiringSoon
+      expiringSoon,
+      // --- New analytics for your UI cards ---
+      turnoverRate,
+      daysLeft,
+      topCategory,
+      topCategoryValue,
+      nextExpiry
     });
   } catch(err) {
     console.error(err);
     res.status(500).json({ message:'Server error' });
   }
 };
+
 
 // helper to fetch every payment with both cashier and customer
 async function fetchAllPayments() {
@@ -1096,6 +1135,7 @@ exports.downloadSalesExcel = async (req, res) => {
   await wb.xlsx.write(res);
   res.end();
 };
+
 
 // ─── Download CSV ───────────────────────────────────────────────────
 exports.downloadSalesCSV = async (req, res) => {
