@@ -153,12 +153,14 @@ const reservationIdSchema = Joi.object({
 router.get('/dashboard', authMiddleware, async (req, res) => {
   try {
     const username = req.user.username || req.user.email;
-    const upcomingVisits = await Reservation.find({
-      owner: req.user.userId,
-      schedule: { $exists: true },
-      'schedule.scheduleDate': { $gte: new Date() }
-    }).sort({ 'schedule.scheduleDate': 1 }).lean();
-
+   const upcomingVisits = await Reservation.find({
+   owner: req.user.userId,
+  status: 'Pending',
+   'schedule.scheduleDate': { $gte: new Date() }
+ })
+.populate('pets.petId','petName')      // ← so visit.pets[i].petId.petName is available
+ .sort({ 'schedule.scheduleDate': 1 })
+ .lean();
     const recentVisits = await Reservation.find({
       owner: req.user.userId,
       status: 'Done'
@@ -541,38 +543,51 @@ router.get(
 );
 
 
+// customerRoutes.js
+
 router.get('/get-pet-history', authMiddleware, async (req, res) => {
   try {
     let { petId, petName, addedFromReservation } = req.query;
-
-    // if you see your synthetic prefix, or the flag is false, do name-only:
     const isWalkIn = addedFromReservation === 'true'
                    && petId
                    && String(petId).startsWith('list-');
-
-    let query = { status: 'Done', owner: req.user.userId };
+    let baseQuery = { status: 'Done', owner: req.user.userId };
 
     if (addedFromReservation === 'false' || !petId || isWalkIn) {
-      // always match by petName only
-      query['pets.petName'] = petName;
+      baseQuery['pets.petName'] = petName;
     } else {
-      // only when it's a “real” Pet._id that we can cast:
-      query.$or = [
+      baseQuery.$or = [
         { 'pets.petId': petId },
         { 'pets.petName': petName }
       ];
     }
 
-    const history = await Reservation.find(query)
-                                     .populate('doctor', 'username')
-                                     .lean();
+    // 1) fetch the list of matching reservations
+    const reservations = await Reservation.find(baseQuery)
+      .populate('doctor', 'username')
+      .lean();
+
+    // 2) for each reservation, also fetch and merge its Consultation
+    const history = await Promise.all(reservations.map(async (r) => {
+      const consult = await Consultation.findOne({ reservation: r._id }).lean();
+      if (consult) {
+        r.physicalExam      = consult.physicalExam;
+        r.diagnosis         = consult.diagnosis;
+        r.services          = consult.services;
+        r.medications       = consult.medications;
+        r.notes             = consult.notes;
+        r.confinementStatus = consult.confinementStatus;
+      }
+      return r;
+    }));
+
     return res.json({ success: true, history });
-  }
-  catch (err) {
-    console.error("Error fetching pet history (customer):", err);
+  } catch (err) {
+    console.error("Error fetching pet history:", err);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
 
 // In customerRoutes.js, after your other routes:
 
