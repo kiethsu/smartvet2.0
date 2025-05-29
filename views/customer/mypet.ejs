@@ -557,67 +557,136 @@
           petName: petName,
           addedFromReservation: added   // ← include it here
         },
-        success: function(response) {
-          if (response.success) {
-            let historyHtml = '';
-            const cls = response.history.length >= 5 ? 'history-container' : '';
-            historyHtml += `<div class="${cls}">`;
+       success: function(response) {
+  if (response.success) {
+    let historyHtml = '';
+    const cls = response.history.length >= 5 ? 'history-container' : '';
+    historyHtml += `<div class="${cls}">`;
 
-            response.history.forEach((record, idx) => {
-              historyHtml +=
-                `<div class="history-record mb-2">
-                   <div class="history-date bg-light p-2"
-                        data-toggle="collapse"
-                        data-target="#historyRecord${idx}"
-                        aria-expanded="false"
-                        aria-controls="historyRecord${idx}"
-                        style="cursor:pointer;">
-                     ${formatVisitDate(record.date)}
-                   </div>
-                   <div class="collapse" id="historyRecord${idx}">
-                     <div class="card card-body position-relative">
-                       <button type="button" class="close position-absolute"
-                               style="top:10px;right:10px;"
-                               onclick="$('#historyRecord${idx}').collapse('hide')">
-                         <span aria-hidden="true">&times;</span>
-                       </button>
-                       <p><strong>Doctor:</strong>
-                          ${record.doctor?.username || 'Not Assigned'}</p>
-                       <p><strong>Notes:</strong>
-                          ${record.consultationNotes || 'N/A'}</p>
-                       <ul class="list-unstyled mb-0">
-                         ${record.medications.map(med =>
-                           `<li>
-                              <p><strong>Medication:</strong> ${med.medicationName}</p>
-                              <p><strong>Dosage:</strong> ${med.dosage}</p>
-                              <p><strong>Frequency:</strong> ${med.frequency}</p>
-                              ${ med.adminTime
-                                  ? `<p><strong>Admin Time:</strong> ${med.adminTime}</p>`
-                                  : ''
-                              }
-                              ${ med.additionalInstructions
-                                  ? `<p><strong>Instructions:</strong>
-                                       ${med.additionalInstructions}</p>`
-                                  : ''
-                              }
-                              <p><strong>Qty:</strong> ${med.quantity || 'N/A'}</p>
-                            </li>`
-                         ).join('')}
-                       </ul>
-                     </div>
-                   </div>
-                 </div>`;
-            });
+    response.history.forEach((record, idx) => {
+      // pick either the scheduled date or the creation timestamp
+      const visitDate = record.schedule?.scheduleDate || record.createdAt;
 
-            historyHtml += `</div>`;
-            $('#petHistoryContainer').html(historyHtml);
-          } else {
-            $('#petHistoryContainer').html('<p>No history available.</p>');
-          }
-        },
-        error: function() {
-          $('#petHistoryContainer').html('<p>Error loading history.</p>');
-        }
+      historyHtml += `
+        <div class="history-record mb-3">
+          <div class="history-date bg-light p-2"
+               data-toggle="collapse"
+               data-target="#historyRecord${idx}"
+               aria-expanded="false"
+               aria-controls="historyRecord${idx}"
+               style="cursor:pointer;">
+            ${formatVisitDate(visitDate)}
+          </div>
+          <div id="historyRecord${idx}" class="collapse">
+            <div class="card card-body position-relative">
+              <button type="button" class="close position-absolute"
+                      style="top:10px;right:10px;"
+                      onclick="$('#historyRecord${idx}').collapse('hide')">
+                <span aria-hidden="true">&times;</span>
+              </button>
+
+              <!-- Concern -->
+              <p><strong>Concern:</strong> ${record.concerns || 'N/A'}</p>
+
+              <!-- Physical Exam -->
+              ${record.physicalExam
+                ? `<table class="physical-table mb-3">
+                     <thead>
+                       <tr><th>Weight</th><th>Temperature</th><th>Observations</th></tr>
+                     </thead>
+                     <tbody>
+                       <tr>
+                         <td>${record.physicalExam.weight     || 'N/A'}</td>
+                         <td>${record.physicalExam.temperature|| 'N/A'}</td>
+                         <td>${record.physicalExam.observations|| 'N/A'}</td>
+                       </tr>
+                     </tbody>
+                   </table>`
+                : ''
+              }
+
+              <!-- Diagnosis -->
+              ${record.diagnosis
+                ? `<div class="diagnosis-card mb-3">${record.diagnosis}</div>`
+                : ''
+              }
+
+              <!-- Services -->
+              ${record.services?.length
+                ? `<table class="services-table mb-3">
+                     <thead>
+                       <tr><th>Service</th><th>Details</th><th>File</th></tr>
+                     </thead>
+                     <tbody>
+                       ${record.services.map(s => {
+                         let url = s.file || '';
+                         if (url) {
+                           // normalize path
+                           url = url.replace(/^public/, '').replace(/^([^/])/, '/$1');
+                           if (!/^https?:\/\//.test(url)) url = window.location.origin + url;
+                         }
+                         return `
+                           <tr>
+                             <td>${s.serviceName}</td>
+                             <td>${s.details || '–'}</td>
+                             <td>${url ? `<a href="${url}" download>Download</a>` : '–'}</td>
+                           </tr>`;
+                       }).join('')}
+                     </tbody>
+                   </table>`
+                : ''
+              }
+
+              <!-- Medications -->
+              ${record.medications?.length
+                ? `<table class="medication-table mb-3">
+                     <thead>
+                       <tr><th>Name</th><th>Qty</th><th>Dosage</th><th>Remarks</th></tr>
+                     </thead>
+                     <tbody>
+                       ${record.medications.map(m => `
+                         <tr>
+                           <td>${m.name || m.medicationName || '–'}</td>
+                           <td>${m.quantity || '–'}</td>
+                           <td>${m.dosage || '–'}</td>
+                           <td>${m.remarks || '–'}</td>
+                         </tr>
+                       `).join('')}
+                     </tbody>
+                   </table>`
+                : ''
+              }
+
+              <!-- Confinement -->
+              ${record.confinementStatus?.length
+                ? `<p><strong>Confinement:</strong> ${record.confinementStatus.join(', ')}</p>`
+                : ''
+              }
+
+              <!-- Additional Notes -->
+              ${record.notes
+                ? `<p><strong>Additional Notes:</strong> ${record.notes}</p>`
+                : ''
+              }
+
+              <!-- Doctor -->
+              <p><strong>Doctor:</strong> ${record.doctor?.username || 'Not Assigned'}</p>
+            </div>
+          </div>
+        </div>`;
+    });
+
+    historyHtml += `</div>`;
+    $('#petHistoryContainer').html(historyHtml);
+
+  } else {
+    $('#petHistoryContainer').html('<p>No history available.</p>');
+  }
+},
+error: function() {
+  $('#petHistoryContainer').html('<p>Error loading history.</p>');
+}
+
       });
     }
   });
