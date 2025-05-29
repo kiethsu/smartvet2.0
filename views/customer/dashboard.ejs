@@ -268,47 +268,47 @@
         </tbody>
       </table>
 
-      <!-- Upcoming Visits Modal -->
-      <div class="modal fade" id="upcomingVisitsModal" tabindex="-1" role="dialog"
-           aria-labelledby="upcomingVisitsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="upcomingVisitsModalLabel">Upcoming Visits</h5>
-              <button type="button" class="close" data-dismiss="modal">
-                <span>&times;</span>
-              </button>
-            </div>
-            <div class="modal-body">
-              <% if (upcomingVisits && upcomingVisits.length > 0) { %>
-                <ul class="list-group">
-                  <% upcomingVisits.forEach(function(visit) { %>
-                  <li class="list-group-item">
-  <strong>Date:</strong>
-  <%= formatVisitDate(visit.schedule.scheduleDate) %><br>
-
-  <strong>Pet:</strong>
-  <%= visit.pets
-        .map(p => p.petId ? p.petId.petName : p.petName)
-        .join(', ')
-  %><br>
-
-  <strong>Service:</strong>
-  <%= visit.schedule.scheduleDetails %>
-</li>
-
-                  <% }) %>
-                </ul>
-              <% } else { %>
-                <p>No upcoming visits found.</p>
-              <% } %>
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn-secondary" data-dismiss="modal">Close</button>
-            </div>
-          </div>
-        </div>
+<!-- Upcoming Visits Modal -->
+<div class="modal fade" id="upcomingVisitsModal" tabindex="-1" role="dialog"
+     aria-labelledby="upcomingVisitsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="upcomingVisitsModalLabel">Upcoming Visits</h5>
+        <button type="button" class="close" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
       </div>
+      <div class="modal-body">
+        <% if (upcomingVisits && upcomingVisits.length > 0) { %>
+          <ul class="list-group">
+            <% upcomingVisits.forEach(function(visit) { %>
+              <li class="list-group-item">
+                <strong>Date:</strong>
+                <%= formatVisitDate(visit.schedule.scheduleDate) %><br>
+
+                <strong>Pet:</strong>
+                <%= visit.pets
+                      .map(p => p.petId?.petName || p.petName)
+                      .join(', ')
+                      || '—'
+                %><br>
+
+                <strong>Follow-Up Service:</strong>
+                <%= visit.schedule.scheduleDetails || '—' %>
+              </li>
+            <% }) %>
+          </ul>
+        <% } else { %>
+          <p>No upcoming visits found.</p>
+        <% } %>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 
       <!-- Recent Visit Details Modal -->
