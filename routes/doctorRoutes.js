@@ -313,49 +313,24 @@ await reservation.save();
 
 
 // Save a Follow-Up Schedule for a Reservation
-router.post(
-  "/add-schedule",
-  authMiddleware,
-  validateRequest(addScheduleSchema),
-  async (req, res) => {
-    try {
-      const { reservationId, scheduleDate, scheduleDetails } = req.body;
-      const orig = await Reservation.findById(reservationId);
-      if (!orig) {
-        return res.status(404).json({ success: false, message: "Reservation not found." });
-      }
-
-   
-      // 2) Create a brand-new Reservation entry for the follow-up
-    // after
-const followUp = new Reservation({
-  owner:        orig.owner,
-  ownerName:    orig.ownerName,
-  pets:         orig.pets,
-  service:      orig.service,
-  date:         new Date(scheduleDate),
-  time:         orig.time || null,
-  status:       'Pending',
-  doctor:       orig.doctor,
-
-  // ← tag it as a follow-up:
-  schedule: {
-    scheduleDate:   new Date(scheduleDate),
-    scheduleDetails // your “Checkup”, “Vaccination” etc.
+router.post("/add-schedule", authMiddleware, validateRequest(addScheduleSchema), async (req, res) => {
+  try {
+    const { reservationId, scheduleDate, scheduleDetails } = req.body;
+    const reservation = await Reservation.findById(reservationId);
+    if (!reservation) {
+      return res.status(404).json({ success: false, message: "Reservation not found." });
+    }
+    reservation.schedule = {
+      scheduleDate: new Date(scheduleDate),
+      scheduleDetails
+    };
+    await reservation.save();
+    res.json({ success: true, reservation });
+  } catch (error) {
+    console.error("Error saving schedule:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
-
-      await followUp.save();
-
-      // 3) Return both so the doctor UI can update immediately if you want
-      res.json({ success: true, original: orig, followUp });
-    } catch (error) {
-      console.error("Error saving schedule:", error);
-      res.status(500).json({ success: false, message: "Server error" });
-    }
-  }
-);
-
 
 // List Services by Category
 router.get("/services/listByCategory", authMiddleware, async (req, res) => {
