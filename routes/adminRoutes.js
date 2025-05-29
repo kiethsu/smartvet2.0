@@ -11,6 +11,7 @@ const Service = require("../models/service");
 const ServiceCategory = require("../models/serviceCategory");
 const mongoose = require("mongoose");
 const Payment = require('../models/Payment');
+const PetList = require('../models/petlist');
 
 
 // Helper middleware for validating request bodies
@@ -104,18 +105,72 @@ router.get("/profile", async (req, res) => {
   }
 });
 
-// Admin pet list view route
-router.get("/petlist", (req, res) => {
-  // You may need to query for pets here, similar to HR:
-  const Pet = require("../models/pet");
-  Pet.find().populate('owner', 'username').lean()
-    .then(pets => {
-      res.render("petlist", { pets });
+// Replace your current /petlist route with:
+router.get("/petlist", async (req, res) => {
+  try {
+    const entries = await PetList.find()
+      .populate('owner', 'username')
+      .lean();
+    res.render("petlist", { entries });
+  } catch (err) {
+    console.error("Error fetching pet list:", err);
+    res.status(500).send("Server error");
+  }
+});
+router.get('/get-pet-history', async (req, res) => {
+  const { petId, petName, ownerId } = req.query;
+  if (!petId && !petName) {
+    return res.json({ success: false, message: 'petId or petName is required' });
+  }
+  try {
+    const entry = await PetList.findOne(
+      petId
+        ? { _id: petId }
+        : { owner: ownerId, petName }
+    )
+    .populate({
+      path: 'consultationHistory.consultation',
+      populate: {
+        path: 'reservation',
+        select: 'date schedule doctor',
+        populate: { path: 'doctor', select: 'username' }
+      }
     })
-    .catch(err => {
-      console.error("Error fetching pet list:", err);
-      res.status(500).send("Server error");
-    });
+    .lean();
+
+    if (!entry) {
+      return res.json({ success: false, message: 'PetList entry not found.' });
+    }
+
+    const history = entry.consultationHistory
+      .map(ch => {
+        const c   = ch.consultation || {};
+        const resv = c.reservation || {};
+        return {
+          id:         c._id,
+          date:       c.createdAt || ch.addedAt,
+          doctor:     resv.doctor || null,
+          notes:      c.notes || c.consultationNotes || '',
+          physical:   c.physicalExam || {},
+          diagnosis:  c.diagnosis || '',
+          services:   c.services || [],
+          medications:c.medications || [],
+          confinement:c.confinementStatus || [],
+          nextSchedule: resv.schedule
+            ? {
+                date:    resv.schedule.scheduleDate,
+                details: resv.schedule.scheduleDetails
+              }
+            : null
+        };
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return res.json({ success: true, history });
+  } catch (err) {
+    console.error('Error fetching pet history for admin:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
 });
 router.get("/generate-report", adminController.generateReport);
 router.get("/peak-day-of-week", adminController.getPeakDayOfWeek);
