@@ -153,30 +153,43 @@ const reservationIdSchema = Joi.object({
 router.get('/dashboard', authMiddleware, async (req, res) => {
   try {
     const username = req.user.username || req.user.email;
-   const upcomingVisits = await Reservation.find({
-   owner: req.user.userId,
-  status: 'Pending',
-   'schedule.scheduleDate': { $gte: new Date() }
- })
-.populate('pets.petId','petName')      // ← so visit.pets[i].petId.petName is available
- .sort({ 'schedule.scheduleDate': 1 })
- .lean();
+    const now = new Date();
+
+    // grab any reservation with a follow-up in the future
+    const upcomingVisits = await Reservation.find({
+      owner: req.user.userId,
+      'schedule.scheduleDate': { $gte: now }
+    })
+    .populate('pets.petId', 'petName')  // so visit.pets[i].petId.petName is available
+    .sort({ 'schedule.scheduleDate': 1 })
+    .lean();
+
+    // your recent “Done” visits
     const recentVisits = await Reservation.find({
       owner: req.user.userId,
       status: 'Done'
-    }).sort({ createdAt: -1 }).limit(5).lean();
-    
+    })
+    .sort({ createdAt: -1 })
+    .limit(5)
+    .lean();
+
     let dashboardSetting = await DashboardSetting.findOne().lean();
     if (dashboardSetting && dashboardSetting.videoUrl) {
       dashboardSetting.videoUrl = convertToEmbedUrl(dashboardSetting.videoUrl);
     }
-    
-    res.render('customer/dashboard', { username, upcomingVisits, recentVisits, dashboardSetting });
+
+    res.render('customer/dashboard', {
+      username,
+      upcomingVisits,
+      recentVisits,
+      dashboardSetting
+    });
   } catch (error) {
     console.error("Error fetching dashboard data:", error);
     res.status(500).send("Server error");
   }
 });
+
 // customerRoutes.js
 
 // customerRoutes.js
