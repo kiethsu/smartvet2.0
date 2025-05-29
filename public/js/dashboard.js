@@ -1,7 +1,10 @@
 let serviceRevenueChartInstance = null;
 let salesTrendChart;
+let stockByCategoryChartInstance = null;
+let valueByCategoryChartInstance = null;
+let appointmentTrendChart = null;
 
-// -------- Add this helper function at the top --------
+// -------- Helper function for percent arrows --------
 function setChange(selector, percent) {
   const el = $(selector);
   el.removeClass('up down neutral');
@@ -80,23 +83,18 @@ function loadSales(range, start, end, compare) {
       );
 
       // ---- User Stats Card (with arrow and percent change) ----
-      // Calculate your percent change here based on your backend logic!
-      // These are just EXAMPLES:
       let doctorsChange = (u.doctorsChange !== undefined) ? u.doctorsChange : 0;
       let hrChange = (u.hrChange !== undefined) ? u.hrChange : 0;
       let customersChange = (u.customersChange !== undefined) ? u.customersChange : 0;
-      // Retention logic - you can tweak this as needed
       let retentionPercent = data.descriptive 
         ? ((data.descriptive.returningCustomers || 0) / 
             ((data.descriptive.newCustomers || 0) + (data.descriptive.returningCustomers || 0)) * 100).toFixed(1)
         : 0;
 
-      // Update values
       $('#doctorsCountSmall').text(u.doctors || 0);
       $('#hrCountSmall').text(u.hr || 0);
       $('#customersCountSmall').text(u.customers || 0);
 
-      // Use setChange function for percent changes/arrows
       setChange('#doctorsChange', doctorsChange);
       setChange('#hrChange', hrChange);
       setChange('#customersChange', customersChange);
@@ -105,7 +103,7 @@ function loadSales(range, start, end, compare) {
       // ---- Sales Trend Chart ----
       if (salesTrendChart) {
         salesTrendChart.destroy();
-        $('#salesTrendChart').html(''); // clear old chart
+        $('#salesTrendChart').html('');
       }
       if (s.trend?.data && s.trend?.data.some(v=>v>0)) {
         salesTrendChart = new ApexCharts(
@@ -175,21 +173,39 @@ function loadInventoryOverview(range = 'all') {
     $('#invLowStockCount').text(data.lowStock.length);
     $('#invExpiringCount').text(data.expiringSoon.length);
 
+    // --- New Smart Analytics (cards below KPIs) ---
+    $('#turnoverRate').text(data.turnoverRate || '--');
+    $('#daysLeft').text(data.daysLeft || '--');
+    $('#topCategory').text(data.topCategory ? `${data.topCategory} (₱${Number(data.topCategoryValue).toLocaleString()})` : '--');
+    $('#nextExpiry').text(data.nextExpiry ? new Date(data.nextExpiry).toLocaleDateString() : '--');
+
+    // --- Destroy previous charts to avoid duplicates ---
+    if (stockByCategoryChartInstance) {
+      stockByCategoryChartInstance.destroy();
+      $('#stockByCategoryChart').html('');
+    }
+    if (valueByCategoryChartInstance) {
+      valueByCategoryChartInstance.destroy();
+      $('#valueByCategoryChart').html('');
+    }
+
     // 2) Stock by Category (bar)
-    new ApexCharts(document.querySelector('#stockByCategoryChart'), {
+    stockByCategoryChartInstance = new ApexCharts(document.querySelector('#stockByCategoryChart'), {
       chart: { type: 'bar', height: 250, toolbar: { show: false } },
       series: [{ name: 'Units', data: data.stockByCategory.map(x => x.totalStock) }],
       xaxis: { categories: data.stockByCategory.map(x => x._id), labels: { rotate: -45 } },
       tooltip: { y: { formatter: v => v + ' units' } }
-    }).render();
+    });
+    stockByCategoryChartInstance.render();
 
     // 3) Value by Category (donut)
-    new ApexCharts(document.querySelector('#valueByCategoryChart'), {
+    valueByCategoryChartInstance = new ApexCharts(document.querySelector('#valueByCategoryChart'), {
       chart: { type: 'donut', height: 250 },
       series: data.valueByCategory.map(x => x.totalValue),
       labels: data.valueByCategory.map(x => x._id),
       tooltip: { y: { formatter: v => '₱' + Number(v).toLocaleString() } }
-    }).render();
+    });
+    valueByCategoryChartInstance.render();
 
     // 4) Top 5 Best-Sellers
     $('#topSoldList').empty();
@@ -229,7 +245,6 @@ function loadRevenueByService(range = '7d') {
     // Destroy previous donut chart instance (avoid stacking)
     if (window.serviceRevenueChartInstance) {
       window.serviceRevenueChartInstance.destroy();
-      // Also clear the chart container to avoid ghost canvases
       $('#serviceRevenueChart').html('');
     }
 
@@ -275,3 +290,172 @@ function loadRevenueByService(range = '7d') {
 function renderHeatmap(selector, dataMap) {}
 function exportCsv(transactions) {}
 function exportXlsx(transactions) {}
+
+$(function(){
+  // 1) TOTAL APPOINTMENTS
+  function loadTotalAppointments() {
+    $.getJSON('/admin/get-dashboard-stats', data => {
+      const total = (data.appointmentTrends?.completed || []).reduce((a,b)=>a+b,0);
+      $('#kpiAppointments').text(total);
+      $('#kpiAppChange').text('+0%');
+      $('#kpiDoctors').text(data.userStats?.doctors ?? 0);
+      $('#kpiDocChange').text('+0%');
+      $('#kpiClients').text(data.userStats?.customers ?? 0);
+    });
+  }
+
+  // 2) PEAK DAY OF WEEK
+  function loadPeakDayOfWeek(range = '30d') {
+    $.getJSON(`/admin/peak-day-of-week?range=${range}`, resp => {
+      if (window.peakDayChartInstance) window.peakDayChartInstance.destroy();
+      const ctx = document.getElementById('peakDayChart').getContext('2d');
+      window.peakDayChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: resp.days.map(d=>d.dayLabel),
+          datasets: [{
+            label: 'Appointments',
+            data: resp.days.map(d=>d.count),
+            borderColor: '#2196f3',
+            backgroundColor: '#2196f3',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { ticks:{ autoSkip:false, maxRotation:0 } },
+            y: { beginAtZero:true, ticks:{ stepSize:1 } }
+          },
+          plugins: { legend:{ display:false } }
+        }
+      });
+      $('#peakDayTable tbody').html(
+        resp.days.map(d=>
+          `<tr><td>${d.dayLabel}</td><td class="text-right">${d.count}</td></tr>`
+        ).join('')
+      );
+    });
+  }
+
+  // 3) APPOINTMENT TRENDS CHART
+// 3) APPOINTMENT TRENDS CHART
+let appointmentTrendChartInstance = null;
+function loadAppointmentTrendsChart(range = '7d') {
+  $.getJSON(`/admin/get-dashboard-stats?range=${range}`, data => {
+    const tr        = data.appointmentTrends || {};
+    const labels    = tr.labels    || [];
+    const pending   = tr.pending   || [];
+    const approved  = tr.approved  || [];
+    const completed = tr.completed || [];
+
+    // destroy old chart
+    if (appointmentTrendChart) {
+      appointmentTrendChart.destroy();
+      // clear out the container DIV
+      document.querySelector('#appointmentsTrendChart').innerHTML = '';
+    }
+
+    // if there’s no data at all, show a placeholder
+    if (!labels.length) {
+      $('#appointmentsTrendChart').html(
+        '<p class="text-center text-muted">No appointments data.</p>'
+      );
+      return;
+    }
+
+    // render with ApexCharts (just like sales)
+    appointmentTrendChart = new ApexCharts(
+      document.querySelector('#appointmentsTrendChart'),
+      {
+        chart:  { type: 'line', height: 250, toolbar: { show: false } },
+        series: [
+          { name: 'Pending',   data: pending },
+          { name: 'Approved',  data: approved },
+          { name: 'Completed', data: completed }
+        ],
+        xaxis: { categories: labels, labels: { rotate: -45 } },
+        stroke: { curve: 'smooth', width: 2 },
+        tooltip: { y: v => `${v}` }
+      }
+    );
+    appointmentTrendChart.render();
+  });
+}
+
+
+
+
+  // 4) FORECAST (Next 3 Days)
+let predictionChartInstance = null;
+
+function loadPredictions() {
+  $.getJSON('/admin/predict-appointments', resp => {
+    const preds  = resp.predictions || [];
+    const labels = preds.map(p => p.date.slice(5));          // e.g. "05-29"
+    const data   = preds.map(p => p.predictedCount);
+
+    // ── 1) Destroy old sparkline ─────────────────────────────
+    if (predictionChartInstance) {
+      predictionChartInstance.destroy();
+      document.querySelector('#predictionChart').innerHTML = '';
+    }
+
+    // ── 2) Render new sparkline ──────────────────────────────
+    predictionChartInstance = new ApexCharts(
+      document.querySelector('#predictionChart'),
+      {
+        chart: {
+          type: 'area',
+          height: 120,
+          sparkline: { enabled: true }
+        },
+        series: [{ name: 'Forecast', data }],
+        stroke: { curve: 'smooth', width: 2 },
+        fill: { opacity: 0.3 },
+        tooltip: { enabled: true, theme: 'light' }
+      }
+    );
+    predictionChartInstance.render();
+
+    // ── 3) Inject the three values ───────────────────────────
+    const $fv = $('#forecastValues').empty();
+    preds.forEach((p,i) => {
+      // label Day 1 = Tomorrow, Day 2/3 = M-D
+      const label = i === 0
+        ? 'Tomorrow'
+        : new Date(p.date).toLocaleDateString('en-US', { month:'short', day:'numeric' });
+      $fv.append(`
+        <div class="text-center" style="flex:1">
+          <small class="text-muted d-block">${label}</small>
+          <strong>${p.predictedCount}</strong>
+        </div>
+      `);
+    });
+  });
+}
+
+// wire up the filter dropdown
+$('#appointmentTrendRange').on('change', () =>
+  loadAppointmentTrendsChart($('#appointmentTrendRange').val())
+);
+  // 5) EVENT BINDINGS
+  $('#appointmentTrendRange').on('change', () => 
+    loadAppointmentTrendsChart($('#appointmentTrendRange').val())
+  );
+  $('#peakDayRange').on('change', () =>
+    loadPeakDayOfWeek($('#peakDayRange').val())
+  );
+  $('a[href="#appointmentTrends"]').on('shown.bs.tab', () => {
+    loadTotalAppointments();
+    loadPeakDayOfWeek($('#peakDayRange').val());
+    loadAppointmentTrendsChart($('#appointmentTrendRange').val());
+    loadPredictions();
+  });
+
+  // 6) INITIAL CALLS
+  loadTotalAppointments();
+  loadPeakDayOfWeek($('#peakDayRange').val());
+  loadAppointmentTrendsChart($('#appointmentTrendRange').val());
+  loadPredictions();
+});
