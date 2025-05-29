@@ -1,3 +1,14 @@
+<% 
+  function formatLongDate(dateStr) {
+    if (!dateStr) return 'N/A';
+    const d     = new Date(dateStr);
+    const month = d.toLocaleString('en-US', { month: 'long' }).toLowerCase();
+    const day   = d.getDate();
+    const year  = d.getFullYear();
+    return `${month} ${day} ${year}`;
+  }
+%>
+
 <%
   // Fallback for petDetails
   var petDetails = typeof petDetails !== 'undefined' ? petDetails : { species: [], breeds: [], diseases: [] };
@@ -24,7 +35,51 @@ data-threshold="<%= threshold %>">
   </div>
 <% } %>
 
+<style>
+  /* Layout for each label/value row */
+  #viewConsultationModal .detail-row {
+    display: flex;
+    margin-bottom: 1rem;
+  }
+  #viewConsultationModal .detail-label {
+    width: 35%;
+    font-weight: 700;
+    color: #1669bb;
+  }
+  #viewConsultationModal .detail-value {
+    width: 65%;
+  }
 
+  /* Reuse your dashboard’s table styles */
+  #viewConsultationModal .physical-table,
+  #viewConsultationModal .services-table,
+  #viewConsultationModal .medication-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+  }
+  #viewConsultationModal table th,
+  #viewConsultationModal table td {
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
+    text-align: left;
+  }
+  #viewConsultationModal .physical-table thead,
+  #viewConsultationModal .services-table thead,
+  #viewConsultationModal .medication-table thead {
+    background-color: #4B9CD3;
+    color: #fff;
+  }
+
+  /* Diagnosis box */
+  #viewConsultationModal .diagnosis-card {
+    background: #f1f9ff;
+    border-left: 4px solid #4B9CD3;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+  }
+</style>
 
        <!-- Horizontal pet selection -->
 <div class="horizontal-scroll">
@@ -82,7 +137,12 @@ data-threshold="<%= threshold %>">
           </div>
           <div class="form-group">
             <label for="date">Date</label>
-            <input type="date" class="form-control" id="date">
+            <input 
+  type="date" 
+   class="form-control" 
+   id="date"
+   min="<%= new Date().toISOString().split('T')[0] %>"
+ >
           </div>
           <div class="form-group">
             <label for="timeSelect">Time</label>
@@ -113,43 +173,61 @@ data-threshold="<%= threshold %>">
 <div class="card p-4 shadow-sm mb-4 reservation-details-card">
   <h4 class="font-weight-bold">Reservation Details</h4>
   <div class="table-responsive">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Pet Name</th>
-          <th>Details</th>
-          <th>Status</th>
-          <th>Action</th> <!-- New header column -->
-        </tr>
-      </thead>
-      <tbody id="reservationDetailsTableBody">
-  <% if (reservations && reservations.length > 0) { %>
-    <% reservations.forEach(function(reservation) { %>
-      <% if (reservation.status === 'Pending' || reservation.status === 'Approved') { %>
-        <tr id="reservation-<%= reservation._id %>">
-          <td><%= reservation.pets.map(p => p.petName).join(', ') %></td>
-          <td>
-            <button class="btn btn-primary btn-sm" onclick="viewReservation('<%= reservation._id %>')">
-              View
-            </button>
-          </td>
-          <td>
-            <span class="badge badge-info"><%= reservation.status %></span>
-          </td>
-          <td>
-            <button class="btn btn-danger btn-sm" onclick="cancelReservation('<%= reservation._id %>')">
-              Cancel
-            </button>
-          </td>
-        </tr>
-      <% } %>
-    <% }); %>
-  <% } %>
-</tbody>
+<!-- In consult.ejs, update your “Reservation Details” table header: -->
+<table class="table">
+  <thead>
+    <tr>
+      <th>Pet Name</th>
+      <th>Date</th>                <!-- new -->
+      <th>Details</th>
+      <th>Status</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody id="reservationDetailsTableBody">
+    <% if (reservations && reservations.length > 0) { %>
+      <% reservations.forEach(function(res) { %>
+        <% if (res.status === 'Pending' || res.status === 'Approved') { %>
+          <tr id="reservation-<%= res._id %>">
+            <td><%= res.pets.map(p => p.petName).join(', ') %></td>
+            <td>
+          <% if (res.date) { %>
+  <%= formatLongDate(res.date) %>
+<% } else if (res.schedule && res.schedule.scheduleDate) { %>
+  <%= formatLongDate(res.schedule.scheduleDate) %>
+<% } else { %>
+  N/A
+<% } %>
 
-      
-      
-    </table>
+            </td>
+            <td>
+              <button class="btn btn-primary btn-sm"
+                      onclick="viewReservation('<%= res._id %>')">
+                View
+              </button>
+            </td>
+            <td>
+              <span class="badge badge-<%= res.status === 'Approved' ? 'success' : 'info' %>">
+                <%= res.status %>
+              </span>
+            </td>
+            <td>
+              <button class="btn btn-danger btn-sm"
+                      onclick="cancelReservation('<%= res._id %>')">
+                Cancel
+              </button>
+            </td>
+          </tr>
+        <% } %>
+      <% }); %>
+    <% } else { %>
+      <tr>
+        <td colspan="5" class="text-center">No upcoming visits.</td>
+      </tr>
+    <% } %>
+  </tbody>
+</table>
+
   </div>
 </div>
 
@@ -207,20 +285,21 @@ data-threshold="<%= threshold %>">
 
             
 <!-- Modal for Viewing Consultation Details -->
-<div class="modal fade" id="viewConsultationModal" tabindex="-1" role="dialog" aria-labelledby="viewConsultationModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
+<div class="modal fade" id="viewConsultationModal" tabindex="-1" role="dialog"
+     aria-labelledby="viewConsultationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
         <h5 class="modal-title" id="viewConsultationModalLabel">Consultation Details</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
-      <div class="modal-body" id="consultationDetails">
-        <!-- Consultation details will be loaded here -->
+      <div class="modal-body p-4" id="consultationDetails">
+        <!-- Content injected by JavaScript -->
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-secondary px-4" data-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -301,6 +380,14 @@ data-threshold="<%= threshold %>">
     .horizontal-scroll .vetcard {
       width: 70px;
     }
+  }
+    /* any disabled option in #timeSelect turns red */
+  #timeSelect option:disabled {
+    color: #dc3545;      /* bootstrap’s .text-danger color */
+  }
+  /* optional extra hook if you need it */
+  #timeSelect option.full-slot {
+    color: #dc3545;
   }
 </style>
 
@@ -412,113 +499,138 @@ document.getElementById('consultPage').dataset.threshold,
         concerns,
         selectedPets: selectedPetsArray
       };
-        
-      $.ajax({
-        url: '/customer/submit-reservation',
-        method: 'POST',
-        data: JSON.stringify(postData),
-        contentType: 'application/json',
-        success: function(response) {
-          if(response.success) {
-            // Show SweetAlert2 success pop-up
-            Swal.fire({
-              icon: 'success',
-              title: 'Success',
-              text: 'Reservation submitted successfully!'
-            });
+  $.ajax({
+    url: '/customer/submit-reservation',
+    method: 'POST',
+    data: JSON.stringify(postData),
+    contentType: 'application/json',
 
-            // Update table with new reservation
-            const petNames = selectedPetsArray.map(item => item.petName).join(', ');
-           // Updated newRow code with cancel button
-const newRow = `
-  <tr id="reservation-${response.reservation._id}">
-    <td>${petNames}</td>
-    <td>
-      <button class="btn btn-primary btn-sm" onclick="viewReservation('${response.reservation._id}')">View</button>
-    </td>
-    <td><span class="badge badge-info">Pending</span></td>
-    <td>
-      <button class="btn btn-danger btn-sm" onclick="cancelReservation('${response.reservation._id}')">Cancel</button>
-    </td>
-  </tr>`;
+    success: function(response) {
+      if (!response.success) return;
 
-            $('#reservationDetailsTableBody').append(newRow);
-
-            // Reset form
-            $('#consultForm')[0].reset();
-            $('#selectedPetsContainer').empty();
-            $('.horizontal-scroll .vetcard').removeClass('selected').find('.checkmark-overlay').hide();
-            selectedPets = {};
-            $('#timeError').text('');
-
-            // Re-check time slots
-            updateTimeDropdownForToday();
-            checkTimeSlots();
-          }
-        },
-        error: function(err) {
-          if (err.responseJSON && err.responseJSON.message && err.responseJSON.message.indexOf("full") !== -1) {
-            $('#timeError').text(err.responseJSON.message);
-          } else {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: 'There was a problem submitting your reservation.'
-            });
-          }
-        }
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Reservation submitted successfully!'
       });
-    });
+
+      const $tbody = $('#reservationDetailsTableBody');
+      if ($tbody.find('tr').length === 1 &&
+          $tbody.find('td[colspan]').length) {
+        $tbody.empty();
+      }
+
+      const visitDate = response.reservation.date
+        ? formatVisitDate(response.reservation.date)
+        : 'N/A';
+      const petNames = selectedPetsArray.map(i => i.petName).join(', ');
+      const newRow = `
+        <tr id="reservation-${response.reservation._id}">
+          <td>${petNames}</td>
+          <td>${visitDate}</td>
+          <td>
+            <button class="btn btn-primary btn-sm"
+                    onclick="viewReservation('${response.reservation._id}')">
+              View
+            </button>
+          </td>
+          <td><span class="badge badge-info">Pending</span></td>
+          <td>
+            <button class="btn btn-danger btn-sm"
+                    onclick="cancelReservation('${response.reservation._id}')">
+              Cancel
+            </button>
+          </td>
+        </tr>`;
+      $tbody.append(newRow);
+      $tbody.find('tr:last')[0].scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+      // reset form & UI…
+      $('#consultForm')[0].reset();
+      $('#selectedPetsContainer').empty();
+      $('.horizontal-scroll .vetcard')
+        .removeClass('selected')
+        .find('.checkmark-overlay').hide();
+      selectedPets = {};
+      $('#timeError').text('');
+      updateTimeDropdownForToday();
+      checkTimeSlots();
+    },  // ← note the comma here after the closing brace of success
+
+    error: function(err) {
+      if (err.responseJSON?.message?.includes("full")) {
+        $('#timeError').text(err.responseJSON.message);
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'There was a problem submitting your reservation.'
+        });
+      }
+    }
+  }); // end $.ajax
+}); //
+
   
     // ----------------- Time Selection Dropdown -----------------
 // ----------------- Time Selection Dropdown -----------------
+// ─── Build time dropdown ────────────────────────────────
 let timeOptions = '';
 for (let hour = 8; hour <= 17; hour++) {
-  // decide AM/PM
-  const suffix = hour < 12 ? 'AM' : 'PM';
-  // convert to 12-hour
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-  // build the display string
-  const displayTime = `${hour12}:00 ${suffix}`;
-  // give each <option> both a matching value AND text
-  // we just slugify the id to keep it unique
-  const slug = `${hour12}${suffix.toLowerCase()}`; 
-  timeOptions += `<option value="${displayTime}" id="slot-${slug}">${displayTime}</option>`;
+  // decide AM/PM and 12-hour display
+  const suffix  = hour < 12 ? 'AM' : 'PM';
+  const hour12  = hour % 12 === 0 ? 12 : hour % 12;
+  const display = `${hour12}:00 ${suffix}`;
+  // keep the real 24-hr in data-hour
+  const slug    = `${hour12}${suffix.toLowerCase()}`; 
+  timeOptions  += `
+    <option 
+      value="${display}" 
+      data-hour="${hour}" 
+      id="slot-${slug}">
+      ${display}
+    </option>`;
 }
 $('#timeSelect').html(timeOptions);
+
 
   
     let appointmentLimit = 1;
     
     function checkTimeSlots() {
-      let selectedDate = $('#date').val();
-      if(!selectedDate){
-        selectedDate = new Date().toISOString().slice(0,10);
-      }
-      $('#timeSelect option').each(function(){
-        let timeSlot = $(this).val();
-        $.ajax({
-            url: '/customer/consult/appointmentCount',
-          method: 'GET',
-          data: { time: timeSlot, date: selectedDate },
-          success: function(data){
-            if(data.count >= appointmentLimit){
-              $('#slot-' + timeSlot.replace(":", "")).attr('disabled', true)
-                .text(timeSlot + " - Full").attr('data-disabled-by-count', true);
-            } else {
-              // If not disabled by the past, re-enable
-              if(!$('#slot-' + timeSlot.replace(":", "")).attr('data-disabled-by-past')){
-                $('#slot-' + timeSlot.replace(":", "")).removeAttr('disabled')
-                  .text(timeSlot).removeAttr('data-disabled-by-count');
-              }
-            }
-          },
-          error: function(err){
-            console.error("Error checking appointment count for " + timeSlot, err);
+  let selectedDate = $('#date').val() || new Date().toISOString().slice(0,10);
+
+  $('#timeSelect option').each(function(){
+    const $opt = $(this);
+    const slot = $opt.val();
+
+    $.ajax({
+      url: '/customer/consult/appointmentCount',
+      method: 'GET',
+      data: { time: slot, date: selectedDate },
+      success: function(data){
+        if (data.count >= appointmentLimit) {
+          // disable & mark full
+          $opt
+            .prop('disabled', true)
+            .addClass('full-slot')
+            .text(slot + ' - Full')
+            .data('disabled-by-count', true);
+        } else {
+          // re-enable if it was only disabled by count
+          if ($opt.data('disabled-by-count')) {
+            $opt
+              .prop('disabled', false)
+              .removeClass('full-slot')
+              .text(slot)
+              .removeData('disabled-by-count');
           }
-        });
-      });
-    }
+        }
+      }
+    });
+  });
+}
+
     
     $.ajax({
       url: '/settings/appointmentLimit',
@@ -532,36 +644,41 @@ $('#timeSelect').html(timeOptions);
       }
     });
   
-    function updateTimeDropdownForToday() {
-      let selectedDate = $('#date').val();
-      if(!selectedDate){
-        selectedDate = new Date().toISOString().slice(0,10);
-      }
-      const todayStr = new Date().toISOString().slice(0,10);
-      if(selectedDate === todayStr){
-        const currentHour = new Date().getHours();
-        $('#timeSelect option').each(function(){
-          let timeSlot = $(this).val();
-          const slotHour = parseInt(timeSlot.split(':')[0], 10);
-          if(slotHour < currentHour){
-            $(this).attr('disabled', true).attr('data-disabled-by-past', true);
-            if(!$(this).text().includes("Full")){
-              $(this).text(timeSlot + " - Passed");
-            }
-          }
-        });
+   function updateTimeDropdownForToday() {
+  const selectedDate = $('#date').val() 
+    || new Date().toISOString().slice(0,10);
+  const todayStr = new Date().toISOString().slice(0,10);
+  const currentHour = new Date().getHours();
+
+  if (selectedDate === todayStr) {
+    $('#timeSelect option').each(function() {
+      const slotHour = parseInt($(this).data('hour'), 10);
+
+      if (slotHour < currentHour) {
+        // mark as passed
+        $(this)
+          .attr('disabled', true)
+          .attr('data-disabled-by-past', true)
+          .text($(this).val() + ' - Passed');
       } else {
-        $('#timeSelect option').each(function(){
-          let timeSlot = $(this).val();
-          if($(this).attr('data-disabled-by-past')){
-            $(this).removeAttr('data-disabled-by-past');
-            if(!$(this).attr('data-disabled-by-count')){
-              $(this).removeAttr('disabled').text(timeSlot);
-            }
-          }
-        });
+        // re-enable if it was only disabled by past
+        if ($(this).attr('data-disabled-by-past')) {
+          $(this)
+            .removeAttr('disabled data-disabled-by-past')
+            .text($(this).val());
+        }
       }
-    }
+    });
+  } else {
+    // any non-today date: clear past-disabled flags
+    $('#timeSelect option[data-disabled-by-past]').each(function() {
+      $(this)
+        .removeAttr('disabled data-disabled-by-past')
+        .text($(this).val());
+    });
+  }
+}
+
     
     $('#date').on('change', function(){
       updateTimeDropdownForToday();
@@ -643,54 +760,169 @@ $('#timeSelect').html(timeOptions);
     method: 'GET',
     data: { reservationId: id },
     success: function(response) {
-      if (response.success) {
-        let detailsHtml = '';
-        if (response.reservation.pets && response.reservation.pets.length > 0) {
-          detailsHtml += '<strong>Pet(s):</strong> ' + response.reservation.pets.map(p => p.petName).join(', ') + '<br>';
-        }
-        if (response.reservation.concerns) {
-          detailsHtml += '<strong>Customer Concerns:</strong> ' + response.reservation.concerns + '<br>';
-        }
-        detailsHtml += '<hr>';
-        detailsHtml += '<strong>Consultation Notes:</strong><br>' + (response.reservation.consultationNotes || 'N/A') + '<br>';
-        if (response.reservation.medications && response.reservation.medications.length > 0) {
-          detailsHtml += '<hr><strong>Medication Details:</strong><br>';
-          response.reservation.medications.forEach(function(med) {
-            detailsHtml += 'Medication Name: ' + med.medicationName + '<br>';
-            detailsHtml += 'Quantity: ' + (med.quantity ? med.quantity : 'N/A') + '<br>';
-            detailsHtml += 'Dosage: ' + med.dosage + '<br>';
-            detailsHtml += 'Frequency: ' + med.frequency + '<br>';
-            detailsHtml += 'Administration Time: ' + med.adminTime + '<br>';
-            if (med.additionalInstructions)
-              detailsHtml += 'Additional Instructions: ' + med.additionalInstructions + '<br>';
-            detailsHtml += '<hr>';
-          });
-        }
-        if (response.reservation.schedule && response.reservation.schedule.scheduleDate) {
-          detailsHtml += '<hr><strong>Follow-Up Schedule:</strong><br>';
-          detailsHtml += 'Date: ' + formatVisitDate(response.reservation.schedule.scheduleDate) + '<br>';
-          detailsHtml += 'Details: ' + response.reservation.schedule.scheduleDetails + '<br>';
-        }
-        $("#consultationDetails").html(detailsHtml);
-        $("#viewConsultationModal").modal("show");
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: response.message || 'Error fetching consultation details.'
-        });
+      if (!response.success) {
+        return Swal.fire('Error', response.message || 'Error fetching details.', 'error');
       }
+      const r = response.reservation;
+      let html = '<div class="container-fluid">';
+
+      // Pets
+      html +=
+        '<div class="detail-row">' +
+          '<div class="detail-label">Pet(s):</div>' +
+          '<div class="detail-value">' +
+            (r.pets.map(p => p.petName).join(', ') || 'N/A') +
+          '</div>' +
+        '</div>';
+
+      // Concern
+      html +=
+        '<div class="detail-row">' +
+          '<div class="detail-label">Concern:</div>' +
+          '<div class="detail-value">' + (r.concerns || 'N/A') + '</div>' +
+        '</div>';
+
+      // Date & Time
+      const visitDate = r.schedule?.scheduleDate || r.createdAt;
+      html +=
+        '<div class="detail-row">' +
+          '<div class="detail-label">Date:</div>' +
+          `<div class="detail-value">${formatVisitDate(visitDate)}</div>` +
+        '</div>' +
+        '<div class="detail-row">' +
+          '<div class="detail-label">Time:</div>' +
+          '<div class="detail-value">' + (r.time || 'N/A') + '</div>' +
+        '</div>';
+
+      // Physical Exam
+      if (r.physicalExam) {
+        html +=
+          '<div class="detail-row">' +
+            '<div class="detail-label">Physical Exam:</div>' +
+            '<div class="detail-value"></div>' +
+          '</div>' +
+          '<table class="physical-table mb-3">' +
+            '<thead><tr><th>Weight</th><th>Temperature</th><th>Observations</th></tr></thead>' +
+            '<tbody>' +
+              `<tr>
+                 <td>${r.physicalExam.weight     || 'N/A'}</td>
+                 <td>${r.physicalExam.temperature|| 'N/A'}</td>
+                 <td>${r.physicalExam.observations|| 'N/A'}</td>
+               </tr>` +
+            '</tbody>' +
+          '</table>';
+      }
+
+      // Diagnosis
+      if (r.diagnosis) {
+        html +=
+          '<div class="detail-row">' +
+            '<div class="detail-label">Diagnosis:</div>' +
+            '<div class="detail-value"></div>' +
+          '</div>' +
+          `<div class="diagnosis-card mb-3">${r.diagnosis}</div>`;
+      }
+
+      // Services
+      if (r.services?.length) {
+        html +=
+          '<div class="detail-row">' +
+            '<div class="detail-label">Services:</div>' +
+            '<div class="detail-value"></div>' +
+          '</div>' +
+          '<table class="services-table mb-3">' +
+            '<thead><tr><th>Service</th><th>Details</th><th>File</th></tr></thead>' +
+            '<tbody>';
+        r.services.forEach(s => {
+          let url = s.file || '';
+          if (url) {
+            url = url.replace(/^public/, '').replace(/^([^/])/, '/$1');
+            if (!/^https?:\/\//.test(url)) url = window.location.origin + url;
+          }
+          html +=
+            '<tr>' +
+              `<td>${s.serviceName}</td>` +
+              `<td>${s.details || '–'}</td>` +
+              `<td>${url ? `<a href="${url}" download>Download</a>` : '–'}</td>` +
+            '</tr>';
+        });
+        html += '</tbody></table>';
+      }
+
+      // Medications
+      if (r.medications?.length) {
+        html +=
+          '<div class="detail-row">' +
+            '<div class="detail-label">Medications:</div>' +
+            '<div class="detail-value"></div>' +
+          '</div>' +
+          '<table class="medication-table mb-3">' +
+            '<thead><tr><th>Name</th><th>Qty</th><th>Dosage</th><th>Remarks</th></tr></thead>' +
+            '<tbody>';
+        r.medications.forEach(m => {
+          html +=
+            '<tr>' +
+              `<td>${m.name || m.medicationName || '–'}</td>` +
+              `<td>${m.quantity || '–'}</td>` +
+              `<td>${m.dosage   || '–'}</td>` +
+              `<td>${m.remarks  || '–'}</td>` +
+            '</tr>';
+        });
+        html += '</tbody></table>';
+      }
+
+      // Confinement
+      if (r.confinementStatus?.length) {
+        html +=
+          '<div class="detail-row">' +
+            '<div class="detail-label">Confinement:</div>' +
+            `<div class="detail-value">${r.confinementStatus.join(', ')}</div>` +
+          '</div>';
+      }
+
+      // Additional Notes
+      if (r.notes) {
+        html +=
+          '<div class="detail-row">' +
+            '<div class="detail-label">Additional Notes:</div>' +
+            `<div class="detail-value">${r.notes}</div>` +
+          '</div>';
+      }
+
+      // Doctor
+      html +=
+        '<div class="detail-row">' +
+          '<div class="detail-label">Doctor:</div>' +
+          `<div class="detail-value">${r.doctor?.username || 'N/A'}</div>` +
+        '</div>';
+
+      // Follow-Up Schedule Details (if any)
+      if (r.schedule?.scheduleDate || r.schedule?.scheduleDetails) {
+        html +=
+          '<hr>' +
+          '<div class="detail-row">' +
+            '<div class="detail-label">Follow-Up:</div>' +
+            '<div class="detail-value">' +
+              `${r.schedule?.scheduleDate 
+                 ? formatVisitDate(r.schedule.scheduleDate) 
+                 : ''}` +
+              `${r.schedule?.scheduleDetails
+                 ? ' — ' + r.schedule.scheduleDetails
+                 : ''}` +
+            '</div>' +
+          '</div>';
+      }
+
+      html += '</div>'; // container end
+
+      $('#consultationDetails').html(html);
+      $('#viewConsultationModal').modal('show');
     },
     error: function() {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Server error while fetching consultation details.'
-      });
+      Swal.fire('Error','Server error loading details.','error');
     }
   });
 };
-
 
 function cancelReservation(reservationId) {
   Swal.fire({
