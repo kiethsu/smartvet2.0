@@ -1,4 +1,5 @@
 // models/inventory.js
+
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
@@ -35,18 +36,44 @@ const InventorySchema = new Schema({
       "dewormer"
     ]
   },
+
+  basePrice: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  markup: {
+    type: Number, 
+    required: true,
+    min: 0,
+    default: 0
+  },
   price: {
     type: Number,
-    required: true  // Price is in Philippine Peso
+    required: true,
+    min: 0
   },
-  // Instead of a single expirationDate, use an array (optional)
+
   expirationDates: [{
     type: Date
   }],
-  // Total stock quantity for this product batch
+
+  // ← new: keep track of those that have already expired
+  expiredDates: [{
+    type: Date
+  }],
+
   quantity: {
     type: Number,
-    required: true
+    required: true,
+    min: 0
+  },
+
+  // ← new: how many units have expired
+  expiredCount: {
+    type: Number,
+    default: 0,
+    min: 0
   }
 }, { timestamps: true });
 
