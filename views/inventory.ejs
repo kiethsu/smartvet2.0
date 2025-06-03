@@ -221,25 +221,26 @@
     <canvas id="inventoryLineChart" height="75"></canvas>
   </div>
 
-  <div class="filter-container">
-    <input type="text" id="searchBar" class="form-control" placeholder="Search by name" style="max-width:170px;">
-    <select id="categoryFilter" class="form-control" style="max-width:160px;">
-      <option value="">All Categories</option>
-      <% [
-        "pet grooming", "pet accessories", "pet essentials", "pet medication", "pet vaccination",
-        "heartworm preventive", "anti-thick and flea preventive", "injectable meds", "clinic needs",
-        "surgery", "cbc", "blood chemistry", "gas anesthesia", "cbc/blood chemistry", "urinalysis",
-        "ultrasounds", "blood collection", "syringe", "needle", "test kits", "petfood", "dewormer"
-      ].forEach(cat => { %>
-        <option value="<%= cat %>"><%= cat[0].toUpperCase()+cat.slice(1) %></option>
-      <% }); %>
-    </select>
-    <select id="statusFilter" class="form-control" style="max-width:170px;">
-      <option value="">All Status</option>
-      <option value="lowstock">Low Stock (≤10)</option>
-      <option value="nearexpiry">Near Expiry (30d)</option>
-    </select>
-  </div>
+ <div class="filter-container">
+  <input type="text" id="searchBar" class="form-control" placeholder="Search by name" style="max-width:170px;">
+  <select id="categoryFilter" class="form-control" style="max-width:160px;">
+    <option value="">All Categories</option>
+    <% [
+      "pet grooming", "pet accessories", "pet essentials", "pet medication", "pet vaccination",
+      "heartworm preventive", "anti-thick and flea preventive", "injectable meds", "clinic needs",
+      "surgery", "cbc", "blood chemistry", "gas anesthesia", "cbc/blood chemistry", "urinalysis",
+      "ultrasounds", "blood collection", "syringe", "needle", "test kits", "petfood", "dewormer"
+    ].forEach(cat => { %>
+      <option value="<%= cat %>"><%= cat[0].toUpperCase()+cat.slice(1) %></option>
+    <% }); %>
+  </select>
+  <select id="statusFilter" class="form-control" style="max-width:170px;">
+    <option value="">All Status</option>
+    <option value="lowstock">Low Stock (≤10)</option>
+    <option value="nearexpiry">Near Expiry (30d)</option>
+    <option value="expired">Expired</option>
+  </select>
+</div>
 
   <!-- Inventory Table -->
   <div style="overflow-x:auto;">
@@ -295,17 +296,40 @@
             </select>
           </div>
         </div>
+
         <div class="section-title">Inventory & Expiration</div>
         <div class="form-row">
           <div class="form-group col-md-4">
-            <label for="itemPrice">Price (₱)</label>
-            <input type="number" step="0.01" class="form-control" id="itemPrice" name="price" required min="0">
+            <label for="itemBasePrice">Base Price (₱)</label>
+            <input
+              type="number"
+              step="0.01"
+              class="form-control"
+              id="itemBasePrice"
+              name="basePrice"
+              required
+              min="0"
+            >
+          </div>
+          <div class="form-group col-md-4">
+            <label for="itemMarkup">Markup (%)</label>
+            <input
+              type="number"
+              step="0.01"
+              class="form-control"
+              id="itemMarkup"
+              name="markup"
+              value="0"
+              min="0"
+            >
           </div>
           <div class="form-group col-md-4">
             <label for="itemQuantity">Quantity</label>
             <input type="number" class="form-control" id="itemQuantity" name="quantity" required min="1">
           </div>
-          <div class="form-group col-md-4">
+        </div>
+        <div class="form-row">
+          <div class="form-group col-md-12">
             <label>Expiration Dates</label>
             <div class="expiration-inputs" id="expirationDatesContainer">
               <small class="text-muted">Optional • Auto-generate based on quantity</small>
@@ -354,17 +378,40 @@
             </select>
           </div>
         </div>
+
         <div class="section-title">Inventory & Expiration</div>
         <div class="form-row">
           <div class="form-group col-md-4">
-            <label for="editPrice">Price (₱)</label>
-            <input type="number" step="0.01" class="form-control" id="editPrice" name="price" required min="0">
+            <label for="editBasePrice">Base Price (₱)</label>
+            <input
+              type="number"
+              step="0.01"
+              class="form-control"
+              id="editBasePrice"
+              name="basePrice"
+              required
+              min="0"
+            >
+          </div>
+          <div class="form-group col-md-4">
+            <label for="editMarkup">Markup (%)</label>
+            <input
+              type="number"
+              step="0.01"
+              class="form-control"
+              id="editMarkup"
+              name="markup"
+              value="0"
+              min="0"
+            >
           </div>
           <div class="form-group col-md-4">
             <label for="editQuantity">Quantity</label>
             <input type="number" class="form-control" id="editQuantity" name="quantity" required min="1">
           </div>
-          <div class="form-group col-md-4">
+        </div>
+        <div class="form-row">
+          <div class="form-group col-md-12">
             <label>Expiration Dates</label>
             <div class="expiration-inputs" id="editExpirationDatesContainer"></div>
           </div>
@@ -378,7 +425,7 @@
   </div>
 </div>
 
-<!-- Expiry Modal -->
+<!-- Expiry Modal (unchanged) -->
 <div class="modal fade" id="viewDatesModal" tabindex="-1" aria-labelledby="viewDatesModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -395,6 +442,7 @@
     </div>
   </div>
 </div>
+
 
 <!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -416,11 +464,13 @@
         return diff > 0 && diff <= 30;
       })
     ).length;
+    const expiredCount = items.reduce((sum, i) => sum + ((i.expiredDates||[]).length), 0);
     const totalValue = items.reduce((sum, i) => sum + (i.price*i.quantity), 0);
     $('#analytics-cards').html(`
       <div class="analytic-card"><div>Total Items</div><span>${total}</span></div>
       <div class="analytic-card"><div>Low Stock (&le;${LOW_STOCK})</div><span>${lowStock}</span></div>
       <div class="analytic-card"><div>Near Expiry (30d)</div><span>${nearExpiry}</span></div>
+      <div class="analytic-card"><div>Expired</div><span>${expiredCount}</span></div>
       <div class="analytic-card"><div>Total Value (₱)</div><span>₱${totalValue.toLocaleString()}</span></div>
     `);
 
@@ -482,6 +532,7 @@
       item.name.toLowerCase().includes(searchText) &&
       (!categoryFilter || item.category === categoryFilter)
     );
+
     if(statusFilter === "lowstock") {
       filtered = filtered.filter(item => item.quantity <= LOW_STOCK);
     }
@@ -492,6 +543,9 @@
           return diff > 0 && diff <= 30;
         })
       );
+    }
+    if(statusFilter === "expired") {
+      filtered = filtered.filter(item => (item.expiredDates||[]).length > 0);
     }
 
     // Pagination
@@ -507,9 +561,14 @@
         let d = new Date(date), diff = (d-new Date())/(1000*60*60*24);
         return diff > 0 && diff <= 30;
       })) status += `<span class="badge badge-expiry">Expiring</span>`;
+      if((item.expiredDates||[]).length > 0) status += `<span class="badge badge-danger">Expired</span>`;
+
       let expDates = (item.expirationDates||[]).length
-        ? `<button class="btn btn-sm btn-outline-info view-dates-btn" data-expdates='${JSON.stringify(item.expirationDates).replace(/"/g,'&quot;')}'><span class="fa fa-calendar"></span> View</button>`
+        ? `<button class="btn btn-sm btn-outline-info view-dates-btn" data-expdates='${JSON.stringify(item.expirationDates).replace(/"/g,'&quot;')}'>
+             <span class="fa fa-calendar"></span> View
+           </button>`
         : 'N/A';
+
       tbody += `
       <tr>
         <td>${item.name}</td>
@@ -529,14 +588,23 @@
     renderPagination(totalPages);
     renderAnalytics(filtered.length ? filtered : data);
   }
+
   function renderPagination(totalPages) {
     let html = '';
     if(totalPages<=1){$('#paginationControls').html('');return;}
-    html += `<li class="page-item ${currentPage===1?'disabled':''}"><a class="page-link" href="#" data-page="${currentPage-1}">Previous</a></li>`;
-    for(let i=1;i<=totalPages;i++) html += `<li class="page-item ${currentPage===i?'active':''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
-    html += `<li class="page-item ${currentPage===totalPages?'disabled':''}"><a class="page-link" href="#" data-page="${currentPage+1}">Next</a></li>`;
+    html += `<li class="page-item ${currentPage===1?'disabled':''}">
+               <a class="page-link" href="#" data-page="${currentPage-1}">Previous</a>
+             </li>`;
+    for(let i=1;i<=totalPages;i++) html += `
+      <li class="page-item ${currentPage===i?'active':''}">
+        <a class="page-link" href="#" data-page="${i}">${i}</a>
+      </li>`;
+    html += `<li class="page-item ${currentPage===totalPages?'disabled':''}">
+               <a class="page-link" href="#" data-page="${currentPage+1}">Next</a>
+             </li>`;
     $('#paginationControls').html(html);
   }
+
   function loadInventory() {
     $.get('/admin/inventory/list', d=>{
       allInventory = d;
@@ -545,14 +613,17 @@
   }
 
   // Search/filter
-  $('#searchBar,#categoryFilter,#statusFilter').on('keyup change',()=>{currentPage=1;renderTable(allInventory);});
+  $('#searchBar,#categoryFilter,#statusFilter').on('keyup change',()=>{
+    currentPage=1;
+    renderTable(allInventory);
+  });
   $('#paginationControls').on('click','a',function(e){
     e.preventDefault();
     let page = parseInt($(this).data('page'));
     if(!isNaN(page)) { currentPage=page; renderTable(allInventory); }
   });
 
-  // Add inventory - FIXED: freeze bug
+  // Add inventory (send basePrice + markup + other fields)
   $('#inventoryForm').on('submit', function(e){
     e.preventDefault();
     var form = this;
@@ -596,17 +667,26 @@
       $('#editId').val(item._id);
       $('#editName').val(item.name);
       $('#editCategory').val(item.category);
-      $('#editPrice').val(item.price);
+      // populate basePrice and markup
+      $('#editBasePrice').val(item.basePrice);
+      $('#editMarkup').val(item.markup);
       $('#editQuantity').val(item.quantity);
       let c = $('#editExpirationDatesContainer'); c.empty();
       let qty = item.quantity || 0;
       for(let i=0;i<qty;i++) {
-        let val = (item.expirationDates&&item.expirationDates[i]) ? item.expirationDates[i].split("T")[0] : "";
-        c.append('<label>Expiration Date '+(i+1)+'</label><input type="date" class="form-control mb-2" name="expirationDates[]" value="'+val+'">');
+        let val = (item.expirationDates && item.expirationDates[i]) 
+                  ? item.expirationDates[i].split("T")[0] 
+                  : "";
+        c.append(
+          '<label>Expiration Date '+(i+1)+'</label>' +
+          '<input type="date" class="form-control mb-2" name="expirationDates[]" value="'+ val +'">'
+        );
       }
       $('#editModal').modal('show');
     }).fail(()=>Swal.fire('Error','Error fetching item.','error'));
   });
+
+  // Dynamic expiration dates for edit
   $('#editQuantity').on('change', function() {
     let qty = parseInt($(this).val()) || 0;
     let container = $('#editExpirationDatesContainer');
@@ -623,9 +703,11 @@
       );
     }
   });
+
+  // Submit edit form (send basePrice + markup + other fields)
   $('#editForm').on('submit',function(e){
     e.preventDefault();
-    $.post('/admin/inventory/edit',$(this).serialize())
+    $.post('/admin/inventory/edit', $(this).serialize())
       .done(res=>{
         Swal.fire('Success',res.message,'success');
         $('#editModal').modal('hide');
@@ -667,8 +749,10 @@
 
   // Initial Load
   $(function(){loadInventory();});
-  $(window).on('pageshow', function(e){if(e.originalEvent.persisted)loadInventory();});
+  $(window).on('pageshow', function(e){if(e.originalEvent.persisted) loadInventory();});
 })();
 </script>
+
+
 </body>
 </html>
