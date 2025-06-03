@@ -1,102 +1,122 @@
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css"
+/>
+<link
+  rel="stylesheet"
+  href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+/>
+
 <style>
   body {
     background-color: #f8f9fa;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
-  .top-header { margin: 1.5rem 0; }
+  .top-header {
+    margin: 1.5rem 0;
+  }
 
-  /* User/Retention Small Cards */
+  /* ─── User/Retention Small Cards (Updated) ───────────────────────────────── */
+.user-retention-row {
+  display: flex;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+.stats-metric-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(30, 34, 90, 0.06);
+  border: 1px solid #e9ecef;
+  flex: 1 1 140px;
+  max-width: 160px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  transition: box-shadow 0.18s, transform 0.18s;
+  margin-right: 0.5rem;
+  margin-bottom: 0;
+}
+.stats-metric-card:last-child {
+  margin-right: 0;
+}
+.stats-metric-card:hover {
+  box-shadow: 0 4px 12px rgba(30, 34, 90, 0.12);
+  transform: translateY(-1px);
+}
+
+.stats-label {
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-weight: 500;
+  margin-bottom: 0.2rem;
+}
+.stats-main-value {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #1c2c45;
+  margin-bottom: 4px;
+}
+.stats-change {
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+}
+.stats-change.up {
+  color: #28a745;
+}
+.stats-change.down {
+  color: #e74c3c;
+}
+.stats-change.neutral {
+  color: #adb5bd;
+}
+.stats-change .arrow {
+  font-size: 1.1em;
+  margin-left: 4px;
+}
+
+@media (max-width: 991.98px) {
   .user-retention-row {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.2rem;
-    flex-wrap: wrap;
-    align-items: stretch;
-    justify-content: flex-start;
+    flex-direction: column;
+    gap: 0.6rem;
   }
   .stats-metric-card {
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 2px 6px rgba(30,34,90,0.07);
-    border: 1px solid #e9ecef;
-    min-width: 165px;
-    max-width: 175px;
-    padding: 14px 15px 11px 17px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    margin-right: 0.7rem;
-    margin-bottom: 0;
+    max-width: 100%;
+    width: 100%;
+    margin-right: 0;
   }
-  .stats-metric-card:last-child { margin-right: 0; }
-  .stats-label {
-    font-size: 0.93rem;
-    color: #8c98a4;
-    font-weight: 500;
-    margin-bottom: 0.15rem;
-  }
-  .stats-main-value {
-    font-size: 1.20rem;
-    font-weight: 700;
-    color: #1c2c45;
-    margin-bottom: 2px;
-  }
-  .stats-change {
-    font-size: 0.97rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    margin-top: 1px;
-  }
-  .stats-change.up {
-    color: #28a745;
-  }
-  .stats-change.down {
-    color: #e74c3c;
-  }
-  .stats-change.neutral {
-    color: #adb5bd;
-  }
-  .stats-change .arrow {
-    font-size: 1.1em;
-    margin-left: 3px;
-  }
+}
 
-  @media (max-width: 991.98px) {
-    .user-retention-row { flex-direction: column; gap: 0.7rem; }
-    .stats-metric-card { max-width: 100%; width: 100%; margin-right: 0; }
-  }
-
-  /* Navigation Pills */
+  /* Navigation Pills (styled as tabs) */
   .sticky-nav {
-    position: sticky; top: 0; z-index: 1000;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
     background: #f8f9fa;
-    padding: .5rem 0;
+    padding: 0.5rem 0;
     border-bottom: 1px solid #e0e0e0;
     margin-bottom: 1rem;
   }
   .sticky-nav .nav-pills {
     justify-content: flex-start;
-    gap: .5rem;
+    gap: 0.5rem;
   }
   .sticky-nav .nav-link {
     border-radius: 20px;
-    padding: .5rem 1rem;
+    padding: 0.5rem 1rem;
     font-weight: 500;
     color: #555;
   }
   .sticky-nav .nav-link.active {
     background: #007bff;
     color: #fff;
-  }
-  /* Filters row */
-  .filters {
-    padding-left: 1.25rem;
-  }
-  .filters .form-control-sm {
-    width: auto;
-    min-width: 5ch;
   }
 
   /* --- Modern Card Styling --- */
@@ -108,526 +128,1335 @@
     font-weight: 600;
     font-size: 1.07rem;
     min-height: 48px;
-    padding: .75rem 1.25rem;
-    letter-spacing: .01em;
+    padding: 0.75rem 1.25rem;
+    letter-spacing: 0.01em;
   }
   .card {
     background: #fff;
     border-radius: 14px;
-    box-shadow: 0 3px 12px rgba(30,34,90,0.08);
+    box-shadow: 0 3px 12px rgba(30, 34, 90, 0.08);
     border: 1px solid #e9ecef;
     transition: box-shadow 0.15s;
     margin-bottom: 1.5rem;
   }
-  .card:hover { box-shadow: 0 5px 16px rgba(30,34,90,0.13);}
+  .card:hover {
+    box-shadow: 0 5px 16px rgba(30, 34, 90, 0.13);
+  }
   .card-body {
     background: #fff;
     padding: 1.15rem;
   }
   .list-group-item {
     border: none;
-    padding: .45rem 1rem;
+    padding: 0.45rem 1rem;
     font-size: 1.02rem;
   }
-  .chart, .heatmap {
+  .chart,
+  .heatmap {
     min-height: 200px;
     max-height: 270px;
     margin-bottom: 1rem;
   }
   @media (max-width: 991.98px) {
-    .card { margin-bottom: 1rem; }
-    .chart { min-height: 180px; }
+    .card {
+      margin-bottom: 1rem;
+    }
+    .chart {
+      min-height: 180px;
+    }
   }
-
+/* ─── Updated KPI Cards (with color‐coding) ───────────────────────────────── */
 .kpi-card {
   background: #fff;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.11);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.11);
   padding: 1.1rem 0.5rem 1rem 0.5rem;
   min-width: 130px;
   flex: 1 1 140px;
   text-align: center;
   margin-bottom: 0;
   margin-right: 0.5rem;
-  transition: box-shadow .18s;
+  transition: box-shadow 0.18s, transform 0.18s;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
 }
-.kpi-card:last-child { margin-right: 0; }
-.kpi-card i { font-size: 1.5rem; color: #007bff; margin-bottom: .3rem; }
-.kpi-card h4 { margin: .15rem 0; font-weight: 600; font-size: 1.13rem; }
-.kpi-card small { display: block; color: #777; margin-bottom: .25rem; text-transform: uppercase; font-size: .75rem; }
-
-
-  /* Top 10 SKUs Table */
-  #topSkuTable {
-    font-size: 0.98rem;
-    width: 100%;
-    margin-bottom: 0;
-  }
-  #topSkuTable th,
-  #topSkuTable td {
-    vertical-align: middle;
-    border: none;
-    padding: 0.4rem 0.5rem 0.4rem 0.2rem;
-  }
-  #topSkuTable thead th {
-    font-weight: 600;
-    color: #333;
-    background: transparent;
-    border-bottom: 1px solid #e9ecef;
-  }
-  #topSkuTable tbody tr:not(:last-child) td {
-    border-bottom: 1px solid #f3f4f6;
-  }
-  .sku-name {
-    max-width: 110px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .sku-units { color: #888; }
-  .sku-revenue { font-weight: bold; color: #007bff; text-align: right; }
-
-  /* Make Top 10 SKUs card fit contents, no scroll! */
-  .top-sku-card .card-body {
-    padding: 0.8rem 0.5rem 0.8rem 0.5rem;
-    max-height: none !important;
-    overflow-y: visible !important;
-  }
-
-  .svc-dot {
-    display: inline-block;
-    width: 13px;
-    height: 13px;
-    border-radius: 50%;
-    margin-right: 7px;
-    vertical-align: middle;
-  }
-#appointmentsTrendChartWrapper {
-  height: 200px;
-  margin-bottom: 1rem;
+.kpi-card:last-child {
+  margin-right: 0;
+}
+.kpi-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+.kpi-card i {
+  font-size: 1.5rem;
+  margin-bottom: 0.3rem;
+}
+.kpi-card h4 {
+  margin: 0.15rem 0;
+  font-weight: 600;
+  font-size: 1.13rem;
+  color: #1c2c45;
+}
+.kpi-card small {
+  display: block;
+  color: #1c2c45;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
 }
 
+/* Color‐code each KPI by position */
+#salesOverview .d-flex.flex-wrap.mb-4 .kpi-card:nth-child(1) {
+  /* Current Year Sales → light blue */
+  background: #e3f2fd;
+}
+#salesOverview .d-flex.flex-wrap.mb-4 .kpi-card:nth-child(1) i {
+  color: #007bff;
+}
+
+#salesOverview .d-flex.flex-wrap.mb-4 .kpi-card:nth-child(2) {
+  /* Total Transactions → light green */
+  background: #e8f5e9;
+}
+#salesOverview .d-flex.flex-wrap.mb-4 .kpi-card:nth-child(2) i {
+  color: #28a745;
+}
+
+#salesOverview .d-flex.flex-wrap.mb-4 .kpi-card:nth-child(3) {
+  /* Past Year Sales → light yellow */
+  background: #fffde7;
+}
+#salesOverview .d-flex.flex-wrap.mb-4 .kpi-card:nth-child(3) i {
+  color: #ffc107;
+}
+
+#salesOverview .d-flex.flex-wrap.mb-4 .kpi-card:nth-child(4) {
+  /* Sales Growth → light orange */
+  background: #fff3e0;
+}
+#salesOverview .d-flex.flex-wrap.mb-4 .kpi-card:nth-child(4) i {
+  color: #fd7e14;
+}
+
+  /* ─── New Color‐coding for “Current” vs “Previous” KPI Headers ───────── */
+  .period-header {
+    white-space: nowrap;
+    text-align: center;
+    font-weight: 600;
+  }
+  .cur-header {
+    background-color: #008ffb;
+    color: #fff;
+  }
+  .prev-header {
+    background-color: #00e396;
+    color: #fff;
+  }
+
+  /* Increase min-width on Sales Trend card so the KPI table headers never wrap */
+  .sales-trend-card {
+    min-width: 380px;
+    height: auto; /* ensures it wraps to its content */
+  }
+
+  /* ─── Sales Trend Card Improvements ─────────────────────────────────────── */
+  .sales-trend-card {
+    border-radius: 12px;
+    border: 1px solid #e9ecef;
+    box-shadow: 0 3px 12px rgba(30, 34, 90, 0.08);
+    transition: box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .sales-trend-card:hover {
+    box-shadow: 0 5px 16px rgba(30, 34, 90, 0.13);
+  }
+  .sales-trend-card .card-header {
+    background: #fdfdff;
+    border-bottom: 1px solid #e9ecef;
+    padding: 0.75rem 1.25rem;
+    font-weight: 600;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sales-trend-card .card-header h6 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: #333;
+  }
+  .sales-trend-card .header-controls select,
+  .sales-trend-card .header-controls input {
+    font-size: 0.875rem;
+    height: 34px;
+    padding: 0 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    background: #fff;
+    color: #495057;
+    transition: border-color 0.15s ease;
+  }
+  .sales-trend-card .header-controls select:focus,
+  .sales-trend-card .header-controls input:focus {
+    outline: none;
+    border-color: #007bff;
+  }
+  .sales-trend-card .chart {
+    min-height: 200px;
+    max-height: 250px;
+    margin-bottom: 1rem;
+  }
+  .kpi-table-wrapper {
+    overflow-x: auto;
+  }
+  .sales-trend-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .sales-trend-table thead th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #e9ecef;
+  }
+  .sales-trend-table tbody td {
+    padding: 0.55rem 0.75rem;
+    font-size: 0.9rem;
+    color: #343a40;
+    vertical-align: middle;
+  }
+  .sales-trend-table tbody tr:nth-child(1) td {
+    background: rgba(0, 143, 251, 0.05);
+  }
+  .sales-trend-table tbody tr:nth-child(2) td {
+    background: rgba(254, 176, 25, 0.05);
+  }
+  .sales-trend-table tbody tr:nth-child(3) td {
+    background: rgba(40, 167, 69, 0.05);
+  }
+  .sales-trend-table tbody td:nth-child(2),
+  .sales-trend-table tbody td:nth-child(3) {
+    font-weight: 600;
+    color: #1c2c45;
+  }
+  @media (max-width: 767.98px) {
+    .sales-trend-card .chart {
+      min-height: 150px;
+    }
+    .sales-trend-table thead th,
+    .sales-trend-table tbody td {
+      font-size: 0.85rem;
+      padding: 0.45rem 0.5rem;
+    }
+  }
+
+  /* Sales by Category & Sales by Product Styles */
+.sales-by-cat-card,
+.sales-by-prod-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(30, 34, 90, 0.08);
+  border: 1px solid #e9ecef;
+  transition: box-shadow 0.2s ease;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+.sales-by-cat-card:hover,
+.sales-by-prod-card:hover {
+  box-shadow: 0 5px 16px rgba(30, 34, 90, 0.13);
+}
+
+.sales-by-cat-card .card-header,
+.sales-by-prod-card .card-header {
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #f1f1f1;
+  font-weight: 600;
+  font-size: 1rem;
+}
+.sales-by-cat-card .card-header h6,
+.sales-by-prod-card .card-header h6 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #333;
+}
+
+/* Increase gap between dropdowns from 0.5rem to 0.75rem */
+.sales-by-cat-card .header-controls,
+.sales-by-prod-card .header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Ensure “Last 7 Days” never wraps/cuts off: auto width + min-width */
+.sales-by-cat-card .header-controls select,
+.sales-by-prod-card .header-controls select {
+  font-size: 0.875rem;
+  height: 34px;
+  padding: 0 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  background: #fff;
+  color: #495057;
+  transition: border-color 0.15s ease;
+  width: auto;
+  min-width: 140px;
+}
+.sales-by-cat-card .header-controls select:focus,
+.sales-by-prod-card .header-controls select:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.sales-by-cat-card .card-body,
+.sales-by-prod-card .card-body {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 180px;
+}
+
+/* -------- Sales by Category Body (with color‐coded KPI cards) -------- */
+.sales-by-cat-card .kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); /* raised min from 100px to 120px */
+  gap: 1.25rem; /* increased from 1rem */
+  text-align: center;
+}
+
+/* Remove generic gray background; add border-radius + padding */
+.sales-by-cat-card .kpi-item {
+  border-radius: 8px;
+  padding: 1rem; /* increased padding */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* new: assign distinct background colors per KPI */
+.sales-by-cat-card .kpi-item:nth-child(1) {
+  /* Total Sales → light blue */
+  background: #e3f2fd;
+}
+.sales-by-cat-card .kpi-item:nth-child(2) {
+  /* Profit → light green */
+  background: #e8f5e9;
+}
+.sales-by-cat-card .kpi-item:nth-child(3) {
+  /* Expired → light red */
+  background: #ffebee;
+}
+.sales-by-cat-card .kpi-item:nth-child(4) {
+  /* Sales Rate → light yellow */
+  background: #fffde7;
+}
+
+.sales-by-cat-card .kpi-item small {
+  color: #6c757d;
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+}
+.sales-by-cat-card .kpi-item h5 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1c2c45;
+}
+
+/* Allow the sales-rate elements to wrap when text is long */
+.sales-by-cat-card .sales-rate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  flex-wrap: wrap; /* allow wrap */
+}
+
+/* Shrink sparkline slightly so it doesn’t push too far */
+.sales-by-cat-card .sparkline-chart {
+  width: 40px; /* reduced from 50px */
+  height: 20px;
+}
+
+/* Slightly smaller font for large percentages */
+.sales-by-cat-card .rate-percentage {
+  font-weight: 600;
+  font-size: 0.9rem; /* reduced from 0.95rem */
+  color: #495057;
+}
+
+/* Growth line below KPIs, with additional top padding */
+.sales-by-cat-card .growth-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #adb5bd;
+  padding-top: 0.75rem;
+}
+.sales-by-cat-card .growth-line.up {
+  color: #28a745;
+}
+.sales-by-cat-card .growth-line.down {
+  color: #e74c3c;
+}
+.sales-by-cat-card .growth-line .arrow {
+  font-size: 1.1em;
+  margin-left: 4px;
+}
+.sales-by-cat-card .growth-line small {
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-left: 0.5rem;
+}
+
+/* Center comparison text */
+.sales-by-cat-card .comparison-text {
+  font-size: 0.87rem;
+  color: #495057;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* Responsive: stack KPIs in single column if very narrow */
+@media (max-width: 575.98px) {
+  .sales-by-cat-card .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+  /* “Sales by Product” table styling (unchanged aside from select width) */
+  #salesByProdTable {
+    width: 100%;
+    font-size: 0.95rem;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+  }
+  #salesByProdTable thead th {
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #e9ecef;
+  }
+  #salesByProdTable th,
+  #salesByProdTable td {
+    padding: 0.55rem 0.75rem;
+    font-size: 0.9rem;
+    color: #343a40;
+    vertical-align: middle;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+  }
+  #salesByProdTable tbody tr:nth-child(odd) td {
+    background: rgba(0, 143, 251, 0.03);
+  }
+  #salesByProdTable tbody tr:nth-child(even) td {
+    background: rgba(254, 176, 25, 0.03);
+  }
+  #salesByProdTable tbody tr:nth-child(1) td {
+    background: rgba(0, 143, 251, 0.05);
+  }
+  #salesByProdTable tbody tr:nth-child(2) td {
+    background: rgba(254, 176, 25, 0.05);
+  }
+  #salesByProdTable tbody tr:nth-child(3) td {
+    background: rgba(40, 167, 69, 0.05);
+  }
+  #salesByProdTable tbody tr:hover td {
+    background: rgba(0, 0, 0, 0.03);
+  }
+  #salesByProdTable.scrollable-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  #salesByProdTable.scrollable-table thead,
+  #salesByProdTable.scrollable-table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+  #salesByProdTable.scrollable-table thead {
+    background: #fff;
+    z-index: 1;
+  }
+  #salesByProdTable.scrollable-table tbody {
+    display: block;
+    max-height: calc(7 * 2.2rem);
+    overflow-y: auto;
+  }
+
+  /* Search input styling (unchanged) */
+  .prod-search-input {
+    width: 150px;
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    background: #fff;
+    color: #495057;
+  }
+  .prod-search-input:focus {
+    outline: none;
+    border-color: #007bff;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 575.98px) {
+    .sparkline-chart {
+      margin-left: 0.5rem;
+    }
+  }
+
+  /* Sales by Service Card Styling (unchanged) */
+  .sales-by-serv-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(30, 34, 90, 0.08);
+    border: 1px solid #e9ecef;
+    transition: box-shadow 0.2s ease;
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+  .sales-by-serv-card:hover {
+    box-shadow: 0 5px 16px rgba(30, 34, 90, 0.13);
+  }
+  .sales-by-serv-card .card-header {
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid #f1f1f1;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+  .sales-by-serv-card .card-header h6 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: #333;
+  }
+  .sales-by-serv-card .header-controls select {
+    font-size: 0.875rem;
+    height: 34px;
+    padding: 0 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    background: #fff;
+    color: #495057;
+    transition: border-color 0.15s ease;
+    width: auto;
+    min-width: 140px;
+  }
+  .sales-by-serv-card .header-controls select:focus {
+    outline: none;
+    border-color: #007bff;
+  }
+  .sales-by-serv-card .card-body {
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 180px;
+  }
+  #salesByServTable thead th {
+    background: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #e9ecef;
+  }
+  #salesByServTable th,
+  #salesByServTable td {
+    padding: 0.55rem 0.75rem;
+    font-size: 0.9rem;
+    color: #343a40;
+    vertical-align: middle;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+  }
+  #salesByServTable tbody tr:nth-child(odd) td {
+    background: rgba(0, 143, 251, 0.03);
+  }
+  #salesByServTable tbody tr:nth-child(even) td {
+    background: rgba(254, 176, 25, 0.03);
+  }
+  #salesByServTable tbody tr:nth-child(1) td {
+    background: rgba(0, 143, 251, 0.05);
+  }
+  #salesByServTable tbody tr:nth-child(2) td {
+    background: rgba(254, 176, 25, 0.05);
+  }
+  #salesByServTable tbody tr:nth-child(3) td {
+    background: rgba(40, 167, 69, 0.05);
+  }
+  #salesByServTable tbody tr:hover td {
+    background: rgba(0, 0, 0, 0.03);
+  }
+  #salesByServTable.scrollable-table {
+    width: 100%;
+    font-size: 0.95rem;
+    border-collapse: collapse;
+  }
+  #salesByServTable.scrollable-table thead,
+  #salesByServTable.scrollable-table tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+  #salesByServTable.scrollable-table thead {
+    background: #fff;
+    z-index: 1;
+  }
+  #salesByServTable.scrollable-table tbody {
+    display: block;
+    max-height: calc(7 * 2.2rem);
+    overflow-y: auto;
+  }
+  /* make the Sales Growth % text green when positive, red when negative */
+  #kpiConv.up {
+    color: #28a745;  /* green */
+  }
+  #kpiConv.down {
+    color: #e74c3c;  /* red */
+  }
 </style>
 
-  </style>
+
 </head>
+
 <body>
   <div class="container-fluid">
     <!-- Top Header -->
     <div class="top-header">
       <h2 class="mb-0">Dashboard</h2>
-      <!-- User stats + Retention row -->
-    <div class="user-retention-row">
-  <!-- Doctors -->
-  <div class="stats-metric-card">
-    <div class="stats-label">Doctors</div>
-    <div class="stats-main-value" id="doctorsCountSmall">1</div>
-    <div class="stats-change up">
-      <span>+0%</span>
-      <span class="arrow">&#8599;</span> <!-- Unicode ↗ -->
-    </div>
-  </div>
-  <!-- HR -->
-  <div class="stats-metric-card">
-    <div class="stats-label">HR</div>
-    <div class="stats-main-value" id="hrCountSmall">2</div>
-    <div class="stats-change down">
-      <span>-0%</span>
-      <span class="arrow">&#8600;</span> <!-- Unicode ↘ -->
-    </div>
-  </div>
-  <!-- Customers -->
-  <div class="stats-metric-card">
-    <div class="stats-label">Customers</div>
-    <div class="stats-main-value" id="customersCountSmall">3</div>
-    <div class="stats-change up">
-      <span>+0%</span>
-      <span class="arrow">&#8599;</span>
-    </div>
-  </div>
-  <!-- Retention/New -->
-  <div class="stats-metric-card">
-    <div class="stats-label">New vs Retention</div>
-    <div class="stats-main-value" id="kpiNewPct">0%</div>
-    <div class="stats-change neutral">
-      <span id="kpiRetPct">0% Ret</span>
-      <span class="arrow">&#8594;</span> <!-- Unicode → -->
-    </div>
-  </div>
-</div>
 
+      <!-- User Stats + Retention Row -->
+      <div class="user-retention-row">
+        <!-- Doctors -->
+        <div class="stats-metric-card">
+          <div class="stats-label">Doctors</div>
+          <div class="stats-main-value" id="doctorsCountSmall">1</div>
+          <div class="stats-change up">
+            <span>+0%</span>
+            <span class="arrow">&#8599;</span>
+          </div>
+        </div>
+        <!-- HR -->
+        <div class="stats-metric-card">
+          <div class="stats-label">HR</div>
+          <div class="stats-main-value" id="hrCountSmall">2</div>
+          <div class="stats-change down">
+            <span>-0%</span>
+            <span class="arrow">&#8600;</span>
+          </div>
+        </div>
+        <!-- Customers -->
+        <div class="stats-metric-card">
+          <div class="stats-label">Customers</div>
+          <div class="stats-main-value" id="customersCountSmall">3</div>
+          <div class="stats-change up">
+            <span>+0%</span>
+            <span class="arrow">&#8599;</span>
+          </div>
+        </div>
+        <!-- New vs Retention -->
+        <div class="stats-metric-card">
+          <div class="stats-label">New vs Retention</div>
+          <div class="stats-main-value" id="kpiNewPct">0%</div>
+          <div class="stats-change neutral">
+            <span id="kpiRetPct">0% Ret</span>
+            <span class="arrow">&#8594;</span>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <!-- Navigation Pills (restored function) -->
+    <!-- Navigation Pills (as Tabs) -->
     <nav class="sticky-nav">
-      <ul class="nav nav-pills">
+      <ul class="nav nav-pills" role="tablist">
         <li class="nav-item">
-          <a class="nav-link active" data-toggle="pill" href="#salesOverview">Sales Overview</a>
+          <a
+            class="nav-link active"
+            data-toggle="tab"
+            href="#salesOverview"
+            role="tab"
+            aria-controls="salesOverview"
+            aria-selected="true"
+          >
+            Sales Overview
+          </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" data-toggle="pill" href="#inventoryOverview">Inventory Overview</a>
+          <a
+            class="nav-link"
+            data-toggle="tab"
+            href="#inventoryOverview"
+            role="tab"
+            aria-controls="inventoryOverview"
+            aria-selected="false"
+          >
+            Inventory Overview
+          </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" data-toggle="pill" href="#appointmentTrends">Appointment Trends</a>
+          <a
+            class="nav-link"
+            data-toggle="tab"
+            href="#appointmentTrends"
+            role="tab"
+            aria-controls="appointmentTrends"
+            aria-selected="false"
+          >
+            Appointment Trends
+          </a>
         </li>
       </ul>
     </nav>
-    <!-- Filters -->
-   <div class="filters d-flex align-items-center mb-3" id="filterRow">
-  <select id="presetRange" class="form-control form-control-sm mr-2">
-    <option value="7d">Last 7 Days</option>
-    <option value="30d">Last 30 Days</option>
-    <option value="mtd">Month-to-Date</option>
-    <option value="ytd">Year-to-Date</option>
-  </select>
-  <input type="text" id="customRange" class="form-control form-control-sm mr-2" placeholder="Custom range"/>
-  <select id="compareMode" class="form-control form-control-sm">
-    <option value="prev">Compare Previous</option>
-    <option value="yoy">Year-over-Year</option>
-  </select>
-</div>
-
 
     <!-- Tab Content -->
     <div class="tab-content">
       <!-- 1) Sales Overview (pane) -->
-      <div class="tab-pane fade show active" id="salesOverview">
+      <div
+        class="tab-pane fade show active"
+        id="salesOverview"
+        role="tabpanel"
+        aria-labelledby="salesOverview-tab"
+      >
+        <div class="card">
+          <div class="card-body">
+                    <!-- ─── New: Date‐Range Picker + Download Buttons ────────────────────────────────────── -->
+     <!-- New: inline flex so picker + buttons are close together, left‐aligned -->
+<!-- ─── New: Date‐Range Picker + Download Buttons (input‐group style) ────────────────────────────── -->
+<div class="row mb-4">
+  <div class="col">
+    <div class="input-group input-group-sm" style="max-width: 350px;">
+      <div class="input-group-prepend">
+        <span class="input-group-text bg-white border-right-0">
+          <i class="fas fa-calendar-alt text-secondary"></i>
+        </span>
+      </div>
+      <input
+        type="text"
+        id="reportRange"
+        class="form-control border-left-0"
+        placeholder="Select date range"
+        readonly
+        style="cursor: pointer;"
+      />
+      <div class="input-group-append">
+        <button
+          id="downloadExcelBtn"
+          class="btn btn-success"
+          style="border-top-left-radius: 0; border-bottom-left-radius: 0;"
+        >
+          <i class="fas fa-file-excel"></i>
+        </button>
+        <button
+          id="downloadCsvBtn"
+          class="btn btn-secondary"
+          style="border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: 2px;"
+        >
+          <i class="fas fa-file-csv"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+            <!-- KPI Row -->
+            <div class="d-flex flex-wrap mb-4">
+              <!-- Current Year Sales -->
+              <div class="kpi-card mr-3 mb-3">
+                <i class="fas fa-chart-line"></i>
+                <h4 id="kpiRevenue">₱0</h4>
+                <small>Current Year Sales</small>
+              </div>
+              <!-- Total Transactions -->
+              <div class="kpi-card mr-3 mb-3">
+                <i class="fas fa-receipt"></i>
+                <h4 id="kpiTxns">0</h4>
+                <small>Total Transactions</small>
+              </div>
+              <!-- Past Year Sales -->
+              <div class="kpi-card mr-3 mb-3">
+                <i class="fas fa-calendar-alt"></i>
+                <h4 id="kpiAov">₱0</h4>
+                <small>Past Year Sales</small>
+              </div>
+              <!-- Sales Growth -->
+              <div class="kpi-card mb-3">
+                <i id="growthIcon" class="fas fa-percentage"></i>
+                <h4 id="kpiConv">0.0% <span class="arrow">&#8594;</span></h4>
+                <small>Sales Growth</small>
+              </div>
+            </div>
+
+            <div class="row">
+              <!-- Left column: Sales Trend (top) + Sales by Service (below) -->
+              <div class="col-lg-6 mb-4 d-flex flex-column">
+                <!-- 1) Sales Trend Card -->
+                <div class="card sales-trend-card mb-4">
+                  <div
+                    class="card-header py-2 px-3 d-flex justify-content-between align-items-center"
+                  >
+                    <h6 class="mb-0">Sales Trend</h6>
+                    <div class="header-controls d-flex align-items-center">
+                      <select
+                        id="salesTrendPreset"
+                        class="form-control form-control-sm mr-2"
+                      >
+                        <option value="today">Today</option>
+                        <option value="7d" selected>Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="custom">Custom Range</option>
+                      </select>
+                      <input
+                        type="text"
+                        id="salesTrendCustom"
+                        class="form-control form-control-sm mr-2"
+                        style="display: none; cursor: pointer;"
+                        placeholder="Select date range"
+                        readonly
+                      />
+                      <select
+                        id="salesTrendYOY"
+                        class="form-control form-control-sm"
+                        style="min-width: 120px;"
+                      >
+                        <!-- JS will populate options -->
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="card-body p-3 d-flex flex-column">
+                    <div
+                      id="salesTrendChart"
+                      class="chart flex-grow-1 mb-3"
+                    ></div>
+                    <div class="kpi-table-wrapper">
+                      <table
+                        class="table sales-trend-table"
+                        id="salesTrendKPITable"
+                        style="display: none;"
+                      >
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th id="stCurLabel"></th>
+                            <th id="stPrevLabel"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>Total Sales</td>
+                            <td id="stCurSales">₱0</td>
+                            <td id="stPrevSales">₱0</td>
+                          </tr>
+                          <tr>
+                            <td>Total Transactions</td>
+                            <td id="stCurTxns">0</td>
+                            <td id="stPrevTxns">0</td>
+                          </tr>
+                          <tr>
+                            <td>Profit</td>
+                            <td id="stCurProfit">₱0</td>
+                            <td id="stPrevProfit">₱0</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 2) Sales by Service (below Sales Trend) -->
+                <div class="card sales-by-serv-card">
+                  <div
+                    class="card-header py-2 px-3 d-flex justify-content-between align-items-center"
+                  >
+                    <h6 class="mb-0">Sales by Service</h6>
+                    <div class="header-controls d-flex align-items-center">
+                      <select
+                        id="servRangeSelect"
+                        class="form-control form-control-sm ml-2"
+                        style="width: 100px;"
+                      >
+                        <option value="day" selected>Today</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">This Month</option>
+                        <option value="year">This Year</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="card-body p-3">
+                    <table id="salesByServTable" class="scrollable-table">
+                      <thead>
+                        <tr>
+                          <th>Service</th>
+                          <th class="text-right">Counts</th>
+                          <th class="text-right">Sales</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <!-- Populated via JS -->
+                      </tbody>
+                    </table>
+                    <div
+                      id="servNoData"
+                      class="text-center text-muted mt-3"
+                      style="display: none;"
+                    >
+                      No services found for the selected filter.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right column: Sales by Category (top) + Sales by Product (below) -->
+              <div class="col-lg-6 mb-4 d-flex flex-column">
+                <!-- 3) Sales by Category -->
+            <!-- 3) Sales by Category -->
+<div class="card sales-by-cat-card mb-4">
+  <div
+    class="card-header py-2 px-3 d-flex justify-content-between align-items-center"
+  >
+    <h6 class="mb-0">Sales by Category</h6>
+    <div class="header-controls d-flex align-items-center">
+      <select
+        id="categorySelect"
+        class="form-control form-control-sm"
+        style="width: auto;"
+      >
+        <option value="" disabled selected>Select Category</option>
+        <!-- JS will populate category options -->
+      </select>
+      <select
+        id="categoryRangeSelect"
+        class="form-control form-control-sm ml-2"
+        style="width: 100px;"
+      >
+        <option value="day">Today</option>
+        <option value="week" selected>Last 7 Days</option>
+        <option value="month">This Month</option>
+        <option value="year">This Year</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card-body p-3" style="min-height: 180px;">
+    <div class="kpi-grid mb-2">
+      <div class="kpi-item">
+        <small>Total Sales</small>
+        <h5 id="catSales">₱0</h5>
+      </div>
+      <div class="kpi-item">
+        <small>Profit</small>
+        <h5 id="catProfit">₱0</h5>
+      </div>
+      <div class="kpi-item">
+        <small>Expired</small>
+        <h5 id="catLoss">₱0</h5>
+      </div>
+      <div class="kpi-item">
+        <small>Sales Rate</small>
+        <div class="sales-rate d-flex align-items-center">
+          <span id="catRate" class="rate-percentage">0%</span>
+          <div id="catSparkline" class="sparkline-chart ml-1"></div>
+        </div>
+      </div>
+    </div>
+    <div id="catGrowth" class="growth-line neutral">
+      <span>+0%</span>
+      <span class="arrow">&#8594;</span>
+      <small class="ml-2 text-muted">vs. previous period</small>
+    </div>
+    <div id="catComparisonText" class="comparison-text mt-2"></div>
+  </div>
+</div>
+
+
+                <!-- 4) Sales by Product -->
+                <div class="card sales-by-prod-card">
+                  <div
+                    class="card-header py-2 px-3 d-flex justify-content-between align-items-center"
+                  >
+                    <h6 class="mb-0">Sales by Product</h6>
+                    <div class="header-controls d-flex align-items-center">
+                      <select
+                        id="prodCategorySelect"
+                        class="form-control form-control-sm"
+                        style="width: auto;"
+                      >
+                        <option value="" disabled selected>All Categories</option>
+                        <!-- JS will populate the same category options -->
+                      </select>
+                      <select
+                        id="prodRangeSelect"
+                        class="form-control form-control-sm ml-2"
+                        style="width: 100px;"
+                      >
+                        <option value="day" selected>Today</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">This Month</option>
+                        <option value="year">This Year</option>
+                      </select>
+                      <input
+                        type="text"
+                        id="prodSearchInput"
+                        class="prod-search-input ml-2 form-control form-control-sm"
+                        placeholder="Search Product"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="card-body p-3">
+                    <table id="salesByProdTable" class="scrollable-table">
+                      <thead>
+                        <tr>
+                          <th>Product</th>
+                          <th class="text-right">Units Sold</th>
+                          <th class="text-right">Sales</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <!-- Filled via JS -->
+                      </tbody>
+                    </table>
+                    <div
+                      id="prodNoData"
+                      class="text-center text-muted mt-3"
+                      style="display: none;"
+                    >
+                      No products found for the selected filters.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div> <!-- close .row for Sales Overview -->
+          </div> <!-- close .card-body -->
+        </div> <!-- close .card -->
+      </div> <!-- close #salesOverview -->
+
+      <!-- 2) Inventory Overview (pane) -->
+      <div
+        class="tab-pane fade"
+        id="inventoryOverview"
+        role="tabpanel"
+        aria-labelledby="inventoryOverview-tab"
+      >
+        <!-- KPIs Row (in a single card, with proper centering) -->
+        <div class="card mb-3">
+          <div class="card-body pb-2">
+            <div
+              class="d-flex flex-wrap justify-content-between align-items-stretch"
+              style="gap: 1rem;"
+            >
+              <div class="kpi-card flex-fill text-center">
+                <i class="fas fa-boxes"></i>
+                <h4 id="invTotalSKUs">0</h4>
+                <small>Total SKUs</small>
+              </div>
+              <div class="kpi-card flex-fill text-center">
+                <i class="fas fa-money-bill-wave"></i>
+                <h4 id="invTotalValue">₱0</h4>
+                <small>Total Stock Value</small>
+              </div>
+              <div class="kpi-card flex-fill text-center">
+                <i class="fas fa-th-large"></i>
+                <h4 id="invCategories">0</h4>
+                <small>Categories</small>
+              </div>
+              <div class="kpi-card flex-fill text-center">
+                <i class="fas fa-exclamation-triangle text-danger"></i>
+                <h4 id="invLowStockCount">0</h4>
+                <small>Low Stock (≤10)</small>
+              </div>
+              <div class="kpi-card flex-fill text-center">
+                <i class="fas fa-clock text-warning"></i>
+                <h4 id="invExpiringCount">0</h4>
+                <small>Expiring Soon</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analytics Row -->
+        <div class="row">
+          <!-- Turnover Rate -->
+          <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+              <div class="card-body text-center">
+                <i
+                  class="fas fa-sync-alt text-primary mb-2"
+                  style="font-size: 1.6rem"
+                ></i>
+                <h5 class="mb-1" id="turnoverRate">--</h5>
+                <small class="text-muted">Inventory Turnover Rate</small>
+                <div class="text-muted" style="font-size: 0.92rem;">
+                  (How often stock is sold & replaced)
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Days of Inventory Left -->
+          <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+              <div class="card-body text-center">
+                <i
+                  class="fas fa-hourglass-half text-info mb-2"
+                  style="font-size: 1.6rem"
+                ></i>
+                <h5 class="mb-1" id="daysLeft">--</h5>
+                <small class="text-muted">Days Inventory Left</small>
+                <div class="text-muted" style="font-size: 0.92rem;">
+                  (Based on sales rate)
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Most Valuable Category -->
+          <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+              <div class="card-body text-center">
+                <i
+                  class="fas fa-crown text-warning mb-2"
+                  style="font-size: 1.6rem"
+                ></i>
+                <h5 class="mb-1" id="topCategory">--</h5>
+                <small class="text-muted">Top Value Category</small>
+                <div class="text-muted" style="font-size: 0.92rem;">
+                  (Highest total ₱ value)
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Forecasted Expirations -->
+          <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+              <div class="card-body text-center">
+                <i
+                  class="fas fa-calendar-times text-danger mb-2"
+                  style="font-size: 1.6rem"
+                ></i>
+                <h5 class="mb-1" id="nextExpiry">--</h5>
+                <small class="text-muted">Next Expiry Date</small>
+                <div class="text-muted" style="font-size: 0.92rem;">
+                  (Soonest item expiry)
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart and Best-Sellers Row -->
+        <div class="row">
+          <!-- Stock by Category -->
+          <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div
+                class="card-header d-flex align-items-center py-2 px-3 bg-white"
+              >
+                <i class="fas fa-layer-group text-primary mr-2"></i>
+                <span class="font-weight-bold">Stock by Category</span>
+              </div>
+              <div class="card-body pt-3">
+                <div id="stockByCategoryChart" class="chart"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Value by Category -->
+          <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div
+                class="card-header d-flex align-items-center py-2 px-3 bg-white"
+              >
+                <i class="fas fa-chart-pie text-warning mr-2"></i>
+                <span class="font-weight-bold">Value by Category</span>
+              </div>
+              <div class="card-body pt-3">
+                <div id="valueByCategoryChart" class="chart"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Top 5 Best-Sellers -->
+          <div class="col-lg-4 col-md-12 mb-4">
+            <div class="card h-100 shadow-sm">
+              <div
+                class="card-header d-flex align-items-center py-2 px-3 bg-white"
+              >
+                <i class="fas fa-star text-success mr-2"></i>
+                <span class="font-weight-bold">Top 5 Best-Sellers</span>
+              </div>
+              <div class="card-body p-2">
+                <ul class="list-group list-group-flush" id="topSoldList"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div> <!-- close #inventoryOverview -->
+
+      <!-- 3) Appointment Trends (pane) -->
+      <div
+        class="tab-pane fade"
+        id="appointmentTrends"
+        role="tabpanel"
+        aria-labelledby="appointmentTrends-tab"
+      >
         <div class="card">
           <div class="card-body">
             <!-- KPI Row -->
             <div class="d-flex flex-wrap mb-4">
               <div class="kpi-card mr-3 mb-3">
-                <i class="fas fa-coins"></i>
-                <h4 id="kpiRevenue">₱6,845</h4>
-                <small>Total Revenue</small>
-                <div id="kpiRevChange" class="change">+0.0%</div>
+                <i class="fas fa-calendar-check"></i>
+                <h4 id="kpiAppointments">--</h4>
+                <small>Total Appointments</small>
+                <div id="kpiAppChange" class="change">--</div>
               </div>
               <div class="kpi-card mr-3 mb-3">
-                <i class="fas fa-receipt"></i>
-                <h4 id="kpiTxns">2</h4>
-                <small>Total Txns</small>
-                <div id="kpiTxnChange" class="change">+0.0%</div>
+                <i class="fas fa-user-md"></i>
+                <h4 id="kpiDoctors">--</h4>
+                <small>Doctors Booked</small>
+                <div id="kpiDocChange" class="change">--</div>
               </div>
               <div class="kpi-card mr-3 mb-3">
-                <i class="fas fa-shopping-cart"></i>
-                <h4 id="kpiAov">₱3,423</h4>
-                <small>Avg Order</small>
+                <i class="fas fa-users"></i>
+                <h4 id="kpiClients">--</h4>
+                <small>Clients Served</small>
               </div>
               <div class="kpi-card mb-3">
                 <i class="fas fa-percentage"></i>
-                <h4 id="kpiConv">100.0%</h4>
-                <small>Conv Rate</small>
+                <h4 id="kpiNoShow">--%</h4>
+                <small>No-Show Rate</small>
               </div>
             </div>
 
-            <!-- Grid Row: Chart + Revenue + Top 10 SKU -->
+            <!-- Charts Row -->
             <div class="row">
-              <!-- Sales Trend Chart -->
-              <div class="col-lg-4 col-md-12 mb-4">
+              <!-- Appointments Trend -->
+              <div class="col-lg-4 col-md-4 mb-4">
                 <div class="card h-100 shadow-sm">
-                  <div class="card-header py-2 px-3">
-                    <h6 class="mb-0">Sales Trend</h6>
-                  </div>
-                  <div class="card-body p-2">
-                    <div id="salesTrendChart" class="chart"></div>
-                  </div>
-                </div>
-              </div>
-              <!-- Revenue by Service (Donut + Table) -->
-              <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card h-100 shadow-sm">
-                  <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">Revenue by Service</h6>
-                    <select id="serviceRevenueRange" class="form-control form-control-sm" style="width:auto;">
-                      <option value="today">Today</option>
+                  <div
+                    class="card-header py-2 px-3 d-flex justify-content-between align-items-center"
+                  >
+                    <h6 class="mb-0">Appointments Trend</h6>
+                    <select
+                      id="appointmentTrendRange"
+                      class="form-control form-control-sm"
+                      style="width: auto;"
+                    >
                       <option value="7d" selected>Last 7 Days</option>
+                      <option value="30d">Last 30 Days</option>
                       <option value="month">Month</option>
                       <option value="year">Year</option>
                     </select>
                   </div>
                   <div class="card-body p-2">
-                    <div class="d-flex flex-column align-items-center">
-                      <div style="width: 160px; min-width: 100px; margin-bottom: 12px;">
-                        <div id="serviceRevenueChart"></div>
-                      </div>
-                      <div class="w-100">
-                        <table class="table table-sm table-borderless mb-0" id="serviceRevenueTable" style="font-size: 0.95rem;">
-                          <thead>
-                            <tr>
-                              <th style="width:28px;"></th>
-                              <th>Service</th>
-                              <th class="text-right">Revenue</th>
-                            </tr>
-                          </thead>
-                          <tbody></tbody>
-                        </table>
-                      </div>
+                    <div class="chart">
+                      <div id="appointmentsTrendChart"></div>
                     </div>
                   </div>
                 </div>
               </div>
-              <!-- Top 10 SKUs (Fixed!) -->
-              <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card h-100 shadow-sm top-sku-card">
-                  <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">Top 10 SKUs</h6>
-                    <span class="badge badge-primary" style="font-size:.7rem">By Revenue</span>
+
+              <!-- Peak Day of Week -->
+              <div class="col-lg-4 col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                  <div
+                    class="card-header py-2 px-3 d-flex justify-content-between align-items-center"
+                  >
+                    <h6 class="mb-0">Peak Day-of-Week</h6>
+                    <select
+                      id="peakDayRange"
+                      class="form-control form-control-sm"
+                      style="width: auto;"
+                    >
+                      <option value="7d">Last 7 Days</option>
+                      <option value="30d" selected>Last 30 Days</option>
+                      <option value="month">Month</option>
+                      <option value="year">Year</option>
+                    </select>
                   </div>
-                  <div class="card-body">
-                    <table class="table table-sm table-borderless mb-0" id="topSkuTable">
+                  <div class="card-body p-2">
+                    <div
+                      id="peakDayChartWrapper"
+                      style="width: 100%; height: 200px; margin-bottom: 12px;"
+                    >
+                      <canvas id="peakDayChart"></canvas>
+                    </div>
+                    <table
+                      class="table table-sm table-borderless mb-0"
+                      id="peakDayTable"
+                      style="font-size: 0.7rem;"
+                    >
                       <thead>
                         <tr>
-                          <th>SKU</th>
-                          <th class="text-right">Units Sold</th>
-                          <th class="text-right">Revenue</th>
+                          <th>Day</th>
+                          <th class="text-right">Appointments</th>
                         </tr>
                       </thead>
-                      <tbody></tbody>
+                      <tbody>
+                        <!-- populated by JS -->
+                      </tbody>
                     </table>
                   </div>
                 </div>
               </div>
-            </div>
-            <!-- END SALES OVERVIEW -->
-          </div>
-        </div>
-      </div>
-<div class="tab-pane fade" id="inventoryOverview">
-  <!-- KPIs Row (in a single card, with proper centering) -->
-  <div class="card mb-3">
-    <div class="card-body pb-2">
-      <div class="d-flex flex-wrap justify-content-between align-items-stretch" style="gap:1rem;">
-        <div class="kpi-card flex-fill text-center">
-          <i class="fas fa-boxes"></i>
-          <h4 id="invTotalSKUs">0</h4>
-          <small>Total SKUs</small>
-        </div>
-        <div class="kpi-card flex-fill text-center">
-          <i class="fas fa-money-bill-wave"></i>
-          <h4 id="invTotalValue">₱0</h4>
-          <small>Total Stock Value</small>
-        </div>
-        <div class="kpi-card flex-fill text-center">
-          <i class="fas fa-th-large"></i>
-          <h4 id="invCategories">0</h4>
-          <small>Categories</small>
-        </div>
-        <div class="kpi-card flex-fill text-center">
-          <i class="fas fa-exclamation-triangle text-danger"></i>
-          <h4 id="invLowStockCount">0</h4>
-          <small>Low Stock (≤10)</small>
-        </div>
-        <div class="kpi-card flex-fill text-center">
-          <i class="fas fa-clock text-warning"></i>
-          <h4 id="invExpiringCount">0</h4>
-          <small>Expiring Soon</small>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- Analytics Row -->
-  <div class="row">
-    <!-- Turnover Rate -->
-    <div class="col-lg-3 col-md-6 mb-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-body text-center">
-          <i class="fas fa-sync-alt text-primary mb-2" style="font-size:1.6rem"></i>
-          <h5 class="mb-1" id="turnoverRate">--</h5>
-          <small class="text-muted">Inventory Turnover Rate</small>
-          <div class="text-muted" style="font-size: 0.92rem;">(How often stock is sold & replaced)</div>
-        </div>
-      </div>
-    </div>
-    <!-- Days of Inventory Left -->
-    <div class="col-lg-3 col-md-6 mb-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-body text-center">
-          <i class="fas fa-hourglass-half text-info mb-2" style="font-size:1.6rem"></i>
-          <h5 class="mb-1" id="daysLeft">--</h5>
-          <small class="text-muted">Days Inventory Left</small>
-          <div class="text-muted" style="font-size: 0.92rem;">(Based on sales rate)</div>
-        </div>
-      </div>
-    </div>
-    <!-- Most Valuable Category -->
-    <div class="col-lg-3 col-md-6 mb-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-body text-center">
-          <i class="fas fa-crown text-warning mb-2" style="font-size:1.6rem"></i>
-          <h5 class="mb-1" id="topCategory">--</h5>
-          <small class="text-muted">Top Value Category</small>
-          <div class="text-muted" style="font-size: 0.92rem;">(Highest total ₱ value)</div>
-        </div>
-      </div>
-    </div>
-    <!-- Forecasted Expirations -->
-    <div class="col-lg-3 col-md-6 mb-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-body text-center">
-          <i class="fas fa-calendar-times text-danger mb-2" style="font-size:1.6rem"></i>
-          <h5 class="mb-1" id="nextExpiry">--</h5>
-          <small class="text-muted">Next Expiry Date</small>
-          <div class="text-muted" style="font-size: 0.92rem;">(Soonest item expiry)</div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Chart and Best-Sellers Row -->
-  <div class="row">
-    <!-- Stock by Category -->
-    <div class="col-lg-4 col-md-6 mb-4">
-      <div class="card h-100 shadow-sm">
-        <div class="card-header d-flex align-items-center py-2 px-3 bg-white">
-          <i class="fas fa-layer-group text-primary mr-2"></i>
-          <span class="font-weight-bold">Stock by Category</span>
-        </div>
-        <div class="card-body pt-3">
-          <div id="stockByCategoryChart" class="chart"></div>
-        </div>
-      </div>
-    </div>
-    <!-- Value by Category -->
-    <div class="col-lg-4 col-md-6 mb-4">
-      <div class="card h-100 shadow-sm">
-        <div class="card-header d-flex align-items-center py-2 px-3 bg-white">
-          <i class="fas fa-chart-pie text-warning mr-2"></i>
-          <span class="font-weight-bold">Value by Category</span>
-        </div>
-        <div class="card-body pt-3">
-          <div id="valueByCategoryChart" class="chart"></div>
-        </div>
-      </div>
-    </div>
-    <!-- Top 5 Best-Sellers -->
-    <div class="col-lg-4 col-md-12 mb-4">
-      <div class="card h-100 shadow-sm">
-        <div class="card-header d-flex align-items-center py-2 px-3 bg-white">
-          <i class="fas fa-star text-success mr-2"></i>
-          <span class="font-weight-bold">Top 5 Best-Sellers</span>
-        </div>
-        <div class="card-body p-2">
-          <ul class="list-group list-group-flush" id="topSoldList"></ul>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- 3) Appointment Trends (MATCH SALES OVERVIEW LAYOUT) -->
-<div class="tab-pane fade" id="appointmentTrends">
-  <div class="card">
-    <div class="card-body">
-
-      <!-- KPI Row -->
-      <div class="d-flex flex-wrap mb-4">
-        <div class="kpi-card mr-3 mb-3">
-          <i class="fas fa-calendar-check"></i>
-          <h4 id="kpiAppointments">--</h4>
-          <small>Total Appointments</small>
-          <div id="kpiAppChange" class="change">--</div>
-        </div>
-        <div class="kpi-card mr-3 mb-3">
-          <i class="fas fa-user-md"></i>
-          <h4 id="kpiDoctors">--</h4>
-          <small>Doctors Booked</small>
-          <div id="kpiDocChange" class="change">--</div>
-        </div>
-        <div class="kpi-card mr-3 mb-3">
-          <i class="fas fa-users"></i>
-          <h4 id="kpiClients">--</h4>
-          <small>Clients Served</small>
-        </div>
-        <div class="kpi-card mb-3">
-          <i class="fas fa-percentage"></i>
-          <h4 id="kpiNoShow">--%</h4>
-          <small>No-Show Rate</small>
-        </div>
-      </div>
-
-      <!-- Charts Row -->
-      <div class="row">
-        <!-- Appointments Trend -->
-        <div class="col-lg-4 col-md-4 mb-4">
-          <div class="card h-100 shadow-sm">
-            <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center">
-              <h6 class="mb-0">Appointments Trend</h6>
-              <select id="appointmentTrendRange"
-                      class="form-control form-control-sm"
-                      style="width:auto;">
-                <option value="7d" selected>Last 7 Days</option>
-                <option value="30d">Last 30 Days</option>
-                <option value="month">Month</option>
-                <option value="year">Year</option>
-              </select>
-            </div>
-            <div class="card-body p-2">
-  <div class="chart">
-    <div id="appointmentsTrendChart"></div>
-  </div>
-</div>
-
-          </div>
-        </div>
-
-        <!-- Peak Day of Week -->
-        <div class="col-lg-4 col-md-4 mb-4">
-          <div class="card h-100 shadow-sm">
-            <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center">
-              <h6 class="mb-0">Peak Day-of-Week</h6>
-              <select id="peakDayRange"
-                      class="form-control form-control-sm"
-                      style="width:auto;">
-                <option value="7d">Last 7 Days</option>
-                <option value="30d" selected>Last 30 Days</option>
-                <option value="month">Month</option>
-                <option value="year">Year</option>
-              </select>
-            </div>
-            <div class="card-body p-2">
-              <div id="peakDayChartWrapper" style="width:100%;height:200px;margin-bottom:12px;">
-                <canvas id="peakDayChart"></canvas>
+              <!-- Forecast (Next 3 Days) -->
+              <div class="col-lg-4 col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                  <div
+                    class="card-header py-2 px-3 d-flex justify-content-between align-items-center"
+                  >
+                    <h6 class="mb-0">Appointments Forecast</h6>
+                    <span class="badge badge-info" style="font-size: 0.7rem;"
+                      >Next 3 Days</span
+                    >
+                  </div>
+                  <div class="card-body p-2">
+                    <!-- ApexCharts sparkline goes here -->
+                    <div
+                      id="predictionChart"
+                      style="width: 100%; height: 120px; margin-bottom: 8px;"
+                    ></div>
+                    <!-- three-day values -->
+                    <div
+                      id="forecastValues"
+                      class="d-flex justify-content-between"
+                    >
+                      <!-- JS will inject three blocks here -->
+                    </div>
+                  </div>
+                </div>
               </div>
-              <table class="table table-sm table-borderless mb-0" id="peakDayTable" style="font-size:0.7rem;">
-                <thead>
-                  <tr><th>Day</th><th class="text-right">Appointments</th></tr>
-                </thead>
-                <tbody><!-- populated by JS --></tbody>
-              </table>
             </div>
+            <!-- END APPOINTMENT TRENDS -->
           </div>
         </div>
-
-        <!-- Forecast (Next 3 Days) -->
-     <!-- Forecast (Next 3 Days) -->
-<div class="col-lg-4 col-md-4 mb-4">
-  <div class="card h-100 shadow-sm">
-    <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center">
-      <h6 class="mb-0">Appointments Forecast</h6>
-      <span class="badge badge-info" style="font-size:.7rem">Next 3 Days</span>
-    </div>
-    <div class="card-body p-2">
-      <!-- ApexCharts sparkline goes here -->
-      <div id="predictionChart" style="width:100%;height:120px;margin-bottom:8px;"></div>
-      <!-- three-day values -->
-      <div id="forecastValues" class="d-flex justify-content-between">
-        <!-- JS will inject three blocks here -->
-      </div>
-    </div>
-  </div>
-</div>
-
-      <!-- END APPOINTMENT TRENDS -->
-    </div>
-  </div>
-</div>
-
-
-    </div><!-- /.tab-content -->
-  </div><!-- /.container-fluid -->
+      </div> <!-- close #appointmentTrends -->
+    </div> <!-- /.tab-content -->
+  </div> <!-- /.container-fluid -->
 
   <!-- JS includes -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -644,10 +1473,6 @@
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- instead of inline JS, load the unified dashboard.js -->
-<script src="/js/dashboard.js"></script>
-
-
-
-
+  <script src="/js/dashboard.js"></script>
 </body>
 </html>
