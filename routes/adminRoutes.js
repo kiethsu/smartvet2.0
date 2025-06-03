@@ -195,32 +195,69 @@ router.get("/inventory/list", async (req, res) => {
 
 // API route to add a new inventory item
 // API route to add a new inventory item
+// ─── Add a New Inventory Item ───────────────────────────────────────
+// adminRoutes.js (snippet)
+
 router.post("/inventory/add", async (req, res) => {
   try {
-    const { name, category, price, quantity } = req.body;
+    const { name, category, basePrice, markup, quantity } = req.body;
+
+    const bPrice = parseFloat(basePrice);
+    const mPct   = parseFloat(markup);
+    const qty    = parseInt(quantity, 10);
+
+    // Compute final price
+    const finalPrice = Math.round((bPrice * (1 + mPct / 100)) * 100) / 100;
+
+    // Parse incoming expirationDates (strings) into Date[]
     let expirationDates = req.body["expirationDates[]"] || req.body.expirationDates;
     if (expirationDates) {
       if (!Array.isArray(expirationDates)) {
         expirationDates = [expirationDates];
       }
-      expirationDates = expirationDates.filter(date => date);
+      expirationDates = expirationDates
+        .map(dateStr => new Date(dateStr))
+        .filter(d => !isNaN(d.getTime()));
     } else {
       expirationDates = [];
     }
+
+    // Split into “alreadyExpired” vs “stillValid”
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const validDates = [];
+    const alreadyExpired = [];
+
+    expirationDates.forEach(d => {
+      // d is at midnight of user‐entered date
+      if (d < today) {
+        alreadyExpired.push(d);
+      } else {
+        validDates.push(d);
+      }
+    });
+
+    // Build new Inventory document
     const newItem = new Inventory({
       name,
       category,
-      price,
-      quantity,
-      expirationDates
+      basePrice:    bPrice,
+      markup:       mPct,
+      price:        finalPrice,
+      quantity:     qty,
+      expirationDates: validDates,
+      expiredDates:    alreadyExpired,
+      expiredCount:    alreadyExpired.length
     });
+
     await newItem.save();
     res.json({ message: "Inventory item added successfully" });
   } catch (error) {
+    console.error("Error adding inventory item:", error);
     res.status(500).json({ message: "Error adding inventory item" });
   }
 });
-
 
 // API route to fetch a single inventory item by ID
 router.get("/inventory/item/:id", async (req, res) => {
@@ -233,21 +270,77 @@ router.get("/inventory/item/:id", async (req, res) => {
 });
 
 // API route to edit an inventory item
+// adminRoutes.js (snippet)
+
 router.post("/inventory/edit", async (req, res) => {
   try {
-    const { id, name, category, price, quantity } = req.body;
+    const { id, name, category, basePrice, markup, quantity } = req.body;
+
+    const bPrice = parseFloat(basePrice);
+    const mPct   = parseFloat(markup);
+    const qty    = parseInt(quantity, 10);
+
+    // Recompute final price
+    const finalPrice = Math.round((bPrice * (1 + mPct / 100)) * 100) / 100;
+
+    // Parse incoming expirationDates[]
     let expirationDates = req.body["expirationDates[]"] || req.body.expirationDates;
     if (expirationDates) {
       if (!Array.isArray(expirationDates)) {
         expirationDates = [expirationDates];
       }
-      expirationDates = expirationDates.filter(date => date);
+      expirationDates = expirationDates
+        .map(dateStr => new Date(dateStr))
+        .filter(d => !isNaN(d.getTime()));
     } else {
       expirationDates = [];
     }
-    await Inventory.findByIdAndUpdate(id, { name, category, price, quantity, expirationDates });
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const validDates = [];
+    const alreadyExpired = [];
+
+    expirationDates.forEach(d => {
+      if (d < today) {
+        alreadyExpired.push(d);
+      } else {
+        validDates.push(d);
+      }
+    });
+
+    // Fetch existing doc so we can merge old expiredDates
+    const existing = await Inventory.findById(id).lean();
+    if (!existing) {
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    // Combine previously expiredDates + new alreadyExpired
+    const combinedExpiredDates = [
+      ...existing.expiredDates.map(d => new Date(d)), 
+      ...alreadyExpired
+    ];
+
+    // Update expiredCount to reflect total expired
+    const newExpiredCount = combinedExpiredDates.length;
+
+    // Now update the inventory doc
+    await Inventory.findByIdAndUpdate(id, {
+      name,
+      category,
+      basePrice:       bPrice,
+      markup:          mPct,
+      price:           finalPrice,
+      quantity:        qty,
+      expirationDates: validDates,
+      expiredDates:    combinedExpiredDates,
+      expiredCount:    newExpiredCount
+    });
+
     res.json({ message: "Inventory item updated successfully" });
   } catch (error) {
+    console.error("Error updating inventory item:", error);
     res.status(500).json({ message: "Error updating inventory item" });
   }
 });
@@ -354,7 +447,19 @@ router.get("/sales-report", (req, res) => {
   // If you have logic to gather data, do it here and pass to the template.
   res.render("sales-report"); 
 });
-router.get("/download-sales-report.xlsx", adminController.downloadSalesExcel);
-router.get("/download-sales-report.csv",  adminController.downloadSalesCSV);
+// ─── GET /admin/get-categories ─────────────────────────────────────────
+router.get('/get-categories', adminController.getCategories);
+// adminRoutes.js
+router.get("/get-sales-by-category", adminController.getSalesByCategory);
+router.get(
+  "/get-sales-by-product",
+  adminController.getSalesByProduct
+);
+router.get("/get-sales-by-service", adminController.getSalesByService);
+// change to these two lines:
+router.get("/downloadSalesExcel", adminController.downloadSalesExcel);
+router.get("/downloadSalesCSV",  adminController.downloadSalesCSV);
+
 router.get("/download-sales-report.pdf",  adminController.downloadSalesPDF);
 module.exports = router;
+
