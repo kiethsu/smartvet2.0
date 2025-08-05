@@ -405,8 +405,8 @@
             method: 'GET',
             success: function(updatedData) {
               (updatedData.speciesBreeds[selectedSpecies] || []).forEach(function(breed) {
-                breedDropdown.append(`<option value="\${breed}">\${breed}</option>`);
-              });
+  breedDropdown.append(`<option value="${breed}">${breed}</option>`);
+});
             },
             error: console.error
           });
