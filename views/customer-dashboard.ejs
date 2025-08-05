@@ -1,280 +1,423 @@
+<%
+  // (Any server‐side EJS helpers you already have—unchanged)
+%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Customer Dashboard</title>
-  <!-- Google Fonts for a professional look -->
-  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
   <!-- Bootstrap CSS -->
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-  <!-- Font Awesome for icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- SweetAlert2 CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
+
   <style>
-    /* Base Styles */
+    :root {
+      --primary: #1E88E5;
+      --primary-dark: #0D47A1;
+      --accent: #90CAF9;
+      --white: #ffffff;
+      --text: #333;
+      --bg-dark: #202737;
+      --glass: rgba(255,255,255,.08);
+      --card-bg: #ffffff;
+      --border-color: rgba(0,0,0,.04);
+      --secondary-color: #264653;
+    }
+
+    /* Top bar */
+    #topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: var(--bg-dark);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      z-index: 3000;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+      gap: 12px;
+    }
+    #topbar .menu-toggle {
+      color: #fff;
+      font-size: 1.5em;
+      margin-right: 16px;
+      cursor: pointer;
+      display: none;
+    }
+    #topbar .topbar-paw {
+      color: #fff;
+      font-size: 1.3em;
+      margin-right: 8px;
+    }
+    #topbar .topbar-title {
+      color: #fff;
+      font-size: 1.1em;
+      font-weight: 500;
+      flex-grow: 1;
+    }
+    .topbar-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .message-icon {
+      position: relative;
+      cursor: pointer;
+      color: #fff;
+      font-size: 1.2em;
+    }
+    .message-icon .badge {
+      position: absolute;
+      top: -4px;
+      right: -6px;
+      background: #ff4d4f;
+      color: #fff;
+      font-size: 0.55em;
+      padding: 2px 5px;
+      border-radius: 999px;
+      line-height: 1;
+      min-width: 16px;
+      text-align: center;
+    }
+
+    @media (max-width: 991.98px) {
+      #topbar .topbar-title { display: none; }
+      #topbar .menu-toggle { display: inline-block; }
+    }
+
     body {
       font-family: 'Roboto', sans-serif;
       background-color: #f7f7f7;
       margin: 0;
       padding: 0;
       overflow-x: hidden;
-      font-size: 14px;
-      color: #333;
     }
+
     .wrapper {
       display: flex;
-      height: 100vh;
-      overflow: hidden;
-    }
-    /* Sidebar Styling */
-    #sidebar {
-      width: 250px;
-      background: #0F52BA; /* Sapphire Blue */
-      color: #fff; /* White text */
-      position: fixed;
-      top: 0;
-      left: -250px;
-      height: 100%;
-      transition: all 0.3s ease;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-      z-index: 1050;
-      padding-top: 20px;
-    }
-    #sidebar.active {
-      left: 0;
-    }
-    /* Profile Area – horizontal layout */
-    .profile-area {
-      display: flex;
-      align-items: center;
-      padding: 0 20px 15px 20px;
-    }
-    .profile-area img.profile-img {
-      width: 45px;
-      height: 45px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 1px solid #ddd;
-      margin-right: 12px;
-    }
-    .profile-area h4 {
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 500;
-      color: #fff; /* White text for profile name */
-    }
-    /* Sidebar Toggle Button */
-    #sidebarToggleSidebar {
-      background: transparent;
-      border: none;
-      font-size: 1.2em;
-      cursor: pointer;
-      outline: none;
-      margin: 0 20px 10px;
-      color: #fff;
-    }
-    /* Sidebar Menu Container */
-    #sidebar ul.components {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      background: #0F52BA;  /* Sapphire Blue background */
-    }
-    /* Sidebar Menu Items */
-    #sidebar ul.components li {
-      position: relative;
-    }
-    #sidebar ul.components li a {
-      color: #fff; /* White text for menu items */
-      background: #0F52BA; /* Maintain Sapphire Blue background */
-      text-decoration: none;
-      display: block;
-      padding: 12px 20px;
-      transition: background 0.3s;
-    }
-    #sidebar ul.components li a:hover,
-    #sidebar ul.components li a.active {
-      background: #2a9d8f; /* Accent hover color */
-      color: #fff;
-      border-radius: 4px;
-    }
-    #sidebar ul.components li a i {
-      margin-right: 10px;
-      width: 20px;
-      text-align: center;
-    }
-    /* Content Header */
-    .content-header {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    #sidebarToggleContent {
-      margin-right: 15px;
-      border: none;
-      background: transparent;
-      font-size: 1.5em;
-      cursor: pointer;
-      outline: none;
-    }
-    /* Main Content Area */
-    #content {
-      margin-left: 0;
-      padding: 20px 40px;
-      background: #f7f7f7;
+      flex-direction: row;
       min-height: 100vh;
       width: 100%;
-      transition: margin-left 0.3s ease;
+      position: relative;
+      padding-top: calc(56px + 44px); /* topbar + sub-nav */
     }
-    #content.active {
-      margin-left: 250px;
+
+    /* Sidebar */
+    #sidebar {
+      width: 265px;
+      background: var(--primary-dark);
+      color: var(--white);
+      position: fixed;
+      top: 56px;
+      left: 0;
+      height: calc(100vh - 56px);
+      z-index: 2000;
+      box-shadow: 2px 0 6px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid rgba(255,255,255,.04);
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: left 0.3s;
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent) var(--primary-dark);
     }
-    /* Card Styling */
-    .card {
-      background: #fff;
-      border-radius: 8px;
-      border: none;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    #sidebar::-webkit-scrollbar {
+      width: 8px;
+      background: var(--primary-dark);
     }
-    .btn-primary {
-      background-color: #2a9d8f;
+    #sidebar::-webkit-scrollbar-thumb {
+      background: var(--accent);
       border-radius: 4px;
-      border: none;
     }
-    .tutorial-btn {
-      width: 130px;
-      text-align: left;
+    .sidebar-header {
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      gap: 6px;
+      min-height: 58px;
+      padding: 30px 24px 8px 24px;
+      display: flex;
+      align-items: center;
     }
-    /* Responsive Table */
-    .table-responsive {
-      overflow-x: auto;
+    .sidebar-logo {
+      font-size: 2em;
+      color: var(--accent);
     }
-    .table th, .table td {
+    .sidebar-title {
+      font-size: 1.12em;
+      color: var(--white);
+      letter-spacing: .8px;
+      text-shadow: 0 1px 3px rgba(0,0,0,.10);
+      font-weight: 700;
+      margin-left: 7px;
+    }
+    .sidebar-menu {
+      margin-top: 14px;
+      gap: 2px;
+      flex-direction: column;
+      padding-left: 0;
+      list-style: none;
+    }
+    .sidebar-menu li {
+      margin-bottom: 6px;
+    }
+    .sidebar-menu a {
+      font-size: 1em !important;
+      font-weight: 500 !important;
+      color: var(--white) !important;
+      background: transparent !important;
+      border-radius: 6px;
+      padding: 12px 22px;
+      display: flex; align-items: center; gap: 14px;
+      transition: background .19s, color .19s;
+      position: relative;
+      text-decoration: none !important;
       white-space: nowrap;
     }
-    /* Responsive Design */
-    @media (max-width: 768px) {
-      #content.active {
-        margin-left: 0;
+    .sidebar-menu a.active,
+    .sidebar-menu a:hover {
+      background: var(--accent) !important;
+      color: var(--primary-dark) !important;
+    }
+    .sidebar-menu a i {
+      width: 23px; font-size:1.18em; text-align:center;
+    }
+    .sidebar-menu .logout a,
+    .sidebar-menu .logout a:hover {
+      background: none !important;
+      color: #ffe3e3 !important;
+    }
+
+    .sidebar-bottom-profile {
+      background: var(--glass);
+      border-radius: 8px;
+      box-shadow: 0 1px 7px rgba(0,0,0,.12);
+      border: 1px solid rgba(255,255,255,.10);
+      color: #fff;
+      font-size: .97em;
+      margin: 16px 24px 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 52px;
+      flex-wrap: nowrap;
+      padding-left: 8px; /* breathing space on left */
+    }
+    .sidebar-bottom-profile img {
+      box-shadow: 0 1px 3px rgba(0,0,0,.10);
+      border: 2px solid var(--accent);
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      margin-right: 8px; /* gap to username */
+    }
+    .sidebar-bottom-profile .info {
+      flex-grow: 1;
+      min-width: 0;
+    }
+    .sidebar-bottom-profile .fw-bold {
+      color: var(--white);
+      font-size: 1.05em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* secondary nav below topbar, always same height */
+    #sub-nav {
+      position: fixed;
+      top: 56px;
+      left: 265px;
+      right: 0;
+      background: #f1f5fa;
+      min-height: 44px;
+      height: 44px;
+      padding: 6px 16px;
+      z-index: 2500;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+      display: flex;
+      align-items: center;
+      font-size: 0.9rem;
+      transition: height 0.2s;
+      overflow: visible;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #sub-nav .sub-nav-inner {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 100%;
+    }
+    #subnav-title {
+      font-weight: 600;
+      font-size: 1rem;
+      color: var(--secondary-color);
+      white-space: nowrap;
+      margin: 0;
+    }
+
+    /* Main content */
+    #content {
+      margin-left: 265px;
+      margin-top: 0;
+      padding: 16px;
+      background: #f7f7f7;
+      min-height: 100vh;
+      width: calc(100% - 265px);
+      transition: margin-left 0.3s ease;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
+      overflow: visible;
+    }
+    .collapsed-content {
+      margin-left: 0 !important;
+      width: 100vw !important;
+    }
+    .upcoming-visit {
+      margin-bottom: 8px;
+    }
+    .recent-visit {
+      min-height: 310px;
+      max-height: 460px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    @media (max-width: 576px) {
+      .recent-visit {
+        min-height: 280px;
+        height: 55vh;
+        max-height: 70vh;
       }
-      #sidebar {
-        width: 250px;
-      }
-      #sidebar.active {
-        left: 0;
-      }
-      #content {
-        padding: 10px 20px;
-      }
-      .card {
-        text-align: center;
-      }
-      .table {
-        font-size: 0.9rem;
+      .recent-visit .table-responsive {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        height: 100%;
+        max-height: 100%;
+        padding-bottom: 10px;
       }
     }
 
-      /* Chat widget container */
-  #chatWidget {
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    width: 300px;
-    max-height: 400px;
-    background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    display: none; /* hidden by default */
-    flex-direction: column;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    z-index: 9999;
-  }
-  #chatHeader {
-    background: #2a9d8f;
-    color: #fff;
-    padding: 10px;
-    cursor: pointer;
-  }
-  #chatMessages {
-    flex: 1;
-    padding: 10px;
-    overflow-y: auto;
-    background: #f9f9f9;
-  }
-  #chatInputContainer {
-    padding: 10px;
-    border-top: 1px solid #ccc;
-  }
-  #chatInput {
-    width: 100%;
-    padding: 8px;
-  }
-  /* Toggle button for the widget */
-  #chatToggleButton {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: #2a9d8f;
-    color: #fff;
-    border: none;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    font-size: 20px;
-    cursor: pointer;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    z-index: 10000;
-  }
-  #suggestedPrompts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    padding: 5px 10px;
-    background: #f1f1f1;
-  }
-  #suggestedPrompts button {
-    background: #2a9d8f;
-    color: #fff;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.9rem;
-  }
+    #sidebarOverlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1999;
+      background: rgba(20,30,50,0.26);
+      transition: opacity 0.3s;
+    }
+    .message-tooltip {
+      position: absolute;
+      top: 38px;
+      right: 0;
+      background: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.15);
+      font-size: 0.8em;
+      white-space: nowrap;
+      display: none;
+      color: #333;
+      z-index: 3500;
+    }
+    .message-icon:hover + .message-tooltip {
+      display: block;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 991.98px) {
+      #sidebar {
+        width: 220px;
+        left: -220px;
+      }
+      #sidebar.active { left: 0 !important; }
+      #content {
+        margin-left: 0 !important;
+        width: 100%;
+        padding: 12px;
+      }
+      #sidebarOverlay.show { display: block; }
+      #sub-nav {
+        left: 0;
+        z-index: 1800;
+      }
+      #sidebar {
+        z-index: 2000;
+      }
+      body.sidebar-open #sub-nav {
+        display: none;
+      }
+      .sidebar-bottom-profile img {
+        width: 34px;
+        height: 34px;
+      }
+      .sidebar-bottom-profile .fw-bold {
+        font-size: 0.95em;
+      }
+    }
+    @media (max-width: 450px) {
+      #sidebar {
+        width: 85vw;
+        left: -85vw;
+      }
+      #sidebar.active { left: 0 !important; }
+      #content {
+        margin-left: 0 !important;
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
-  <div id="chatWidget">
-    <div id="chatHeader">SmartVet Chat</div>
-    <div id="chatMessages"></div>
-    
-    <!-- Suggested Prompts Section -->
-    <div id="suggestedPrompts">
-      <button data-prompt="hello">Greeting</button>
-      <button data-prompt="what services do you offer">Services</button>
-      <button data-prompt="how do i book an appointment">Appointment</button>
+  <!-- fixed top bar -->
+  <header id="topbar">
+    <i id="menu-toggle" class="fas fa-bars menu-toggle" aria-label="Toggle sidebar"></i>
+    <i class="fas fa-paw topbar-paw"></i>
+    <span class="topbar-title">SmartVet</span>
+    <div class="topbar-actions">
+      <div class="message-icon" id="messageButton" title="Messages">
+        <i class="fas fa-envelope"></i>
+        <div class="badge" id="messageBadge">2</div>
+      </div>
     </div>
-    
-    <div id="chatInputContainer">
-      <input type="text" id="chatInput" placeholder="Type your message..." />
+  </header>
+
+  <!-- secondary nav below topbar, always same height -->
+  <div id="sub-nav">
+    <div class="sub-nav-inner">
+      <div id="subnav-title-wrapper" style="display:flex; align-items:center; gap:12px;">
+        <div id="subnav-title">Dashboard</div>
+      </div>
     </div>
   </div>
-  <button id="chatToggleButton"><i class="fas fa-comment-dots"></i></button>
+
   <div class="wrapper">
-    <!-- Sidebar -->
-    <nav id="sidebar">
-      <!-- Sidebar Toggle Button -->
-      <button id="sidebarToggleSidebar"><i class="fas fa-bars"></i></button>
-      <!-- Profile Area -->
-      <div class="profile-area">
-        <img src="<%= profilePic ? profilePic : '/images/default_profile_icon.png' %>" alt="Profile" class="profile-img" id="sidebarProfilePic">
-        <h4><%= username %></h4>
+    <div id="sidebarOverlay"></div>
+
+    <nav id="sidebar" class="active" aria-label="Main navigation">
+      <div class="sidebar-header">
+        <span class="sidebar-logo"><i class="fa-solid fa-paw"></i></span>
+        <span class="sidebar-title">Casa Animalia</span>
       </div>
-      <!-- Sidebar Menu -->
-      <ul class="components">
+
+      <ul class="sidebar-menu nav flex-column">
         <li>
-          <a href="#" class="menu-item" data-content="dashboard">
+          <a href="#" class="menu-item active" data-content="dashboard">
             <i class="fas fa-home"></i> Dashboard
           </a>
         </li>
@@ -288,39 +431,30 @@
             <i class="fas fa-stethoscope"></i> Consult
           </a>
         </li>
-        <!-- Single Profile Setting Menu Item -->
         <li>
           <a href="#" class="menu-item" data-content="profileDetails">
             <i class="fas fa-user-cog"></i> Profile Setting
           </a>
         </li>
-        <!-- Logout -->
-        <li class="logout">
-          <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>        </li>
-        
+        <li class="logout mt-3">
+          <a href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </li>
       </ul>
-    </nav>
-    <!-- Main Content Area -->
-    <div id="content" class="container-fluid">
-      <!-- Content Header -->
-      <div class="content-header">
-        <button id="sidebarToggleContent"><i class="fas fa-bars"></i></button>
-        <h3 id="page-title" class="font-weight-bold mb-0">Dashboard</h3>
-      </div>
-      <!-- Dynamic Content Container -->
-      <div id="main-content">
-        <!-- Default Dashboard Content -->
-        <div class="card p-4 shadow-sm">
-          <h4 class="font-weight-bold">WELCOME BACK <%= username %></h4>
-          <p>If you’re a new user, be sure to watch our quick video tutorial...</p>
-          <button class="btn btn-primary tutorial-btn">Watch Tutorial</button>
+
+      <div class="sidebar-bottom-profile mt-auto">
+        <img src="<%= profilePic ? profilePic : '/images/default_profile_icon.png' %>" alt="Profile" class="profile-img" />
+        <div class="info">
+          <div class="fw-bold text-truncate"><%= username %></div>
         </div>
-        <!-- Upcoming Visit Card -->
+      </div>
+    </nav>
+
+    <div id="content" class="container-fluid" role="main">
+      <div id="main-content">
         <div class="card p-4 shadow-sm upcoming-visit">
           <h5 class="font-weight-bold"><i class="fas fa-calendar-alt"></i> Upcoming Visit</h5>
           <h1 class="font-weight-bold text-dark">3</h1>
         </div>
-        <!-- Recent Visits Section -->
         <h5 class="font-weight-bold mt-4">Recent Visit</h5>
         <div class="card p-4 shadow-sm recent-visit">
           <div class="table-responsive">
@@ -338,148 +472,145 @@
                 <tr>
                   <td>Buddy</td>
                   <td>2025-02-01</td>
-                  <td><button class="btn btn-primary btn-sm">View Details</button></td>
+                  <td>Checkup</td>
                   <td>Dr. Smith</td>
-                  <td><button class="btn btn-primary btn-sm">View Details</button></td>
+                  <td>
+                    <button class="btn btn-primary btn-sm" onclick="viewRecentVisit('SOME_ID')">
+                      View Details
+                    </button>
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
-      </div><!-- end main-content -->
-    </div><!-- end content -->
-  </div><!-- end wrapper -->
-  
-  <!-- jQuery and Bootstrap JS -->
+        <div id="profileTabContentPlaceholder"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- dependencies -->
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
   <script>
-    $(document).ready(function(){
-      // Sidebar toggle functions
-      function openSidebar() {
-        $('#sidebar').addClass('active');
-        $('#content').addClass('active');
-        $('#sidebarToggleContent').hide();
-        $('#sidebarToggleSidebar').show();
+    function formatVisitDate(date) {
+      const d = new Date(date);
+      const month = d.toLocaleString('en-US', { month: 'long' }).toLowerCase();
+      const day = d.getDate();
+      const year = d.getFullYear();
+      return `${month} ${day} ${year}`;
+    }
+    function isMobile() { return $(window).width() < 992; }
+    function showSidebar() {
+      $('#sidebar').addClass('active');
+      if (isMobile()) {
+        $('#sidebarOverlay').addClass('show');
+        $('body').addClass('sidebar-open');
       }
-      function closeSidebar() {
-        $('#sidebar').removeClass('active');
-        $('#content').removeClass('active');
-        $('#sidebarToggleContent').show();
-        $('#sidebarToggleSidebar').hide();
+    }
+    function hideSidebar() {
+      $('#sidebar').removeClass('active');
+      if (isMobile()) {
+        $('#sidebarOverlay').removeClass('show');
+        $('body').removeClass('sidebar-open');
       }
-      $('#sidebarToggleContent').show();
-      $('#sidebarToggleSidebar').hide();
-      $('#sidebarToggleContent').on('click', function(){
-          openSidebar();
-      });
-      $('#sidebarToggleSidebar').on('click', function(){
-          closeSidebar();
-      });
-  
-      // Function to load dynamic content into #main-content
-      function loadContent(page, title) {
-        $("#main-content").load(`/customer/${page}`, function(response, status, xhr) {
-          if(status === "error"){
-            console.error("Error loading content:", xhr.status, xhr.statusText);
-          } else {
-            $("#page-title").text(title);
-          }
-        });
+    }
+
+    function setSubNavFor(page) {
+      if (page === 'profileDetails') {
+        $('#subnav-title').text('Account Settings').show();
+      } else {
+        let title = '';
+        if (page === 'dashboard') title = 'Dashboard';
+        else if (page === 'mypet') title = 'My Pet';
+        else if (page === 'consult') title = 'Consultation';
+        $('#subnav-title').text(title).show();
       }
-  
-      // Load dashboard by default
-      loadContent("dashboard", "Dashboard");
-  
-      // Menu item click events
-      $('.menu-item').on('click', function(e){
-        e.preventDefault();
-        const page = $(this).data('content');
-        const title = $(this).text().trim();
-        loadContent(page, title);
-        if($(window).width() < 768){
-          closeSidebar();
+      recomputeWrapperPadding();
+    }
+
+    function recomputeWrapperPadding() {
+      const topbarHeight = $('#topbar').outerHeight() || 56;
+      const subnav = $('#sub-nav');
+      const subnavHeight = subnav.outerHeight();
+      $('.wrapper').css('padding-top', topbarHeight + subnavHeight + 'px');
+    }
+
+    $(document).ready(function() {
+      if (isMobile()) hideSidebar();
+      else { $('#sidebar').addClass('active'); $('#sidebarOverlay').removeClass('show'); }
+      $('#menu-toggle').click(() => {
+        if (!isMobile()) return;
+        if ($('#sidebar').hasClass('active')) {
+          hideSidebar();
+        } else {
+          showSidebar();
         }
       });
+      $('#sidebarOverlay').click(hideSidebar);
+      $('.menu-item').click(function(e) {
+        e.preventDefault();
+        $('.menu-item').removeClass('active');
+        $(this).addClass('active');
+        const page = $(this).data('content');
+        const title = $(this).text().trim();
+        $("#main-content").load(`/customer/${page}`, () => {
+          $("#page-title").text(title);
+          setSubNavFor(page);
+        });
+        if (isMobile()) hideSidebar();
+      });
+      // initial load
+      $("#main-content").load("/customer/dashboard", () => {
+        $("#page-title").text("Dashboard");
+        setSubNavFor('dashboard');
+      });
+      $(window).resize(() => {
+        if (isMobile()) hideSidebar();
+        else { $('#sidebar').addClass('active'); $('#sidebarOverlay').removeClass('show'); }
+        recomputeWrapperPadding();
+      });
+      $('#messageButton').on('click', function() {
+        Swal.fire({
+          title: 'Messages',
+          text: 'You have new messages.',
+          icon: 'info',
+          confirmButtonText: 'View'
+        });
+      });
     });
-   // Generate a session ID
-   const sessionId = Date.now().toString();
 
-// Append a message to chat area
-function appendMessage(text, sender) {
-  const msgClass = sender === 'user' ? 'text-right text-primary' : 'text-left text-success';
-  const messageHTML = `<div class="${msgClass}" style="margin-bottom: 5px;">${text}</div>`;
-  document.getElementById("chatMessages").innerHTML += messageHTML;
-  document.getElementById("chatMessages").scrollTop = document.getElementById("chatMessages").scrollHeight;
-}
-
-// Toggle widget visibility
-document.getElementById("chatToggleButton").addEventListener("click", function() {
-  const widget = document.getElementById("chatWidget");
-  widget.style.display = widget.style.display === "none" || widget.style.display === "" ? "flex" : "none";
-});
-
-// Send message on Enter key press
-document.getElementById("chatInput").addEventListener("keydown", function(e) {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    sendMessage(this.value.trim());
-    this.value = "";
-  }
-});
-
-// Function to send message and process reply
-function sendMessage(message) {
-  if (!message) return;
-  appendMessage("You: " + message, "user");
-  
-  fetch("/chatbot/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, sessionId })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.reply) {
-      appendMessage("Bot: " + data.reply, "bot");
-    } else {
-      appendMessage("Bot: Sorry, something went wrong.", "bot");
+    function viewRecentVisit(id) {
+      $('.modal').modal('hide');
+      $.ajax({
+        url: '/customer/get-consultation',
+        method: 'GET',
+        data: { reservationId: id },
+        success(res) {
+          if (!res.success) return alert(res.message);
+          const r = res.reservation;
+          let html = '<div class="container-fluid">';
+          html += `<div class="detail-row">
+                     <div class="detail-label">Date:</div>
+                     <div class="detail-value">
+                       ${formatVisitDate(r.schedule?.scheduleDate || r.createdAt)}
+                     </div>
+                   </div>`;
+          $('#recentVisitDetails').html(html);
+          $('#recentVisitModal').modal('show');
+        },
+        error() {
+          alert('Server error loading visit details.');
+        }
+      });
     }
-  })
-  .catch(err => {
-    console.error("Chatbot error:", err);
-    appendMessage("Bot: Sorry, something went wrong.", "bot");
-  });
-}
 
-// Attach click event to suggested prompt buttons
-document.querySelectorAll("#suggestedPrompts button").forEach(function(btn) {
-  btn.addEventListener("click", function() {
-    const prompt = this.getAttribute("data-prompt");
-    // Auto-fill the input field and send the prompt
-    document.getElementById("chatInput").value = prompt;
-    sendMessage(prompt);
-  });
-});
-  // =============================
-    // AUTO-REFRESH ACCESS TOKEN
-    // =============================
-    // This script automatically calls the refresh token endpoint every 50 seconds.
-    // With an access token expiry of 1 minute (for testing), this keeps the user logged in without re-login.
-    setInterval(function(){
-    $.ajax({
-      url: '/refresh-token',  // Correct endpoint
-      type: 'POST',
-      xhrFields: { withCredentials: true }, // Ensure cookies are sent
-      success: function(response) {
-        console.log("Access token refreshed:", response.message);
-      },
-      error: function(xhr) {
-        console.error("Error refreshing token:", xhr.responseJSON ? xhr.responseJSON.message : xhr.statusText);
-      }
-    });
-  }, 50 * 60 * 1000); // 50 minutes in milliseconds
+    function downloadPrescription(reservationId) {
+      window.open('/customer/prescription/' + reservationId, '_blank');
+    }
   </script>
-  
 </body>
 </html>
