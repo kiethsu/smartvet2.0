@@ -1,12 +1,10 @@
-<%
-  // (Any server‐side EJS helpers you already have—unchanged)
-%>
+<% /* (Any server-side EJS helpers you already have—unchanged) */ %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Customer Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
@@ -210,7 +208,7 @@
       gap: 10px;
       min-height: 52px;
       flex-wrap: nowrap;
-      padding-left: 8px; /* breathing space on left */
+      padding-left: 8px;
     }
     .sidebar-bottom-profile img {
       box-shadow: 0 1px 3px rgba(0,0,0,.10);
@@ -219,7 +217,7 @@
       border-radius: 50%;
       object-fit: cover;
       flex-shrink: 0;
-      margin-right: 8px; /* gap to username */
+      margin-right: 8px;
     }
     .sidebar-bottom-profile .info {
       flex-grow: 1;
@@ -233,14 +231,13 @@
       white-space: nowrap;
     }
 
-    /* secondary nav below topbar, always same height */
+    /* secondary nav below topbar */
     #sub-nav {
       position: fixed;
       top: 56px;
       left: 265px;
       right: 0;
       background: #f1f5fa;
-      min-height: 44px;
       height: 44px;
       padding: 6px 16px;
       z-index: 2500;
@@ -250,8 +247,6 @@
       align-items: center;
       font-size: 0.9rem;
       transition: height 0.2s;
-      overflow: visible;
-      -webkit-tap-highlight-color: transparent;
     }
     #sub-nav .sub-nav-inner {
       width: 100%;
@@ -260,18 +255,11 @@
       gap: 12px;
       height: 100%;
     }
-    #subnav-title {
-      font-weight: 600;
-      font-size: 1rem;
-      color: var(--secondary-color);
-      white-space: nowrap;
-      margin: 0;
-    }
+    #subnav-title { font-weight: 600; font-size: 1rem; color: var(--secondary-color); margin: 0; }
 
     /* Main content */
     #content {
       margin-left: 265px;
-      margin-top: 0;
       padding: 16px;
       background: #f7f7f7;
       min-height: 100vh;
@@ -280,66 +268,8 @@
       box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
       overflow: visible;
     }
-    .collapsed-content {
-      margin-left: 0 !important;
-      width: 100vw !important;
-    }
-    .upcoming-visit {
-      margin-bottom: 8px;
-    }
-    .recent-visit {
-      min-height: 310px;
-      max-height: 460px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    @media (max-width: 576px) {
-      .recent-visit {
-        min-height: 280px;
-        height: 55vh;
-        max-height: 70vh;
-      }
-      .recent-visit .table-responsive {
-        flex: 1 1 auto;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        height: 100%;
-        max-height: 100%;
-        padding-bottom: 10px;
-      }
-    }
+    .collapsed-content { margin-left: 0 !important; width: 100vw !important; }
 
-    #sidebarOverlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 1999;
-      background: rgba(20,30,50,0.26);
-      transition: opacity 0.3s;
-    }
-    .message-tooltip {
-      position: absolute;
-      top: 38px;
-      right: 0;
-      background: #fff;
-      padding: 6px 10px;
-      border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,.15);
-      font-size: 0.8em;
-      white-space: nowrap;
-      display: none;
-      color: #333;
-      z-index: 3500;
-    }
-    .message-icon:hover + .message-tooltip {
-      display: block;
-    }
-
-    /* Responsive adjustments */
     @media (max-width: 991.98px) {
       #sidebar {
         width: 220px;
@@ -352,34 +282,13 @@
         padding: 12px;
       }
       #sidebarOverlay.show { display: block; }
-      #sub-nav {
-        left: 0;
-        z-index: 1800;
-      }
-      #sidebar {
-        z-index: 2000;
-      }
-      body.sidebar-open #sub-nav {
-        display: none;
-      }
-      .sidebar-bottom-profile img {
-        width: 34px;
-        height: 34px;
-      }
-      .sidebar-bottom-profile .fw-bold {
-        font-size: 0.95em;
-      }
+      #sub-nav { left: 0; z-index: 1800; }
+      body.sidebar-open #sub-nav { display: none; }
     }
     @media (max-width: 450px) {
-      #sidebar {
-        width: 85vw;
-        left: -85vw;
-      }
+      #sidebar { width: 85vw; left: -85vw; }
       #sidebar.active { left: 0 !important; }
-      #content {
-        margin-left: 0 !important;
-        width: 100%;
-      }
+      #content { margin-left: 0 !important; width: 100%; }
     }
   </style>
 </head>
@@ -397,7 +306,7 @@
     </div>
   </header>
 
-  <!-- secondary nav below topbar, always same height -->
+  <!-- secondary nav below topbar -->
   <div id="sub-nav">
     <div class="sub-nav-inner">
       <div id="subnav-title-wrapper" style="display:flex; align-items:center; gap:12px;">
@@ -442,7 +351,8 @@
       </ul>
 
       <div class="sidebar-bottom-profile mt-auto">
-        <img src="<%= profilePic ? profilePic : '/images/default_profile_icon.png' %>" alt="Profile" class="profile-img" />
+        <img src="<%= profilePic ? profilePic : '/images/default_profile_icon.png' %>"
+             alt="Profile" class="profile-img" />
         <div class="info">
           <div class="fw-bold text-truncate"><%= username %></div>
         </div>
@@ -450,42 +360,8 @@
     </nav>
 
     <div id="content" class="container-fluid" role="main">
-      <div id="main-content">
-        <div class="card p-4 shadow-sm upcoming-visit">
-          <h5 class="font-weight-bold"><i class="fas fa-calendar-alt"></i> Upcoming Visit</h5>
-          <h1 class="font-weight-bold text-dark">3</h1>
-        </div>
-        <h5 class="font-weight-bold mt-4">Recent Visit</h5>
-        <div class="card p-4 shadow-sm recent-visit">
-          <div class="table-responsive">
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Pet Name</th>
-                  <th>Date of Visit</th>
-                  <th>Concern</th>
-                  <th>Doctor</th>
-                  <th>Consultation</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Buddy</td>
-                  <td>2025-02-01</td>
-                  <td>Checkup</td>
-                  <td>Dr. Smith</td>
-                  <td>
-                    <button class="btn btn-primary btn-sm" onclick="viewRecentVisit('SOME_ID')">
-                      View Details
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div id="profileTabContentPlaceholder"></div>
-      </div>
+      <!--  ← NO more hard-coded cards here! Just an empty container: -->
+      <div id="main-content"></div>
     </div>
   </div>
 
@@ -496,13 +372,9 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <script>
-    function formatVisitDate(date) {
-      const d = new Date(date);
-      const month = d.toLocaleString('en-US', { month: 'long' }).toLowerCase();
-      const day = d.getDate();
-      const year = d.getFullYear();
-      return `${month} ${day} ${year}`;
-    }
+    // NEVER cache our dashboard partial
+    $.ajaxSetup({ cache: false });
+
     function isMobile() { return $(window).width() < 992; }
     function showSidebar() {
       $('#sidebar').addClass('active');
@@ -518,62 +390,59 @@
         $('body').removeClass('sidebar-open');
       }
     }
-
     function setSubNavFor(page) {
-      if (page === 'profileDetails') {
-        $('#subnav-title').text('Account Settings').show();
-      } else {
-        let title = '';
-        if (page === 'dashboard') title = 'Dashboard';
-        else if (page === 'mypet') title = 'My Pet';
-        else if (page === 'consult') title = 'Consultation';
-        $('#subnav-title').text(title).show();
-      }
-      recomputeWrapperPadding();
-    }
-
-    function recomputeWrapperPadding() {
+      let title = page === 'dashboard' ? 'Dashboard'
+                 : page === 'mypet'      ? 'My Pet'
+                 : page === 'consult'    ? 'Consultation'
+                 : page === 'profileDetails' ? 'Account Settings'
+                 : '';
+      $('#subnav-title').text(title).show();
       const topbarHeight = $('#topbar').outerHeight() || 56;
-      const subnav = $('#sub-nav');
-      const subnavHeight = subnav.outerHeight();
+      const subnavHeight = $('#sub-nav').outerHeight();
       $('.wrapper').css('padding-top', topbarHeight + subnavHeight + 'px');
     }
 
     $(document).ready(function() {
-      if (isMobile()) hideSidebar();
-      else { $('#sidebar').addClass('active'); $('#sidebarOverlay').removeClass('show'); }
+      // Sidebar initial state
+      if (isMobile()) hideSidebar(); else showSidebar();
+
+      // Toggle on mobile
       $('#menu-toggle').click(() => {
         if (!isMobile()) return;
-        if ($('#sidebar').hasClass('active')) {
-          hideSidebar();
-        } else {
-          showSidebar();
-        }
+        if ($('#sidebar').hasClass('active')) hideSidebar();
+        else showSidebar();
       });
       $('#sidebarOverlay').click(hideSidebar);
+
+      // Menu clicks
       $('.menu-item').click(function(e) {
         e.preventDefault();
         $('.menu-item').removeClass('active');
         $(this).addClass('active');
         const page = $(this).data('content');
-        const title = $(this).text().trim();
-        $("#main-content").load(`/customer/${page}`, () => {
-          $("#page-title").text(title);
-          setSubNavFor(page);
-        });
+
+        if (page === 'dashboard') {
+          // load our full dashboard.ejs partial
+          $('#main-content').load('/customer/dashboard', () => {
+            setSubNavFor('dashboard');
+          });
+        } else {
+          // other pages
+          $('#main-content').load(`/customer/${page}`, () => {
+            setSubNavFor(page);
+          });
+        }
+
         if (isMobile()) hideSidebar();
       });
-      // initial load
-      $("#main-content").load("/customer/dashboard", () => {
-        $("#page-title").text("Dashboard");
+
+      // Initial load: dashboard
+      $('#main-content').load('/customer/dashboard', () => {
         setSubNavFor('dashboard');
       });
-      $(window).resize(() => {
-        if (isMobile()) hideSidebar();
-        else { $('#sidebar').addClass('active'); $('#sidebarOverlay').removeClass('show'); }
-        recomputeWrapperPadding();
-      });
-      $('#messageButton').on('click', function() {
+
+      // Messages popup
+      $('#messageButton').on('click', () => {
         Swal.fire({
           title: 'Messages',
           text: 'You have new messages.',
@@ -581,36 +450,13 @@
           confirmButtonText: 'View'
         });
       });
-    });
 
-    function viewRecentVisit(id) {
-      $('.modal').modal('hide');
-      $.ajax({
-        url: '/customer/get-consultation',
-        method: 'GET',
-        data: { reservationId: id },
-        success(res) {
-          if (!res.success) return alert(res.message);
-          const r = res.reservation;
-          let html = '<div class="container-fluid">';
-          html += `<div class="detail-row">
-                     <div class="detail-label">Date:</div>
-                     <div class="detail-value">
-                       ${formatVisitDate(r.schedule?.scheduleDate || r.createdAt)}
-                     </div>
-                   </div>`;
-          $('#recentVisitDetails').html(html);
-          $('#recentVisitModal').modal('show');
-        },
-        error() {
-          alert('Server error loading visit details.');
-        }
+      $(window).resize(() => {
+        if (isMobile()) hideSidebar();
+        else { $('#sidebar').addClass('active'); $('#sidebarOverlay').removeClass('show'); }
+        setSubNavFor($('.menu-item.active').data('content') || 'dashboard');
       });
-    }
-
-    function downloadPrescription(reservationId) {
-      window.open('/customer/prescription/' + reservationId, '_blank');
-    }
+    });
   </script>
 </body>
 </html>
