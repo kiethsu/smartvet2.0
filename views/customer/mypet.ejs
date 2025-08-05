@@ -9,268 +9,354 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>My Pet</title>
-  <!-- Bootstrap CSS -->
+  <title>My Pets</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet">
+  <!-- Bootstrap & Font Awesome -->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <!-- SweetAlert2 CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
   <style>
+    :root {
+      --primary: #1E88E5;
+      --primary-dark: #0D47A1;
+      --accent: #90CAF9;
+      --white: #ffffff;
+      --text: #333;
+      --background-color: #f4f7fa;
+      --card-bg: #ffffff;
+      --border-color: #eaeaea;
+    }
+    * { box-sizing: border-box; }
     html, body {
-      height: 100%;
-      margin: 0;
+      background-color: var(--background-color);
+      margin: 0; padding: 0;
+      font-family: 'Roboto', Arial, sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
     }
-    .page-wrapper {
-      height: 100vh;
-      overflow-y: auto;
-      padding: 15px;
-      padding-bottom: 100px; /* extra bottom padding to avoid overlap */
-      box-sizing: border-box;
-    }
-    .section-heading {
-      font-weight: bold;
-      margin-bottom: 1rem;
-    }
+    body { min-height: 100vh; }
+    .page-wrapper { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 32px; }
+    .container-fluid { padding-right: 16px; width: 100%; }
+    .content-wrapper { display: flex; flex-wrap: nowrap; gap: 16px; align-items: flex-start; width: 100%; margin-top: 8px; }
+    .left { flex: 0 0 560px; max-width: 560px; padding-left: 12px; }
+    .right { flex: 1 1 0; padding-right: 12px; }
+
     .card {
-      border-radius: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      background: var(--card-bg);
+      box-shadow: 0 4px 24px rgba(30,136,229,0.12), 0 1.5px 12px rgba(32,39,55,0.08);
+      display: flex; flex-direction: column; position: relative;
     }
-    .btn-carolina {
-      background-color: #4B9CD3;
-      border-color: #4B9CD3;
-      color: #fff;
+    .custom-header {
+      background: #f1f5fa; color: #444; font-weight: 600; font-size: .95rem;
+      border-radius: 12px 12px 0 0; padding: 12px 18px; text-align: left;
+      letter-spacing: .4px; position: relative; margin: -1px -1px 16px;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+    .form-card-body { padding: 24px; }
+    .btn-primary {
+      background: var(--primary) !important; border: none; font-weight: 600; border-radius: 5px;
+    }
+    .btn-primary:hover { background: var(--primary-dark) !important; }
+    .form-control {
+      border-radius: 5px; border: 1px solid #ced4da; box-shadow: none;
+    }
+    .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 .2rem rgba(30,136,229,0.25);
+    }
+    label { font-weight: 500; }
+    #myPetsContainer {
+      display: flex; flex-wrap: wrap; gap: 12px; padding: .5rem;
+      justify-content: flex-start; max-height: 500px; overflow-y: auto;
     }
     .pet-card {
-      width: 100px;
-      text-align: center;
-      padding: 10px;
-      cursor: pointer;
-      box-sizing: border-box;
+      background: var(--card-bg); border: 1px solid var(--border-color);
+      border-radius: 16px; padding: 14px 12px;
+      flex: 0 0 calc(25% - 12px); position: relative;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      box-shadow: 0 10px 40px -10px rgba(30,136,229,0.08), 0 1.5px 12px rgba(32,39,55,0.08);
+      cursor: pointer; transition: transform .15s ease, box-shadow .2s ease;
+      min-height: 260px;
     }
-    #myPetsContainer {
-      max-height: 500px;
-      overflow-y: auto;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-start;
+    .pet-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 50px rgba(32,39,55,0.15);
     }
-    .default-pet-icon,
-    .default-pet-icon-modal {
-      border: 2px solid #4B9CD3;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #4B9CD3;
+    .pet-avatar {
+      width: 100px; height: 100px; border-radius: 50%; overflow: hidden;
+      border: 3px solid var(--primary); background-color: #f1f5fa;
+      display: flex; align-items: center; justify-content: center;
     }
-    .default-pet-icon {
-      width: 80px;
-      height: 80px;
-      font-size: 40px;
+    .pet-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .pet-info {
+      text-align: center; width: 100%; flex: 1;
+      display: flex; flex-direction: column; justify-content: center;
     }
-    .default-pet-icon-modal {
-      width: 100px;
-      height: 100px;
-      font-size: 50px;
+    .pet-name {
+      font-weight: 700; font-size: 1rem; margin: 4px 0 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pet-meta {
+      font-size: .65rem; color: #555;
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .small-label {
+      display: block; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .footer-hint {
+      padding: 10px 16px; font-size: .65rem; color: #6c757d;
+      text-align: center; background: rgba(0,0,0,0.03);
+      border-top: 1px solid rgba(0,0,0,0.05);
+      border-radius: 0 0 12px 12px; margin-top: auto;
+    }
+    @media (max-width: 991.98px) {
+      .content-wrapper { flex-wrap: wrap; }
+      .left, .right { flex: 1 1 100%; max-width: 100%; padding: 0; }
+      .left { margin-bottom: 16px; }
+      .pet-card { flex: 0 0 calc(50% - 12px); }
+      .pet-avatar { width: 80px; height: 80px; }
     }
 
-    /* Mobile adjustments */
+    /* —— Modal Overrides —— */
+    .modal-backdrop { z-index: 2499 !important; }
+    .modal { z-index: 3000 !important; }
+    .modal-dialog {
+      max-width: 400px;
+      width: 100%;
+    }
+    .modal-dialog-centered {
+      display: flex;
+      align-items: center;
+      min-height: calc(100vh - 1.5rem);
+    }
+    .modal-content {
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      border: none;
+      min-height: 420px;
+      max-height: 90vh;
+    }
+    .modal-header { border-bottom: none; padding: .75rem 1rem 0; }
+    .modal-title { font-weight: 600; }
+    .modal-footer { border-top: none; justify-content: center; padding: .5rem 1rem; }
+    .modal-body {
+      max-height: 360px;
+      overflow-y: auto;
+    }
+    #modalEditContent,
+    #modalHistoryContent {
+      min-height: 300px;
+      max-height: 340px;
+      overflow-y: auto;
+    }
+    .modal-body .btn {
+      border-radius: 20px;
+      min-width: 60px;
+    }
+    .modal-body .btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
     @media (max-width: 576px) {
-      .pet-card {
-        width: 70px !important;
-        margin: 5px !important;
+      .modal-dialog {
+        margin: auto !important;
+        max-width: 95% !important;
+        height: 100%;
       }
-      .pet-card img,
-      .default-pet-icon {
-        width: 60px !important;
-        height: 60px !important;
-      }
-      .pet-card p {
-        width: 60px !important;
-        font-size: 0.75rem;
-      }
-      #myPetsContainer {
-        justify-content: center !important;
-      }
+      .modal-content { width: 100%; }
     }
   </style>
 </head>
 <body>
   <div class="page-wrapper">
-    <div class="container">
-      <div class="row">
-        <!-- PET DETAILS -->
-        <div class="col-md-6 mb-4">
-          <h4 class="section-heading">PET DETAILS</h4>
-          <div class="card p-4 shadow-sm">
-            <form id="petForm" class="text-left" onsubmit="return false;">
-              <div class="form-group">
-                <label for="petName">Pet Name</label>
-                <input type="text" class="form-control" id="petName" placeholder="Enter pet name" />
-              </div>
-              <div class="form-group">
-                <label for="species">Species</label>
-                <select class="form-control" id="species">
-                  <option value="">Select species</option>
-                  <% petDetails.species.forEach(sp => { %>
-                    <option value="<%= sp %>"><%= sp %></option>
-                  <% }); %>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="petBreed">Pet Breed</label>
-                <select class="form-control" id="petBreed">
-                  <option value="">Select breed</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="petBirthday">Birthday</label>
-                <input type="date" class="form-control" id="petBirthday" />
-              </div>
-              <div class="form-group">
-                <label for="existingDisease">Existing Disease</label>
-                <select class="form-control" id="existingDisease">
-                  <option value="">Select disease</option>
-                  <option value="None">None</option>
-                  <option value="Other">Other</option>
-                  <% petDetails.diseases.forEach(d => { %>
-                    <option value="<%= d %>"><%= d %></option>
-                  <% }); %>
-                </select>
-                <input type="text" class="form-control mt-2 d-none" id="otherDisease" placeholder="Specify disease" />
-              </div>
-              <div class="form-group">
-                <label for="sex">Sex</label>
-                <select class="form-control" id="sex">
-                  <option value="">Select sex</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="petPic">Pet Picture</label>
-                <input type="file" class="form-control-file" id="petPic" />
-                <div id="petPicPreview" class="mt-2"></div>
-              </div>
-              <button type="button" class="btn btn-carolina btn-block" id="addPetButton">Add Pet</button>
-            </form>
+    <div class="container-fluid p-0">
+      <div class="content-wrapper">
+
+        <!-- Left: Pet Details Form -->
+        <div class="left">
+          <div class="card">
+            <div class="custom-header">Pet Details</div>
+            <div class="form-card-body">
+              <form id="petForm" onsubmit="return false;">
+                <div class="form-group">
+                  <label for="petName">Pet Name</label>
+                  <input type="text" class="form-control" id="petName" placeholder="Enter pet name">
+                </div>
+                <div class="form-group">
+                  <label for="species">Species</label>
+                  <select class="form-control" id="species">
+                    <option value="">Select species</option>
+                    <% petDetails.species.forEach(sp => { %>
+                      <option value="<%= sp %>"><%= sp %></option>
+                    <% }); %>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="petBreed">Pet Breed</label>
+                  <select class="form-control" id="petBreed">
+                    <option value="">Select breed</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="petBirthday">Birthday</label>
+                  <input type="date" class="form-control" id="petBirthday">
+                </div>
+                <div class="form-group">
+                  <label for="existingDisease">Existing Disease</label>
+                  <select class="form-control" id="existingDisease">
+                    <option value="">Select disease</option>
+                    <option value="None">None</option>
+                    <option value="Other">Other</option>
+                    <% petDetails.diseases.forEach(d => { %>
+                      <option value="<%= d %>"><%= d %></option>
+                    <% }); %>
+                  </select>
+                  <input type="text" class="form-control mt-2 d-none" id="otherDisease" placeholder="Specify disease">
+                </div>
+                <div class="form-group">
+                  <label for="sex">Sex</label>
+                  <select class="form-control" id="sex">
+                    <option value="">Select sex</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="petPic">Pet Picture</label>
+                  <input type="file" class="form-control-file" id="petPic">
+                  <div id="petPicPreview" class="mt-2"></div>
+                </div>
+                <button type="button" class="btn btn-primary btn-block" id="addPetButton">
+                  Add Pet
+                </button>
+              </form>
+            </div>
+            <div class="footer-hint">
+              Fill in the pet information and click “Add Pet.” Pet picture is optional.
+            </div>
           </div>
         </div>
 
-<!-- MY PETS -->
-<div class="col-md-6 mb-4">
-  <h4 class="section-heading">MY PETS</h4>
-  <div class="card p-4 shadow-sm">
-    <div id="myPetsContainer">
-      <%
-        // build a Set of the real Pet names
-        const existingNames = new Set((pets || []).map(p => p.petName));
-
-        // only include walk-in entries whose petName is not in existingNames
-        const walkinPets = (petListEntries || [])
-          .filter(e => !existingNames.has(e.petName))
-          .map(e => ({
-            _id:                    `list-${e._id}`,
-            petName:                e.petName,
-            species:                e.species || '',
-            breed:                  e.breed   || '',
-            birthday:               '',
-            existingDisease:        '',
-            sex:                    '',
-            petPic:                 '',
-            addedFromReservation:   true
-          }));
-
-        // merge them
-        const allPets = [...(pets || []), ...walkinPets];
-      %>
-
-      <% if (allPets.length > 0) { %>
-        <% allPets.forEach(pet => { %>
-          <div class="pet-card m-2"
-               data-id="<%= pet._id %>"
-               data-petname="<%= pet.petName %>"
-               data-species="<%= pet.species %>"
-               data-breed="<%= pet.breed %>"
-               data-birthday="<%= pet.birthday %>"
-               data-existingdisease="<%= pet.existingDisease %>"
-               data-sex="<%= pet.sex %>"
-               data-petpic="<%= pet.petPic || '' %>"
-               data-addedfromreservation="<%= pet.addedFromReservation ? 'true' : 'false' %>">
-            
-            <% if (pet.petPic) { %>
-              <img src="<%= pet.petPic %>"
-                   class="img-fluid rounded-circle mb-2"
-                   style="width:80px; height:80px; object-fit:cover; border:2px solid #4B9CD3;">
-            <% } else { %>
-              <div class="default-pet-icon mb-2">
-                <i class="fa-solid fa-paw"></i>
-              </div>
-            <% } %>
-
-            <p class="mb-0 text-center" style="width:80px;">
-              <%= pet.petName %>
-              <% if (pet.addedFromReservation) { %>
-                <small class="d-block text-muted">Walk-in</small>
+        <!-- Right: My Pets List -->
+        <div class="right">
+          <div class="card">
+            <div class="custom-header">My Pets</div>
+            <div id="myPetsContainer">
+              <%
+                const existingNames = new Set((pets||[]).map(p=>p.petName));
+                const walkinPets = (petListEntries||[])
+                  .filter(e => !existingNames.has(e.petName))
+                  .map(e => ({
+                    _id: `list-${e._id}`,
+                    petName: e.petName, species: e.species, breed: e.breed,
+                    birthday:'', existingDisease:'', sex:'', petPic:'',
+                    addedFromReservation:true
+                  }));
+                const allPets = [...(pets||[]), ...walkinPets];
+              %>
+              <% if (allPets.length > 0) { %>
+                <% allPets.forEach(pet => { %>
+                  <div class="pet-card"
+                       data-id="<%= pet._id %>"
+                       data-petname="<%= pet.petName %>"
+                       data-species="<%= pet.species %>"
+                       data-breed="<%= pet.breed %>"
+                       data-birthday="<%= pet.birthday %>"
+                       data-existingdisease="<%= pet.existingDisease %>"
+                       data-sex="<%= pet.sex %>"
+                       data-petpic="<%= pet.petPic||'' %>"
+                       data-addedfromreservation="<%= pet.addedFromReservation?'true':'false' %>">
+                    <div class="pet-avatar">
+                      <% if (pet.petPic) { %>
+                        <img src="<%= pet.petPic %>" alt="<%= pet.petName %>">
+                      <% } else { %>
+                        <div style="font-size:32px; color: var(--primary);">
+                          <i class="fa-solid fa-paw"></i>
+                        </div>
+                      <% } %>
+                    </div>
+                    <div class="pet-info">
+                      <div class="pet-name"><%= pet.petName || 'Unnamed' %></div>
+                      <div class="pet-meta">
+                        <span class="small-label"><strong>Species:</strong> <%= pet.species || 'N/A' %></span>
+                        <span class="small-label"><strong>Breed:</strong> <%= pet.breed || 'N/A' %></span>
+                        <span class="small-label"><strong>Birthday:</strong>
+                          <%= pet.birthday
+                                ? (new Date(pet.birthday).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))
+                                : 'N/A' %>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                <% }) %>
+              <% } else { %>
+                <p class="text-center w-100 mb-0">You have no pets.</p>
               <% } %>
-            </p>
+            </div>
+            <div class="footer-hint">
+              Click a pet to view or edit its details.
+            </div>
           </div>
-        <% }); %>
-      <% } else { %>
-        <p class="text-center w-100 mb-0">You have no pets.</p>
-      <% } %>
+        </div>
+
+      </div>
     </div>
   </div>
-</div>
 
-
-  <!-- Pet Details Modal (for update, history & vetcard) -->
+  <!-- Pet Details Modal -->
   <div class="modal fade" id="petDetailsModal" tabindex="-1" role="dialog" aria-labelledby="petDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
       <div class="modal-content">
+
         <div class="modal-header">
           <h5 class="modal-title" id="petDetailsModalLabel">Pet Details</h5>
           <button type="button" class="close" data-dismiss="modal" aria-label="Close">
             <span aria-hidden="true">&times;</span>
           </button>
         </div>
-        
+
         <div class="modal-body">
-          <!-- Pet image -->
           <div class="text-center mb-3" id="modalPetPicContainer">
-            <!-- Initially an image element; will be replaced if no petPic -->
-            <img id="modalPetPic" src="" alt="Pet Picture" class="img-thumbnail rounded-circle"
-                 style="width:100px; height:100px; object-fit:cover; border: 2px solid #4B9CD3;">
+            <img id="modalPetPic" src="" alt="Pet Picture"
+                 class="img-thumbnail rounded-circle"
+                 style="width:80px; height:80px; object-fit:cover; border: 2px solid var(--primary);">
           </div>
-          <!-- Tab Buttons -->
+
           <div class="d-flex justify-content-center mb-3">
-            <button type="button" class="btn btn-outline-primary mx-1" id="tabEdit">Edit</button>
+            <button type="button" class="btn btn-outline-primary mx-1 active" id="tabEdit">Edit</button>
             <button type="button" class="btn btn-outline-primary mx-1" id="tabHistory">History</button>
-            <button type="button" class="btn btn-outline-primary mx-1" id="tabVetcard">Vetcard</button>
           </div>
-          <!-- Tab Content -->
+
           <div id="modalTabContent">
-            <!-- Edit Content -->
+            <!-- Edit Tab -->
             <div id="modalEditContent">
               <div class="form-group">
                 <label for="modalPetNameInput">Pet Name:</label>
-                <input type="text" id="modalPetNameInput" class="form-control" readonly />
+                <input type="text" id="modalPetNameInput" class="form-control" readonly>
               </div>
               <div class="form-group">
                 <label for="modalSpeciesInput">Species:</label>
-                <input type="text" id="modalSpeciesInput" class="form-control" readonly />
+                <input type="text" id="modalSpeciesInput" class="form-control" readonly>
               </div>
               <div class="form-group">
                 <label for="modalBreedInput">Breed:</label>
-                <input type="text" id="modalBreedInput" class="form-control" readonly />
+                <input type="text" id="modalBreedInput" class="form-control" readonly>
               </div>
               <div class="form-group">
                 <label for="modalBirthdayInput">Birthday:</label>
-                <input type="date" id="modalBirthdayInput" class="form-control" readonly />
+                <input type="date" id="modalBirthdayInput" class="form-control" readonly>
               </div>
               <div class="form-group">
                 <label for="modalExistingDiseaseInput">Existing Disease:</label>
-                <input type="text" id="modalExistingDiseaseInput" class="form-control" readonly />
+                <input type="text" id="modalExistingDiseaseInput" class="form-control" readonly>
               </div>
               <div class="form-group">
                 <label for="modalSexInput">Sex:</label>
@@ -280,66 +366,54 @@
                 </select>
               </div>
             </div>
-            <!-- History Content -->
+
+            <!-- History Tab -->
             <div id="modalHistoryContent" class="d-none">
-              <div id="petHistoryContainer">
-                <!-- Pet consultation history will be loaded here via AJAX -->
-              </div>
+              <div id="petHistoryContainer"></div>
             </div>
-            <!-- Vetcard Content -->
-            <div id="modalVetcardContent" class="d-none"></div>
           </div>
         </div>
-        
+
         <div class="modal-footer">
-          <!-- For edit view -->
           <div id="modalEditFooter">
             <button type="button" id="updatePetBtn" class="btn btn-primary">Edit</button>
             <button type="button" id="savePetBtn" class="btn btn-success d-none">Save</button>
             <button type="button" id="deletePetBtn" class="btn btn-danger">Delete</button>
           </div>
-          <!-- For other tabs, just a close button -->
           <button type="button" class="btn btn-secondary d-none" id="modalOtherCloseBtn" data-dismiss="modal">Close</button>
         </div>
+
       </div>
     </div>
   </div>
 
-  <!-- jQuery and Bootstrap JS from CDN -->
+  <!-- Dependencies -->
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-  
-  <!-- SweetAlert2 JS (NEW) -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 
   <script>
     $(document).ready(function () {
-      // ----------------- PET FORM FUNCTIONALITY -----------------
-      
-      // Dynamic Breed Dropdown
+      // Populate breeds when species changes
       $('#species').on('change', function() {
         const selectedSpecies = $(this).val();
         const breedDropdown = $('#petBreed');
-        breedDropdown.empty();
-        breedDropdown.append('<option value="">Select breed</option>');
+        breedDropdown.empty().append('<option value="">Select breed</option>');
         if (selectedSpecies) {
           $.ajax({
             url: '/customer/get-pet-details',
             method: 'GET',
             success: function(updatedData) {
-              const updatedBreeds = updatedData.speciesBreeds[selectedSpecies] || [];
-              updatedBreeds.forEach(function(breed) {
-                breedDropdown.append('<option value="' + breed + '">' + breed + '</option>');
+              (updatedData.speciesBreeds[selectedSpecies] || []).forEach(function(breed) {
+                breedDropdown.append(`<option value="\${breed}">\${breed}</option>`);
               });
             },
-            error: function(err) {
-              console.error("Error fetching updated pet details", err);
-            }
+            error: console.error
           });
         }
       });
-      
-      // Show/hide additional input for "Other" in Existing Disease dropdown
+
+      // Show/hide otherDisease input
       $('#existingDisease').on('change', function(){
         if ($(this).val() === 'Other') {
           $('#otherDisease').removeClass('d-none');
@@ -347,372 +421,204 @@
           $('#otherDisease').addClass('d-none').val('');
         }
       });
-      
-      // Image preview for pet picture in add-pet form
+
+      // Preview pet picture
       $('#petPic').on('change', function () {
         const file = this.files[0];
         if (file) {
           const reader = new FileReader();
-          reader.onload = function (e) {
+          reader.onload = e => {
             $('#petPicPreview').html(
-              '<img src="' + e.target.result + '" alt="Pet Picture" class="img-thumbnail" style="width:100px; height:100px; object-fit:cover;">'
+              `<img src="\${e.target.result}" class="img-thumbnail" style="width:100px;height:100px;object-fit:cover;">`
             );
           };
           reader.readAsDataURL(file);
         }
       });
-      
+
       // Add Pet button handler
       $('#addPetButton').click(function (e) {
         e.preventDefault();
-        var requiredFields = ['#petName', '#species', '#petBreed', '#petBirthday', '#existingDisease', '#sex'];
-        var isValid = true;
-        $.each(requiredFields, function (i, field) {
-          if ($(field).val().trim() === '') {
-            $(field).addClass('is-invalid');
-            isValid = false;
+        var fields = ['#petName','#species','#petBreed','#petBirthday','#existingDisease','#sex'];
+        var valid = true;
+        fields.forEach(f => {
+          if (!$(f).val().trim()) {
+            $(f).addClass('is-invalid');
+            valid = false;
           } else {
-            $(field).removeClass('is-invalid');
+            $(f).removeClass('is-invalid');
           }
         });
-        if ($('#existingDisease').val() === 'Other' && $('#otherDisease').val().trim() === '') {
+        if ($('#existingDisease').val() === 'Other' && !$('#otherDisease').val().trim()) {
           $('#otherDisease').addClass('is-invalid');
-          isValid = false;
-        } else {
-          $('#otherDisease').removeClass('is-invalid');
+          valid = false;
         }
-
-        // If fields are invalid, show SweetAlert error
-        if (!isValid) {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Please fill all the fields correctly.'
-          });
+        if (!valid) {
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Please fill all fields.' });
           return;
         }
 
-        let existingDiseaseVal = $('#existingDisease').val();
-        if (existingDiseaseVal === 'Other') {
-          existingDiseaseVal = $('#otherDisease').val().trim();
-        }
-
-        // Use an empty string if no pet picture is provided so our card template shows the default icon.
-        const petPicSrc = $('#petPicPreview img').attr('src') || '';
-        const petData = {
+        let disease = $('#existingDisease').val() === 'Other'
+                      ? $('#otherDisease').val().trim()
+                      : $('#existingDisease').val();
+        const picSrc = $('#petPicPreview img').attr('src') || '';
+        const data = {
           petName: $('#petName').val(),
           species: $('#species').val(),
           breed: $('#petBreed').val(),
           birthday: $('#petBirthday').val(),
-          existingDisease: existingDiseaseVal,
+          existingDisease: disease,
           sex: $('#sex').val(),
-          petPic: petPicSrc
+          petPic: picSrc
         };
-        
-        $.ajax({
-          url: '/customer/add-pet',
-          method: 'POST',
-          data: petData,
-          success: function (response) {
-            if (response.success) {
-              // Build pet card HTML with conditional default icon if petPic is empty.
-              const petPicHtml = petData.petPic
-                ? `<img src="${petData.petPic}" alt="Pet" class="img-fluid rounded-circle" style="width:80px; height:80px; object-fit:cover; border: 2px solid #4B9CD3;">`
-                : `<div class="default-pet-icon"><i class="fa-solid fa-paw"></i></div>`;
-            const newPetCard = `
-  <div class="pet-card m-2"
-       data-id="${response.pet._id}"
-       data-petname="${petData.petName}"
-       data-species="${petData.species}"
-       data-breed="${petData.breed}"
-       data-birthday="${petData.birthday}"
-       data-existingdisease="${petData.existingDisease}"
-       data-sex="${petData.sex}"
-       data-petpic="${petData.petPic}"
-       data-addedfromreservation="false"   <!-- always false for manual adds -->
-  >
-    ${ petData.petPic
-       ? `<img src="${petData.petPic}" …>`
-       : `<div class="default-pet-icon"><i class="fa-solid fa-paw"></i></div>`
-    }
-    <p class="mb-0 pet-name">${petData.petName}</p>
-  </div>
-`;
-              $('#myPetsContainer').append(newPetCard);
-              $('#petForm')[0].reset();
-              $('#petForm input, #petForm select').removeClass('is-invalid');
-              $('#petPicPreview').empty();
-              
-              // Show SweetAlert2 success pop-up
-              Swal.fire({
-                icon: 'success',
-                title: 'Success',
-                text: 'Pet successfully added!'
-              });
-            } else {
-              // If the server responded with success: false
-              Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: response.message || 'There was an error adding the pet.'
-              });
-            }
-          },
-          error: function () {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: 'There was a server error adding the pet.'
-            });
+
+        $.post('/customer/add-pet', data, function(response) {
+          if (response.success) {
+            $('#myPetsContainer').find('p.text-center').remove();
+
+            const iconHtml = data.petPic
+              ? `<img src="\${data.petPic}" class="img-fluid rounded-circle" style="width:80px;height:80px;object-fit:cover;border:2px solid var(--primary);">`
+              : `<div class="default-pet-icon"><i class="fa-solid fa-paw"></i></div>`;
+            const card = `
+  <div class="pet-card" data-id="\${response.pet._id}" data-petname="\${data.petName}"
+       data-species="\${data.species}" data-breed="\${data.breed}" data-birthday="\${data.birthday}"
+       data-existingdisease="\${data.existingDisease}" data-sex="\${data.sex}"
+       data-petpic="\${data.petPic}" data-addedfromreservation="false">
+    <div class="pet-avatar">\${iconHtml}</div>
+    <div class="pet-info">
+      <div class="pet-name">\${data.petName}</div>
+      <div class="pet-meta">
+        <span class="small-label"><strong>Species:</strong> \${data.species || 'N/A'}</span>
+        <span class="small-label"><strong>Breed:</strong> \${data.breed || 'N/A'}</span>
+        <span class="small-label"><strong>Birthday:</strong> \${data.birthday ? new Date(data.birthday).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : 'N/A'}</span>
+      </div>
+    </div>
+  </div>`;
+            $('#myPetsContainer').append(card);
+            $('#petForm')[0].reset();
+            $('#petPicPreview').empty();
+            Swal.fire({ icon: 'success', title: 'Success', text: 'Pet added!' });
+          } else {
+            Swal.fire({ icon: 'error', title: 'Error', text: response.message || 'Add failed.' });
           }
+        }).fail(() => {
+          Swal.fire({ icon: 'error', title: 'Error', text: 'Server error.' });
         });
       });
-      
-      // ----------------- PET MODAL FUNCTIONALITY -----------------
-      
-      // Delegated click handler for pet cards so that even newly added cards are clickable
-     $(document).on('click', '.pet-card', function () {
-    const $card   = $(this);
-    const petId   = $card.data('id');
-    const petName = $card.data('petname');
-    const species = $card.data('species');
-    const breed   = $card.data('breed');
-    const birthday= $card.data('birthday');
-    const existingDisease = $card.data('existingdisease');
-    const sex     = $card.data('sex');
-    const petPic  = $card.data('petpic');
-    const added   = $card.data('addedfromreservation'); // ← new flag
 
-    // Render pet picture or default icon
-    if (!petPic) {
-      $('#modalPetPicContainer').html(
-        '<div id="modalPetPic" class="default-pet-icon-modal"><i class="fa-solid fa-paw"></i></div>'
-      );
-    } else {
-      $('#modalPetPicContainer').html(
-        `<img id="modalPetPic" src="${petPic}" alt="Pet Picture"
-              class="img-thumbnail rounded-circle"
-              style="width:100px;height:100px;object-fit:cover;
-                     border:2px solid #4B9CD3;">`
-      );
-    }
+      // Click handler to open modal
+      $(document).on('click', '.pet-card', function () {
+        const $c = $(this);
+        const petId = $c.data('id'),
+              name  = $c.data('petname'),
+              species = $c.data('species'),
+              breed = $c.data('breed'),
+              bd = $c.data('birthday'),
+              dis = $c.data('existingdisease'),
+              sex = $c.data('sex'),
+              pic = $c.data('petpic'),
+              added = $c.data('addedfromreservation');
 
-    // Populate form fields
-    $('#modalPetNameInput').val(petName);
-    $('#modalSpeciesInput').val(species);
-    $('#modalBreedInput').val(breed);
-    $('#modalBirthdayInput').val(birthday);
-    $('#modalExistingDiseaseInput').val(existingDisease);
-    $('#modalSexInput').val(sex);
+        // Set modal picture
+        if (!pic) {
+          $('#modalPetPicContainer').html('<div class="default-pet-icon-modal"><i class="fa-solid fa-paw"></i></div>');
+        } else {
+          $('#modalPetPicContainer').html(
+            `<img src="\${pic}" class="img-thumbnail rounded-circle" style="width:80px;height:80px;object-fit:cover;border:2px solid var(--primary);">`
+          );
+        }
+        // Populate modal fields
+        $('#modalPetNameInput').val(name);
+        $('#modalSpeciesInput').val(species);
+        $('#modalBreedInput').val(breed);
+        $('#modalBirthdayInput').val(bd);
+        $('#modalExistingDiseaseInput').val(dis);
+        $('#modalSexInput').val(sex).prop('disabled', true);
+        $('#modalEditContent input, #modalEditContent select').prop('readonly', true);
 
-    // Make them read-only
-    $('#modalPetNameInput, #modalSpeciesInput, #modalBreedInput, ' +
-      '#modalBirthdayInput, #modalExistingDiseaseInput')
-      .prop('readonly', true);
-    $('#modalSexInput').prop('disabled', true);
+        // Store IDs for later
+        $('#updatePetBtn').data({ id: petId, addedfromreservation: added });
+        $('#savePetBtn').data('id', petId);
+        $('#deletePetBtn').data('id', petId);
 
-    // Store IDs & the new flag on your buttons
-    $('#updatePetBtn')
-      .data('id', petId)
-      .data('petname', petName)
-      .data('addedfromreservation', added);
-    $('#savePetBtn').data('id', petId);
-    $('#deletePetBtn').data('id', petId);
-
-    // Show the Edit tab by default
-    $('#tabEdit').trigger('click');
-    $('#petDetailsModal').modal('show');
-  });
-      
-      // Toggle history details on clicking a history date
-      $(document).on('click', '.history-date', function() {
-        $(this).next('.collapse').collapse('toggle');
+        // Show edit tab by default
+        $('#tabEdit').trigger('click');
+        $('#petDetailsModal').modal('show');
       });
-      
-      // Edit tab click: show edit content and footer
+
+      // Modal tab switches
       $('#tabEdit').on('click', function() {
+        $('#tabEdit').addClass('active');
+        $('#tabHistory').removeClass('active');
         $('#modalEditContent').removeClass('d-none');
-        $('#modalHistoryContent, #modalVetcardContent').addClass('d-none');
+        $('#modalHistoryContent').addClass('d-none');
         $('#modalEditFooter').removeClass('d-none');
         $('#modalOtherCloseBtn').addClass('d-none');
       });
-      
-      // History tab click: show history content and load history via AJAX
-      $(document).on('click', '#tabHistory', function() {
-    $('#modalHistoryContent').removeClass('d-none');
-    $('#modalEditContent, #modalVetcardContent').addClass('d-none');
-    $('#modalEditFooter').addClass('d-none');
-    $('#modalOtherCloseBtn').removeClass('d-none');
-
-    const petId   = $('#updatePetBtn').data('id');
-    const petName = $('#updatePetBtn').data('petname');
-    const added   = $('#updatePetBtn').data('addedfromreservation'); // ← grab it
-
-    if (petId || petName) {
-      $.ajax({
-        url: '/customer/get-pet-history',
-        method: 'GET',
-        data: {
-          petId: petId,
-          petName: petName,
-          addedFromReservation: added   // ← include it here
-        },
-       success: function(response) {
-  if (response.success) {
-    let historyHtml = '';
-    const cls = response.history.length >= 5 ? 'history-container' : '';
-    historyHtml += `<div class="${cls}">`;
-
-    response.history.forEach((record, idx) => {
-      // pick either the scheduled date or the creation timestamp
-      const visitDate = record.schedule?.scheduleDate || record.createdAt;
-
-      historyHtml += `
+      $('#tabHistory').on('click', function() {
+        $('#tabHistory').addClass('active');
+        $('#tabEdit').removeClass('active');
+        $('#modalHistoryContent').removeClass('d-none');
+        $('#modalEditContent').addClass('d-none');
+        $('#modalEditFooter').addClass('d-none');
+        $('#modalOtherCloseBtn').removeClass('d-none');
+        const petId = $('#updatePetBtn').data('id'),
+              added = $('#updatePetBtn').data('addedfromreservation');
+        $.get('/customer/get-pet-history', { petId, addedFromReservation: added }, function(resp) {
+          if (resp.success) {
+            let html = '<div class="' + (resp.history.length >= 5 ? 'history-container' : '') + '">';
+            resp.history.forEach((r, i) => {
+              const date = r.schedule?.scheduleDate || r.createdAt;
+              html += `
         <div class="history-record mb-3">
-          <div class="history-date bg-light p-2"
-               data-toggle="collapse"
-               data-target="#historyRecord${idx}"
-               aria-expanded="false"
-               aria-controls="historyRecord${idx}"
-               style="cursor:pointer;">
-            ${formatVisitDate(visitDate)}
+          <div class="history-date bg-light p-2" data-toggle="collapse" data-target="#hist${i}" style="cursor:pointer;">
+            ${formatVisitDate(date)}
           </div>
-          <div id="historyRecord${idx}" class="collapse">
+          <div id="hist${i}" class="collapse">
             <div class="card card-body position-relative">
-              <button type="button" class="close position-absolute"
-                      style="top:10px;right:10px;"
-                      onclick="$('#historyRecord${idx}').collapse('hide')">
-                <span aria-hidden="true">&times;</span>
+              <button type="button" class="close position-absolute" style="top:10px;right:10px;"
+                      onclick="$('#hist${i}').collapse('hide')">
+                <span>&times;</span>
               </button>
-
-              <!-- Concern -->
-              <p><strong>Concern:</strong> ${record.concerns || 'N/A'}</p>
-
-              <!-- Physical Exam -->
-              ${record.physicalExam
-                ? `<table class="physical-table mb-3">
-                     <thead>
-                       <tr><th>Weight</th><th>Temperature</th><th>Observations</th></tr>
-                     </thead>
-                     <tbody>
-                       <tr>
-                         <td>${record.physicalExam.weight     || 'N/A'}</td>
-                         <td>${record.physicalExam.temperature|| 'N/A'}</td>
-                         <td>${record.physicalExam.observations|| 'N/A'}</td>
-                       </tr>
-                     </tbody>
-                   </table>`
-                : ''
-              }
-
-              <!-- Diagnosis -->
-              ${record.diagnosis
-                ? `<div class="diagnosis-card mb-3">${record.diagnosis}</div>`
-                : ''
-              }
-
-              <!-- Services -->
-              ${record.services?.length
-                ? `<table class="services-table mb-3">
-                     <thead>
-                       <tr><th>Service</th><th>Details</th><th>File</th></tr>
-                     </thead>
-                     <tbody>
-                       ${record.services.map(s => {
-                         let url = s.file || '';
-                         if (url) {
-                           // normalize path
-                           url = url.replace(/^public/, '').replace(/^([^/])/, '/$1');
-                           if (!/^https?:\/\//.test(url)) url = window.location.origin + url;
-                         }
-                         return `
-                           <tr>
-                             <td>${s.serviceName}</td>
-                             <td>${s.details || '–'}</td>
-                             <td>${url ? `<a href="${url}" download>Download</a>` : '–'}</td>
-                           </tr>`;
-                       }).join('')}
-                     </tbody>
-                   </table>`
-                : ''
-              }
-
-              <!-- Medications -->
-              ${record.medications?.length
-                ? `<table class="medication-table mb-3">
-                     <thead>
-                       <tr><th>Name</th><th>Qty</th><th>Dosage</th><th>Remarks</th></tr>
-                     </thead>
-                     <tbody>
-                       ${record.medications.map(m => `
-                         <tr>
-                           <td>${m.name || m.medicationName || '–'}</td>
-                           <td>${m.quantity || '–'}</td>
-                           <td>${m.dosage || '–'}</td>
-                           <td>${m.remarks || '–'}</td>
-                         </tr>
-                       `).join('')}
-                     </tbody>
-                   </table>`
-                : ''
-              }
-
-              <!-- Confinement -->
-              ${record.confinementStatus?.length
-                ? `<p><strong>Confinement:</strong> ${record.confinementStatus.join(', ')}</p>`
-                : ''
-              }
-
-              <!-- Additional Notes -->
-              ${record.notes
-                ? `<p><strong>Additional Notes:</strong> ${record.notes}</p>`
-                : ''
-              }
-
-              <!-- Doctor -->
-              <p><strong>Doctor:</strong> ${record.doctor?.username || 'Not Assigned'}</p>
+              ${r.concerns ? `<p><strong>Concern:</strong> ${r.concerns}</p>` : ''}
+              ${r.physicalExam ? `
+                <table class="physical-table mb-3">
+                  <thead><tr><th>Weight</th><th>Temp</th><th>Obs</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td>${r.physicalExam.weight || 'N/A'}</td>
+                      <td>${r.physicalExam.temperature || 'N/A'}</td>
+                      <td>${r.physicalExam.observations || 'N/A'}</td>
+                    </tr>
+                  </tbody>
+                </table>` : ''}
+              ${r.notes ? `<p><strong>Notes:</strong> ${r.notes}</p>` : ''}
             </div>
           </div>
         </div>`;
-    });
-
-    historyHtml += `</div>`;
-    $('#petHistoryContainer').html(historyHtml);
-
-  } else {
-    $('#petHistoryContainer').html('<p>No history available.</p>');
-  }
-},
-error: function() {
-  $('#petHistoryContainer').html('<p>Error loading history.</p>');
-}
-
+            });
+            html += '</div>';
+            $('#petHistoryContainer').html(html);
+          } else {
+            $('#petHistoryContainer').html('<p>No history available.</p>');
+          }
+        }).fail(()=>{
+          $('#petHistoryContainer').html('<p>Error loading history.</p>');
+        });
       });
-    }
-  });
 
-      // Vetcard tab click: show vetcard content with a "Coming soon" message
-      $('#tabVetcard').on('click', function() {
-        $('#modalVetcardContent').removeClass('d-none');
-        $('#modalEditContent, #modalHistoryContent').addClass('d-none');
-        $('#modalEditFooter').addClass('d-none');
-        $('#modalOtherCloseBtn').removeClass('d-none');
-        $('#modalVetcardContent').html('<p class="text-center">Coming soon.</p>');
-      });
-      
-      // Edit button inside modal: enable editing
+      // Edit / Save toggle
       $('#updatePetBtn').on('click', function () {
-        $('#modalPetNameInput, #modalSpeciesInput, #modalBreedInput, #modalBirthdayInput, #modalExistingDiseaseInput')
-          .prop('readonly', false);
+        $('#modalEditContent input, #modalEditContent select').prop('readonly', false);
         $('#modalSexInput').prop('disabled', false);
         $('#updatePetBtn').addClass('d-none');
         $('#savePetBtn').removeClass('d-none');
       });
-      
-      // Save Pet Updates
+
+      // Save edits
       $('#savePetBtn').on('click', function() {
-        var petId = $(this).data('id');
-        var updatedData = {
+        const petId = $(this).data('id');
+        const updated = {
           petName: $('#modalPetNameInput').val(),
           species: $('#modalSpeciesInput').val(),
           breed: $('#modalBreedInput').val(),
@@ -723,142 +629,56 @@ error: function() {
         $.ajax({
           url: '/customer/update-pet/' + petId,
           method: 'PUT',
-          data: updatedData,
-          success: function(response) {
-            if(response.success) {
-              Swal.fire({
-                icon: 'success',
-                title: 'Success',
-                text: 'Pet details updated successfully!'
-              }).then(() => {
-                // Refresh to see the updated info in the pet card
-                location.reload();
-              });
+          data: updated,
+          success: function(res) {
+            if (res.success) {
+              Swal.fire({ icon: 'success', title: 'Success', text: 'Updated!' })
+                .then(() => location.reload());
             } else {
-              Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: response.message || 'Error updating pet.'
-              });
+              Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Update failed.' });
             }
           },
           error: function() {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: 'Server error while updating pet.'
-            });
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Server error.' });
           }
         });
       });
-      
-      // Delete Pet
+
+      // Delete pet
       $('#deletePetBtn').on('click', function() {
-        var petId = $(this).data('id');
+        const petId = $(this).data('id');
         Swal.fire({
           title: 'Delete Pet?',
-          text: 'Are you sure you want to delete this pet?',
+          text: 'Are you sure?',
           icon: 'warning',
           showCancelButton: true,
-          confirmButtonText: 'Yes, delete it',
+          confirmButtonText: 'Yes, delete',
           cancelButtonText: 'Cancel'
-        }).then((result) => {
+        }).then(result => {
           if (result.isConfirmed) {
-            $.ajax({
-              url: '/customer/delete-pet',
-              method: 'POST',
-              data: { id: petId },
-              success: function(response) {
-                if(response.success){
-                  Swal.fire({
-                    icon: 'success',
-                    title: 'Deleted!',
-                    text: 'Pet deleted successfully.'
-                  }).then(() => {
-                    location.reload();
-                  });
-                } else {
-                  Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: response.message || 'Error deleting pet.'
-                  });
-                }
-              },
-              error: function() {
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Error',
-                  text: 'Server error deleting pet.'
-                });
+            $.post('/customer/delete-pet', { id: petId }, function(res) {
+              if (res.success) {
+                Swal.fire({ icon: 'success', title: 'Deleted!', text: 'Pet removed.' })
+                  .then(() => location.reload());
+              } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: res.message || 'Delete failed.' });
               }
+            }).fail(() => {
+              Swal.fire({ icon: 'error', title: 'Error', text: 'Server error.' });
             });
           }
         });
       });
     });
-    
-    // Example function if your code references it
-    window.viewReservation = function(id) {
-      $.ajax({
-        url: '/doctor/get-consultation',
-        method: 'GET',
-        data: { reservationId: id },
-        success: function(response) {
-          if (response.success) {
-            let detailsHtml = '';
-            if (response.reservation.pets && response.reservation.pets.length > 0) {
-              detailsHtml += '<strong>Pet(s):</strong> ' + response.reservation.pets.map(p => p.petName).join(', ') + '<br>';
-            }
-            if (response.reservation.concerns) {
-              detailsHtml += '<strong>Customer Concerns:</strong> ' + response.reservation.concerns + '<br>';
-            }
-            detailsHtml += '<hr>';
-            detailsHtml += '<strong>Consultation Notes:</strong><br>' + (response.reservation.consultationNotes || 'N/A') + '<br>';
-            if (response.reservation.medications && response.reservation.medications.length > 0) {
-              detailsHtml += '<hr><strong>Medication Details:</strong><br>';
-              response.reservation.medications.forEach(function(med) {
-                detailsHtml += 'Medication: ' + med.medicationName + '<br>';
-                detailsHtml += 'Quantity: ' + med.quantity + '<br>';
-                detailsHtml += 'Dosage: ' + med.dosage + '<br>';
-                detailsHtml += 'Frequency: ' + med.frequency + '<br>';
-                detailsHtml += 'Administration Time: ' + med.adminTime + '<br>';
-                detailsHtml += med.additionalInstructions ? 'Additional Instructions: ' + med.additionalInstructions + '<br>' : '';
-                detailsHtml += '<hr>';
-              });
-            }
-            if (response.reservation.schedule && response.reservation.schedule.scheduleDate) {
-              detailsHtml += '<hr><strong>Follow-Up Schedule:</strong><br>';
-              detailsHtml += 'Date: ' + new Date(response.reservation.schedule.scheduleDate).toISOString().slice(0,10) + '<br>';
-              detailsHtml += 'Details: ' + response.reservation.schedule.scheduleDetails + '<br>';
-            }
-            $("#consultationDetails").html(detailsHtml);
-            $("#viewConsultationModal").modal("show");
-          } else {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: response.message || 'Error fetching consultation details.'
-            });
-          }
-        },
-        error: function() {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Server error while fetching consultation details.'
-          });
-        }
-      });
-    };
-    function formatVisitDate(date) {
-  const d = new Date(date);
-  const month = d.toLocaleString('en-US', { month: 'long' }).toLowerCase();
-  const day = d.getDate();
-  const year = d.getFullYear();
-  return `${month} ${day} ${year}`;
-}
 
+    // Helper for formatting dates in history
+    function formatVisitDate(date) {
+      const d = new Date(date);
+      const month = d.toLocaleString('en-US', { month: 'long' }).toLowerCase();
+      const day = d.getDate();
+      const year = d.getFullYear();
+      return `${month} ${day} ${year}`;
+    }
   </script>
 </body>
 </html>
