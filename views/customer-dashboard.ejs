@@ -1,4 +1,3 @@
-<% /* (Any server-side EJS helpers you already have—unchanged) */ %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,75 +18,49 @@
     :root {
       --primary: #1E88E5;
       --primary-dark: #0D47A1;
-      --accent: #90CAF9;
+      --accent: #FFB400;
       --white: #ffffff;
       --text: #333;
-      --bg-dark: #202737;
-      --glass: rgba(255,255,255,.08);
+      --bg-dark: #0D1B2A;
       --card-bg: #ffffff;
-      --border-color: rgba(0,0,0,.04);
-      --secondary-color: #264653;
+      --border-color: rgba(0,0,0,0.08);
     }
 
-    /* Top bar */
+    /* —— Top bar (unchanged) —— */
     #topbar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 56px;
-      background: var(--bg-dark);
-      display: flex;
-      align-items: center;
-      padding: 0 16px;
-      z-index: 3000;
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 56px; background: var(--bg-dark);
+      display: flex; align-items: center;
+      padding: 0 16px; z-index: 3000;
       box-shadow: 0 2px 4px rgba(0,0,0,0.25);
       gap: 12px;
     }
     #topbar .menu-toggle {
-      color: #fff;
-      font-size: 1.5em;
-      margin-right: 16px;
-      cursor: pointer;
-      display: none;
+      color: #fff; font-size: 1.5em; margin-right: 16px;
+      cursor: pointer; display: none;
     }
     #topbar .topbar-paw {
-      color: #fff;
-      font-size: 1.3em;
-      margin-right: 8px;
+      color: #fff; font-size: 1.3em; margin-right: 8px;
     }
     #topbar .topbar-title {
-      color: #fff;
-      font-size: 1.1em;
-      font-weight: 500;
+      color: #fff; font-size: 1.1em; font-weight: 500;
       flex-grow: 1;
     }
     .topbar-actions {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 16px;
+      margin-left: auto; display: flex;
+      align-items: center; gap: 16px;
     }
     .message-icon {
-      position: relative;
-      cursor: pointer;
-      color: #fff;
-      font-size: 1.2em;
+      position: relative; cursor: pointer;
+      color: #fff; font-size: 1.2em;
     }
     .message-icon .badge {
-      position: absolute;
-      top: -4px;
-      right: -6px;
-      background: #ff4d4f;
-      color: #fff;
-      font-size: 0.55em;
-      padding: 2px 5px;
-      border-radius: 999px;
-      line-height: 1;
-      min-width: 16px;
-      text-align: center;
+      position: absolute; top: -4px; right: -6px;
+      background: #ff4d4f; color: #fff;
+      font-size: 0.55em; padding: 2px 5px;
+      border-radius: 999px; line-height: 1;
+      min-width: 16px; text-align: center;
     }
-
     @media (max-width: 991.98px) {
       #topbar .topbar-title { display: none; }
       #topbar .menu-toggle { display: inline-block; }
@@ -96,199 +69,168 @@
     body {
       font-family: 'Roboto', sans-serif;
       background-color: #f7f7f7;
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
       overflow-x: hidden;
     }
 
     .wrapper {
-      display: flex;
-      flex-direction: row;
+      display: flex; position: relative;
       min-height: 100vh;
+      padding-top: calc(56px + 44px);
       width: 100%;
-      position: relative;
-      padding-top: calc(56px + 44px); /* topbar + sub-nav */
     }
 
-    /* Sidebar */
+    /* —— Sidebar (updated) —— */
     #sidebar {
-      width: 265px;
-      background: var(--primary-dark);
+      position: fixed; top: 56px; left: 0;
+      width: 250px; height: calc(100vh - 56px);
+      background: linear-gradient(180deg, var(--primary-dark), var(--bg-dark));
       color: var(--white);
-      position: fixed;
-      top: 56px;
-      left: 0;
-      height: calc(100vh - 56px);
+      display: flex; flex-direction: column;
+      transition: left 0.3s ease;
+      box-shadow: 2px 0 6px rgba(0,0,0,0.15);
       z-index: 2000;
-      box-shadow: 2px 0 6px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid rgba(255,255,255,.04);
-      overflow-y: auto;
-      overflow-x: hidden;
-      transition: left 0.3s;
-      scrollbar-width: thin;
-      scrollbar-color: var(--accent) var(--primary-dark);
-    }
-    #sidebar::-webkit-scrollbar {
-      width: 8px;
-      background: var(--primary-dark);
-    }
-    #sidebar::-webkit-scrollbar-thumb {
-      background: var(--accent);
-      border-radius: 4px;
     }
     .sidebar-header {
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-      gap: 6px;
-      min-height: 58px;
-      padding: 30px 24px 8px 24px;
-      display: flex;
-      align-items: center;
+      padding: 24px;
+      display: flex; align-items: center; gap: 12px;
     }
     .sidebar-logo {
-      font-size: 2em;
-      color: var(--accent);
+      font-size: 1.8rem; color: var(--accent);
     }
     .sidebar-title {
-      font-size: 1.12em;
-      color: var(--white);
-      letter-spacing: .8px;
-      text-shadow: 0 1px 3px rgba(0,0,0,.10);
-      font-weight: 700;
-      margin-left: 7px;
+      font-size: 1.2rem; font-weight: 700;
+      letter-spacing: 0.5px;
     }
     .sidebar-menu {
-      margin-top: 14px;
-      gap: 2px;
-      flex-direction: column;
-      padding-left: 0;
+      flex-grow: 1; padding: 0; margin: 0;
       list-style: none;
     }
     .sidebar-menu li {
-      margin-bottom: 6px;
+      margin: 4px 0;
     }
     .sidebar-menu a {
-      font-size: 1em !important;
-      font-weight: 500 !important;
-      color: var(--white) !important;
-      background: transparent !important;
-      border-radius: 6px;
-      padding: 12px 22px;
-      display: flex; align-items: center; gap: 14px;
-      transition: background .19s, color .19s;
-      position: relative;
-      text-decoration: none !important;
-      white-space: nowrap;
-    }
-    .sidebar-menu a.active,
-    .sidebar-menu a:hover {
-      background: var(--accent) !important;
-      color: var(--primary-dark) !important;
+      display: flex; align-items: center;
+      padding: 12px 20px;
+      color: var(--white); text-decoration: none;
+      font-weight: 500; position: relative;
+      border-radius: 0 20px 20px 0;
+      transition: background 0.2s;
     }
     .sidebar-menu a i {
-      width: 23px; font-size:1.18em; text-align:center;
+      width: 24px; text-align: center;
+      margin-right: 12px;
     }
-    .sidebar-menu .logout a,
-    .sidebar-menu .logout a:hover {
-      background: none !important;
-      color: #ffe3e3 !important;
+    /* remove any underlines */
+    .sidebar-menu a:hover,
+    .sidebar-menu a:focus {
+      text-decoration: none;
+      background: rgba(255,255,255,0.1);
+      /* no padding shift */
+    }
+    .sidebar-menu a.active {
+      background: var(--accent);
+      color: var(--primary-dark);
+    }
+    .sidebar-menu a.active::before {
+      content: '';
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 4px; background: var(--accent);
+      border-top-right-radius: 4px;
+      border-bottom-right-radius: 4px;
     }
 
+    /* perfect circle */
     .sidebar-bottom-profile {
-      background: var(--glass);
-      border-radius: 8px;
-      box-shadow: 0 1px 7px rgba(0,0,0,.12);
-      border: 1px solid rgba(255,255,255,.10);
-      color: #fff;
-      font-size: .97em;
-      margin: 16px 24px 14px 24px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-height: 52px;
-      flex-wrap: nowrap;
-      padding-left: 8px;
+      padding: 16px;
+      background: rgba(255,255,255,0.05);
+      margin: 16px; border-radius: 12px;
+      display: flex; align-items: center;
+      gap: 12px;
     }
-    .sidebar-bottom-profile img {
-      box-shadow: 0 1px 3px rgba(0,0,0,.10);
-      border: 2px solid var(--accent);
-      width: 40px; height: 40px;
-      border-radius: 50%;
-      object-fit: cover;
-      flex-shrink: 0;
-      margin-right: 8px;
-    }
+  .sidebar-bottom-profile img {
+  display: block;
+  width: 40px;
+  height: 40px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  border: 2px solid var(--accent);
+}
+
     .sidebar-bottom-profile .info {
-      flex-grow: 1;
-      min-width: 0;
+      overflow: hidden;
     }
     .sidebar-bottom-profile .fw-bold {
-      color: var(--white);
-      font-size: 1.05em;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
     }
 
-    /* secondary nav below topbar */
+    /* —— Sub-nav (unchanged) —— */
     #sub-nav {
-      position: fixed;
-      top: 56px;
-      left: 265px;
-      right: 0;
+      position: fixed; top: 56px; left: 250px; right: 0;
       background: #f1f5fa;
-      height: 44px;
-      padding: 6px 16px;
+      height: 44px; padding: 6px 16px;
       z-index: 2500;
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
       border-bottom: 1px solid rgba(0,0,0,0.04);
-      display: flex;
-      align-items: center;
+      display: flex; align-items: center;
       font-size: 0.9rem;
       transition: height 0.2s;
     }
     #sub-nav .sub-nav-inner {
       width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      display: flex; align-items: center; gap: 12px;
       height: 100%;
     }
-    #subnav-title { font-weight: 600; font-size: 1rem; color: var(--secondary-color); margin: 0; }
+   #subnav-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text);
+  margin: 0;
+}
 
-    /* Main content */
+    /* —— Main content —— */
     #content {
-      margin-left: 265px;
+      margin-left: 250px;
       padding: 16px;
       background: #f7f7f7;
       min-height: 100vh;
-      width: calc(100% - 265px);
+      width: calc(100% - 250px);
       transition: margin-left 0.3s ease;
       box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
       overflow: visible;
     }
-    .collapsed-content { margin-left: 0 !important; width: 100vw !important; }
+    .collapsed-content {
+      margin-left: 0 !important;
+      width: 100% !important;
+    }
 
+    /* —— Responsive tweaks —— */
     @media (max-width: 991.98px) {
       #sidebar {
-        width: 220px;
-        left: -220px;
+        width: 220px; left: -220px;
       }
-      #sidebar.active { left: 0 !important; }
+      #sidebar.active {
+        left: 0;
+      }
       #content {
-        margin-left: 0 !important;
-        width: 100%;
-        padding: 12px;
+        margin-left: 0; width: 100%; padding: 12px;
       }
       #sidebarOverlay.show { display: block; }
       #sub-nav { left: 0; z-index: 1800; }
       body.sidebar-open #sub-nav { display: none; }
     }
     @media (max-width: 450px) {
-      #sidebar { width: 85vw; left: -85vw; }
-      #sidebar.active { left: 0 !important; }
-      #content { margin-left: 0 !important; width: 100%; }
+      /* narrower for phones */
+      #sidebar {
+        width: 70vw; left: -70vw;
+      }
+      #sidebar.active {
+        left: 0;
+      }
     }
   </style>
 </head>
@@ -351,8 +293,7 @@
       </ul>
 
       <div class="sidebar-bottom-profile mt-auto">
-        <img src="<%= profilePic ? profilePic : '/images/default_profile_icon.png' %>"
-             alt="Profile" class="profile-img" />
+        <img src="<%= profilePic ? profilePic : '/images/default_profile_icon.png' %>" alt="Profile" />
         <div class="info">
           <div class="fw-bold text-truncate"><%= username %></div>
         </div>
@@ -360,7 +301,6 @@
     </nav>
 
     <div id="content" class="container-fluid" role="main">
-      <!--  ← NO more hard-coded cards here! Just an empty container: -->
       <div id="main-content"></div>
     </div>
   </div>
@@ -372,10 +312,11 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <script>
-    // NEVER cache our dashboard partial
+    // prevent caching
     $.ajaxSetup({ cache: false });
 
     function isMobile() { return $(window).width() < 992; }
+
     function showSidebar() {
       $('#sidebar').addClass('active');
       if (isMobile()) {
@@ -390,6 +331,7 @@
         $('body').removeClass('sidebar-open');
       }
     }
+
     function setSubNavFor(page) {
       let title = page === 'dashboard' ? 'Dashboard'
                  : page === 'mypet'      ? 'My Pet'
@@ -403,45 +345,34 @@
     }
 
     $(document).ready(function() {
-      // Sidebar initial state
+      // initial sidebar state
       if (isMobile()) hideSidebar(); else showSidebar();
 
-      // Toggle on mobile
+      // mobile toggle
       $('#menu-toggle').click(() => {
         if (!isMobile()) return;
-        if ($('#sidebar').hasClass('active')) hideSidebar();
-        else showSidebar();
+        $('#sidebar').hasClass('active') ? hideSidebar() : showSidebar();
       });
       $('#sidebarOverlay').click(hideSidebar);
 
-      // Menu clicks
+      // menu item clicks
       $('.menu-item').click(function(e) {
         e.preventDefault();
         $('.menu-item').removeClass('active');
         $(this).addClass('active');
         const page = $(this).data('content');
-
-        if (page === 'dashboard') {
-          // load our full dashboard.ejs partial
-          $('#main-content').load('/customer/dashboard', () => {
-            setSubNavFor('dashboard');
-          });
-        } else {
-          // other pages
-          $('#main-content').load(`/customer/${page}`, () => {
-            setSubNavFor(page);
-          });
-        }
-
+        $('#main-content').load(`/customer/${page === 'dashboard' ? 'dashboard' : page}`, () => {
+          setSubNavFor(page);
+        });
         if (isMobile()) hideSidebar();
       });
 
-      // Initial load: dashboard
+      // initial load
       $('#main-content').load('/customer/dashboard', () => {
         setSubNavFor('dashboard');
       });
 
-      // Messages popup
+      // messages popup
       $('#messageButton').on('click', () => {
         Swal.fire({
           title: 'Messages',
@@ -451,9 +382,9 @@
         });
       });
 
+      // handle resize
       $(window).resize(() => {
-        if (isMobile()) hideSidebar();
-        else { $('#sidebar').addClass('active'); $('#sidebarOverlay').removeClass('show'); }
+        if (isMobile()) hideSidebar(); else showSidebar();
         setSubNavFor($('.menu-item.active').data('content') || 'dashboard');
       });
     });
