@@ -1,297 +1,35 @@
-<%
-  // pets: array of all pet objects passed from the server.
-  // Each pet object should include a property "addedFromReservation" that is set to true
-  // if the pet was added via the reservation "Add" action.
-  // Also, the owner field should be populated (with at least "username").
-  // Helper function to format a date in local time as "YYYY-MM-DD"
-  function formatLocalDate(dateStr) {
-    var d = new Date(dateStr);
-    var month = '' + (d.getMonth() + 1);
-    var day = '' + d.getDate();
-    var year = d.getFullYear();
-    if (month.length < 2) month = '0' + month;
-    if (day.length < 2) day = '0' + day;
-    return [year, month, day].join('-');
-  }
-
- // NEW: “entries” comes from your route:
-  //    const entries = await PetList.find(…)…
-  //    res.render('hr/petlist', { entries })
-  const list = typeof entries !== 'undefined' ? entries : [];
-%>
-<div class="container-fluid petlist-container">
-
-  <style>
-    /* Pet List Content Styles */
-    .petlist-container { background: #f7f7f7; padding: 2rem; min-height: 100vh; }
-    .custom-table { background: #fff; width: 100%; table-layout: fixed; }
-    .custom-table thead tr { background: #4B9CD3; color: #fff; }
-    .custom-table thead th { text-align: center; padding: 12px; font-weight: 600; }
-    .custom-table tbody td { text-align: center; padding: 12px; }
-    .custom-table tbody tr:hover { background: #f9f9f9; }
-    .fixed-table-container { height: 600px; overflow-y: auto; }
-    .search-box { width: 430px; height: 30px; border-radius: 4px; border: 1px solid #ddd; padding-left: 10px; }
-
-    /* History Accordion Styles */
-    .history-item { margin-bottom: 1rem; }
-    .history-header {
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #f1f1f1;
-      padding: 0.75rem 1rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-weight: bold;
-    }
-    .history-header:hover { background: #e9ecef; }
-    .history-header i {
-      transition: transform 0.2s;
-    }
-    .history-header[aria-expanded="true"] i {
-      transform: rotate(180deg);
-    }
-    .history-content {
-      border: 1px solid #ddd;
-      border-top: none;
-      border-radius: 0 0 4px 4px;
-      background: #fff;
-      padding: 1rem;
-    }
-    .history-content p, .history-content ul { margin-bottom: 0.75rem; }
-    .history-content ul { padding-left: 1.25rem; }
-    .history-content li { margin-bottom: 0.5rem; }
-    .history-content .close {
-      position: absolute;
-      top: 0.5rem;
-      right: 1rem;
-      font-size: 1.25rem;
-      line-height: 1;
-    }
-  </style>
-
-  <!-- Content Header -->
-  <div class="content-header mb-4">
-    <h3 class="font-weight-bold text-dark" style="font-size: 18px;">Pet List</h3>
-  </div>
-
-  <!-- Search Bar -->
-  <div class="d-flex justify-content-end align-items-center mb-3">
-    <input type="text" class="form-control form-control-sm search-box" id="petSearchInput" placeholder="Search Pets">
-  </div>
-
-  <!-- Table (no heading above it) -->
-  <div class="table-responsive fixed-table-container">
-    <table class="table custom-table">
-      <thead>
-        <tr>
-          <th>Owner Name</th>
-          <th>Pet Name</th>
-          <th>Details</th>
-        </tr>
-      </thead>
-     <tbody id="petTableBody">
-  <% if (list.length > 0) { %>
-    <% list.forEach(function(e) { %>
-      <tr id="pet-<%= e._id %>">
-        <td class="ownerName"><%= e.owner.username %></td>
-        <td class="petName"    ><%= e.petName %></td>
-        <td class="text-center">
-          <button class="btn btn-info btn-sm equal-btn"
-        onclick="viewPetDetails(null, '<%= e.petName %>', '<%= e.owner._id %>')">
-  View History
-</button>
-        </td>
-      </tr>
-    <% }); %>
-  <% } else { %>
-    <tr><td colspan="3" class="text-center">No pets added.</td></tr>
-  <% } %>
-</tbody>
-    </table>
+<!-- views/hr/limitPerHour.ejs -->
+<div class="container-fluid">
+  <h2 class="mt-3">Limit Per Hour Settings</h2>
+  <div class="card p-3">
+    <form id="limitForm">
+      <div class="form-group">
+        <label for="limitPerHour">Limit Per Hour (Default is 5)</label>
+        <input type="number" class="form-control" id="limitPerHour" name="limitPerHour" value="<%= setting.limitPerHour %>">
+      </div>
+      <button type="submit" class="btn btn-primary">Update Limit</button>
+    </form>
   </div>
 </div>
-
-<!-- Modal for Viewing Pet Consultation History -->
-<div class="modal fade" id="petDetailsModal" tabindex="-1" role="dialog" aria-labelledby="petDetailsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="petDetailsModalLabel">Pet Consultation History</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="modal-body" id="petDetailsContent">
-        <p>Loading details...</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Include jQuery UI and Bootstrap scripts -->
 
 <script>
-  // Search filtering for pet list based on owner name or pet name
-  $('#petSearchInput').on('keyup', function () {
-    var searchValue = $(this).val().toLowerCase();
-    $('#petTableBody tr').filter(function () {
-      $(this).toggle(
-        $(this).find('.ownerName').text().toLowerCase().indexOf(searchValue) > -1 ||
-        $(this).find('.petName').text().toLowerCase().indexOf(searchValue) > -1
-      );
+  $('#limitForm').submit(function(e){
+    e.preventDefault();
+    var limit = $('#limitPerHour').val();
+    $.ajax({
+      url: '/hr/limit-per-hour',
+      method: 'POST',
+      data: { limitPerHour: limit },
+      success: function(response){
+        if(response.success){
+          alert("Limit updated successfully.");
+        } else {
+          alert("Error updating limit: " + response.message);
+        }
+      },
+      error: function(err){
+        alert("Server error while updating limit.");
+      }
     });
   });
-
-  // Helper to format a date in "Month Day, Year" format
-  function formatDateLong(dateStr) {
-    const d = new Date(dateStr);
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return d.toLocaleDateString('en-US', options).replace(',', '');
-  }
-
-  /**
- * Fetches and displays a pet's consultation history.
- * @param {String|null} petId    — Mongo ID of the pet (or null to fallback to name+owner)
- * @param {String}      petName  — The pet's name
- * @param {String}      ownerId  — The owner's user ID
- */
-/**
- * Fetches & displays a pet's full consultation history
- * @param {String|null} petId
- * @param {String}      petName
- * @param {String}      ownerId
- */
-function viewPetDetails(petId, petName, ownerId) {
-  $('#petDetailsContent').html('<p>Loading…</p>');
-  $('#petDetailsModal').modal('show');
-
-  $.get('/hr/get-pet-history', { petId, petName, ownerId })
-    .done(({ success, history }) => {
-      if (!success) return $('#petDetailsContent').html('<p>Error loading details.</p>');
-      if (!history.length) return $('#petDetailsContent').html('<p>No consultations found.</p>');
-
-      let html = '';
-      history.forEach((rec, idx) => {
-        const dateStr = new Date(rec.date).toLocaleDateString('en-US', {
-          month: 'short', day: 'numeric', year: 'numeric'
-        });
-        const doctor = rec.doctor?.username || 'Not Assigned';
-
-        // Notes & Diagnosis
-        const notes = rec.notes || '—';
-        const diag  = rec.diagnosis || '—';
-
-        // Physical Exam table
-        const { weight = '—', temperature = '—', observations = '—' } = rec.physical || {};
-        const examHtml = `
-          <p><strong>Physical Exam:</strong></p>
-          <table class="table table-sm table-bordered mb-3">
-            <thead class="thead-light">
-              <tr>
-                <th>Weight</th><th>Temp</th><th>Observations</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>${weight}</td>
-                <td>${temperature}</td>
-                <td>${observations}</td>
-              </tr>
-            </tbody>
-          </table>`;
-
-        // Services table
-        let srvHtml = '';
-        if (rec.services?.length) {
-          srvHtml = `
-            <p><strong>Services:</strong></p>
-            <table class="table table-sm table-bordered mb-3">
-              <thead class="thead-light">
-                <tr><th>Category</th><th>Name</th><th>Details</th><th>File</th></tr>
-              </thead>
-              <tbody>
-                ${rec.services.map(svc => {
-                  const fileLink = svc.file
-                    ? `<a href="${svc.file.replace(/^public/, '')}" download>📎</a>`
-                    : '—';
-                  return `
-                    <tr>
-                      <td>${svc.category || '—'}</td>
-                      <td>${svc.serviceName || '—'}</td>
-                      <td>${svc.details || '—'}</td>
-                      <td class="text-center">${fileLink}</td>
-                    </tr>`;
-                }).join('')}
-              </tbody>
-            </table>`;
-        }
-
-        // Medications table
-        let medHtml = '';
-        if (rec.medications?.length) {
-          medHtml = `
-            <p><strong>Medications:</strong></p>
-            <table class="table table-sm table-bordered mb-3">
-              <thead class="thead-light">
-                <tr><th>Name</th><th>Qty</th><th>Dosage</th><th>Remarks</th></tr>
-              </thead>
-              <tbody>
-                ${rec.medications.map(med => `
-                  <tr>
-                    <td>${med.name || med.medicationName || '—'}</td>
-                    <td>${med.quantity || '—'}</td>
-                    <td>${med.dosage || '—'}</td>
-                    <td>${med.remarks || '—'}</td>
-                  </tr>`).join('')}
-              </tbody>
-            </table>`;
-        }
-
-        // Confinement & Next follow-up
-        const conf = rec.confinement?.length ? rec.confinement.join(', ') : 'N/A';
-        let schedHtml = '<p><strong>Next Follow-Up:</strong> N/A</p>';
-        if (rec.nextSchedule) {
-          const sd = rec.nextSchedule;
-          const sdate = new Date(sd.date).toLocaleDateString('en-US', {
-            month:'short', day:'numeric', year:'numeric'
-          });
-          schedHtml = `<p><strong>Next Follow-Up:</strong> ${sdate} — ${sd.details}</p>`;
-        }
-
-        html += `
-          <div class="history-item">
-            <div class="history-header d-flex justify-content-between align-items-center"
-                 data-toggle="collapse" data-target="#historyRecord${idx}"
-                 aria-expanded="false" aria-controls="historyRecord${idx}">
-              <span>${dateStr} — Dr. ${doctor}</span>
-              <i class="fas fa-chevron-down"></i>
-            </div>
-            <div class="collapse" id="historyRecord${idx}">
-              <div class="history-content position-relative">
-                <button type="button" class="close" onclick="$('#historyRecord${idx}').collapse('hide')">&times;</button>
-                <p><strong>Notes:</strong> ${notes}</p>
-                ${examHtml}
-                <p><strong>Diagnosis:</strong> ${diag}</p>
-                ${srvHtml}
-                ${medHtml}
-                <p><strong>Confinement:</strong> ${conf}</p>
-                ${schedHtml}
-              </div>
-            </div>
-          </div>`;
-      });
-
-      $('#petDetailsContent').html(html);
-    })
-    .fail(() => {
-      $('#petDetailsContent').html('<p>Error loading details.</p>');
-    });
-}
-
-
 </script>
