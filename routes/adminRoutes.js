@@ -449,6 +449,7 @@ router.get("/sales-report", (req, res) => {
 });
 // ─── GET /admin/get-categories ─────────────────────────────────────────
 router.get('/get-categories', adminController.getCategories);
+
 // adminRoutes.js
 router.get("/get-sales-by-category", adminController.getSalesByCategory);
 router.get(
