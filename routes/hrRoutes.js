@@ -76,17 +76,45 @@ router.get('/reservation', authMiddleware, async (req, res) => {
       .populate('doctor', 'username')
       .populate('owner', '_id username')
       .lean();
+// 2) Annotate each reservation (multi-pet aware)
+for (let r of reservations) {
+  const petNames = (r.pets || [])
+    .map(p => p.petId?.petName || p.petName)
+    .filter(Boolean);
 
-    // 2) Annotate each reservation
-    for (let r of reservations) {
-      const petName = r.pets[0]?.petName;
-      const entry = await PetList.findOne({ owner: r.owner, petName }).lean();
-      r.petExists      = Boolean(entry);
-      r.isInitialEntry = entry?.reservation?.toString() === r._id.toString();
-      r.isStacked      = entry?.consultationHistory.some(ch =>
-        ch.reservation.toString() === r._id.toString()
-      ) || false;
-    }
+  if (petNames.length === 0) {
+    r.petExists = false;
+    r.isStacked = false;
+    r.isInitialEntry = false;
+    continue;
+  }
+
+  const entries = await PetList.find(
+    { owner: r.owner, petName: { $in: petNames } },
+    'petName reservation consultationHistory'
+  ).lean();
+
+  const byName = new Map(entries.map(e => [e.petName, e]));
+
+  let allExist = true;
+  let allStacked = true;
+  let anyInitial = false;
+
+  for (const name of petNames) {
+    const entry = byName.get(name);
+    if (!entry) { allExist = false; allStacked = false; continue; }
+
+    const hasThisReservation = (entry.consultationHistory || [])
+      .some(ch => String(ch.reservation) === String(r._id));
+    if (!hasThisReservation) allStacked = false;
+
+    if (String(entry.reservation) === String(r._id)) anyInitial = true;
+  }
+
+  r.petExists = allExist;        // all pets have a PetList entry
+  r.isStacked = allStacked;      // all those entries include this reservation
+  r.isInitialEntry = anyInitial; // at least one entry was created by this reservation
+}
 
     // 3) Compute ongoingReservations
     const ongoingReservations = reservations.filter(r =>
@@ -410,120 +438,139 @@ router.get('/get-medication', authMiddleware, validateRequest(reservationIdSchem
 // Add pet from reservation (validate reservationId)
 // 1) Add to PetList (on “Add” button)
 // Add to PetList (on “Add” button)
-router.post(
-  '/add-to-petlist',
-  authMiddleware,
-  validateRequest(reservationIdSchema),
-  async (req, res) => {
-    try {
-      const { reservationId } = req.body;
+router.post('/add-to-petlist', authMiddleware, validateRequest(reservationIdSchema), async (req, res) => {
+  try {
+    const { reservationId } = req.body;
 
-      // 1) load the reservation (to get its owner & petName)
-      const reservation = await Reservation.findById(reservationId).lean();
-      if (!reservation) {
-        return res
-          .status(404)
-          .json({ success: false, message: 'Reservation not found.' });
+    const reservation = await Reservation.findById(reservationId).lean();
+    if (!reservation) return res.status(404).json({ success: false, message: 'Reservation not found.' });
+
+    const consults = await Consultation.find({ reservation: reservationId }).lean();
+    if (!consults.length) return res.status(404).json({ success: false, message: 'No consult found.' });
+
+    // helper to resolve pet name for a consultation
+    const petsArr = reservation.pets || [];
+    const resolvePetName = (c) => {
+      if (c?.targetPetName && String(c.targetPetName).trim()) return String(c.targetPetName).trim();
+      if (c?.petName && String(c.petName).trim())             return String(c.petName).trim();
+
+      const byId = c?.targetPetId || c?.petId;
+      if (byId && mongoose.isValidObjectId(byId)) {
+        const hit = petsArr.find(p => String(p.petId?._id) === String(byId));
+        if (hit) return hit.petId?.petName || hit.petName || '—';
       }
 
-      // 2) find the consultation (as before)
-      const consult = await Consultation
-        .findOne({ reservation: reservationId })
-        .lean();
-      if (!consult) {
-        return res
-          .status(404)
-          .json({ success: false, message: 'No consult found.' });
+      const byNameMaybe = (typeof byId === 'string' && !mongoose.isValidObjectId(byId)) ? byId : null;
+      if (byNameMaybe) {
+        const hit = petsArr.find(p => (p.petId?.petName || p.petName) === byNameMaybe);
+        if (hit) return hit.petId?.petName || hit.petName || '—';
       }
 
-      // 3) create the PetList entry
-      const entry = await PetList.create({
-        owner:       reservation.owner,                // reservation's owner ID
-        petName:     reservation.pets[0]?.petName || 'Unknown',
-        reservation: reservationId,
-        consultationHistory: [{
-          reservation:   reservationId,
-          consultation:  consult._id
-        }]
-      });
+      if (petsArr.length === 1) return petsArr[0].petId?.petName || petsArr[0].petName || '—';
+      return '—';
+    };
 
-      // 4) mark the reservation itself as Done
-      await Reservation.findByIdAndUpdate(reservationId, { status: 'Done' });
+    for (const c of consults) {
+      const petName = resolvePetName(c);
+      if (!petName || petName === '—') continue;
 
-      // 5) send back success
-      return res.json({ success: true, petList: entry });
-    } catch (err) {
-      console.error('Error in add-to-petlist:', err);
-      return res.status(500).json({ success: false, message: 'Server error.' });
-    }
-  }
-);
+      let entry = await PetList.findOne({ owner: reservation.owner, petName }).lean();
 
-
-
-// 2) Update PetList (on “Update” button)
-// 2) Update PetList (on “Update” button)
-router.post(
-  '/update-petlist',
-  authMiddleware,
-  validateRequest(reservationIdSchema),
-  async (req, res) => {
-    try {
-      const { reservationId } = req.body;
-
-      // 1) load reservation to get owner & petName
-      const reservation = await Reservation.findById(reservationId).lean();
-      if (!reservation) {
-        return res
-          .status(404)
-          .json({ success: false, message: 'Reservation not found.' });
-      }
-
-      // 2) find the consultation record
-      const consult = await Consultation
-        .findOne({ reservation: reservationId })
-        .lean();
-      if (!consult) {
-        return res
-          .status(404)
-          .json({ success: false, message: 'No consult found.' });
-      }
-
-      // 3) push it onto the PetList entry by owner+petName
-      const entry = await PetList.findOneAndUpdate(
-        {
-          owner:   reservation.owner,
-          petName: reservation.pets[0]?.petName
-        },
-        {
-          $push: {
-            consultationHistory: {
-              reservation:  reservationId,
-              consultation: consult._id
-            }
-          }
-        },
-        { new: true }
-      );
       if (!entry) {
-        return res
-          .status(404)
-          .json({ success: false, message: 'PetList entry not found.' });
+        // create new entry for this pet
+        entry = await PetList.create({
+          owner: reservation.owner,
+          petName,
+          reservation: reservationId,
+          consultationHistory: [{ reservation: reservationId, consultation: c._id }]
+        });
+      } else {
+        // push only if this reservation not present yet
+        const hasThis = (entry.consultationHistory || [])
+          .some(ch => String(ch.reservation) === String(reservationId));
+        if (!hasThis) {
+          await PetList.updateOne(
+            { _id: entry._id },
+            { $push: { consultationHistory: { reservation: reservationId, consultation: c._id } } }
+          );
+        }
       }
-
-      // 4) mark the corresponding reservation as Done
-      await Reservation.findByIdAndUpdate(reservationId, { status: 'Done' });
-
-      // 5) return the updated entry
-      return res.json({ success: true, petList: entry });
-    } catch (err) {
-      console.error('Error in update-petlist:', err);
-      return res
-        .status(500)
-        .json({ success: false, message: 'Server error.' });
     }
+
+    await Reservation.findByIdAndUpdate(reservationId, { status: 'Done' });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error in add-to-petlist:', err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
   }
-);
+});
+
+
+
+// 2) Update PetList (on “Update” button)
+// 2) Update PetList (on “Update” button)
+router.post('/update-petlist', authMiddleware, validateRequest(reservationIdSchema), async (req, res) => {
+  try {
+    const { reservationId } = req.body;
+
+    const reservation = await Reservation.findById(reservationId).lean();
+    if (!reservation) return res.status(404).json({ success: false, message: 'Reservation not found.' });
+
+    const consults = await Consultation.find({ reservation: reservationId }).lean();
+    if (!consults.length) return res.status(404).json({ success: false, message: 'No consult found.' });
+
+    const petsArr = reservation.pets || [];
+    const resolvePetName = (c) => {
+      if (c?.targetPetName && String(c.targetPetName).trim()) return String(c.targetPetName).trim();
+      if (c?.petName && String(c.petName).trim())             return String(c.petName).trim();
+      const byId = c?.targetPetId || c?.petId;
+      if (byId && mongoose.isValidObjectId(byId)) {
+        const hit = petsArr.find(p => String(p.petId?._id) === String(byId));
+        if (hit) return hit.petId?.petName || hit.petName || '—';
+      }
+      const byNameMaybe = (typeof byId === 'string' && !mongoose.isValidObjectId(byId)) ? byId : null;
+      if (byNameMaybe) {
+        const hit = petsArr.find(p => (p.petId?.petName || p.petName) === byNameMaybe);
+        if (hit) return hit.petId?.petName || hit.petName || '—';
+      }
+      if (petsArr.length === 1) return petsArr[0].petId?.petName || petsArr[0].petName || '—';
+      return '—';
+    };
+
+    for (const c of consults) {
+      const petName = resolvePetName(c);
+      if (!petName || petName === '—') continue;
+
+      let entry = await PetList.findOne({ owner: reservation.owner, petName }).lean();
+
+      if (!entry) {
+        // if somehow missing, create it (makes Update safe if Add was skipped)
+        entry = await PetList.create({
+          owner: reservation.owner,
+          petName,
+          reservation: reservationId,
+          consultationHistory: [{ reservation: reservationId, consultation: c._id }]
+        });
+      } else {
+        const hasThis = (entry.consultationHistory || [])
+          .some(ch => String(ch.reservation) === String(reservationId));
+        if (!hasThis) {
+          await PetList.updateOne(
+            { _id: entry._id },
+            { $push: { consultationHistory: { reservation: reservationId, consultation: c._id } } }
+          );
+        }
+      }
+    }
+
+    await Reservation.findByIdAndUpdate(reservationId, { status: 'Done' });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error in update-petlist:', err);
+    return res.status(500).json({ success: false, message: 'Server error.' });
+  }
+});
+
 
 
 
@@ -604,104 +651,195 @@ router.post('/add-consult-existing', authMiddleware, async (req, res) => {
   // create a new Reservation (or Consultation) record
   // return { success: true }
 });
-router.get(
-  '/get-consultation-details',
-  authMiddleware,
-  validateRequest(reservationIdSchema, 'query'),
-  async (req, res) => {
-    try {
-      const { reservationId } = req.query;
-
-      // 1. fetch the consultation
-      const consultation = await Consultation.findOne({ reservation: reservationId }).lean();
-      if (!consultation) {
-        return res.status(404).json({ success: false, message: 'No consultation found.' });
-      }
-
-      // 2. fetch the reservation for pet/conerns/schedule
-      const reservation = await Reservation.findById(reservationId)
-        .populate('pets.petId', 'petName birthday')
-        .lean();
-
-      // 3. enrich meds with unitPrice & totalPrice
-     const medsWithPrices = await Promise.all(
-  (consultation.medications || []).map(async med => {
-    let item = null;
-    if (med.productId) {
-      item = await Inventory.findById(med.productId).lean();
+// GET /hr/get-consultation-details
+// GET /hr/get-consultation-details  (PASTE/REPLACE)
+router.get('/get-consultation-details', authMiddleware, async (req, res) => {
+  try {
+    const { reservationId } = req.query;
+    if (!reservationId) {
+      return res.json({ success: false, message: 'Missing reservationId' });
     }
-    if (!item && med.name) {
-      item = await Inventory.findOne({ name: med.name }).lean();
-    }
-    const unitPrice = item?.price || 0;
-    const category  = item?.category || 'Uncategorized';
-    return {
-      ...med,
-      unitPrice,
-      totalPrice: unitPrice * (med.quantity || 0),
-      category
-    };
-  })
-);
 
-      // 4. enrich services with price
-      const svcsWithPrices = await Promise.all(
-        (consultation.services || []).map(async srv => {
-          const svc = await Service.findOne({ serviceName: srv.serviceName }).lean();
-          return {
-            ...srv,
-            price: svc?.price || 0
-          };
-        })
-      );
-
-      return res.json({
-        success: true,
-        data: {
-          reservation: {
-            pets:        reservation.pets,
-            concerns:    reservation.concerns,
-            schedule:    reservation.schedule,
-              status:      reservation.status 
-          },
-          consultation: {
-            notes:       consultation.consultationNotes,
-            physical:    consultation.physicalExam,
-            diagnosis:   consultation.diagnosis,
-            medications: medsWithPrices,
-            services:    svcsWithPrices
-          }
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ success: false, message: 'Server error' });
+    const reservation = await Reservation.findById(reservationId)
+      .populate('owner', 'username')
+      .populate('pets.petId', 'petName')
+      .lean();
+    if (!reservation) {
+      return res.json({ success: false, message: 'Reservation not found' });
     }
+
+    // Pull all per-pet consultations for this reservation
+// load newest first
+const consultDocs = await Consultation
+  .find({ reservation: reservationId })
+  .sort({ updatedAt: -1, _id: -1 })
+  .lean();
+
+// keep ONLY the latest consultation per pet (prefer id; fallback to name)
+const latestByPet = new Map();
+for (const c of consultDocs) {
+  const key = c.targetPetId
+    ? `id:${c.targetPetId}`
+    : `name:${(c.targetPetName || c.petName || '').trim().toLowerCase()}`;
+  if (!latestByPet.has(key)) latestByPet.set(key, c); // first = newest due to sort
+}
+
+    // Helper: resolve pet name for a consultation (supports either petId or petName)
+   // at top of file we already have: const mongoose = require('mongoose');
+// Helper: resolve pet name for a consultation (supports targetPet* and legacy pet*)
+function resolvePetName(c) {
+  // 1) explicit names first
+  if (c?.targetPetName && String(c.targetPetName).trim()) return String(c.targetPetName).trim();
+  if (c?.petName && String(c.petName).trim())             return String(c.petName).trim();
+
+  const petsArr = reservation.pets || [];
+
+  // 2) try by id (prefer targetPetId; fall back to petId)
+  const candidateId = c?.targetPetId || c?.petId;
+  if (candidateId && mongoose.isValidObjectId(candidateId)) {
+    const hitById = petsArr.find(p => String(p.petId?._id) === String(candidateId));
+    if (hitById) return hitById.petId?.petName || hitById.petName || '—';
   }
-);
+
+  // 3) try by name string (some old data put the name in petId)
+  const candidateName =
+    (typeof candidateId === 'string' && !mongoose.isValidObjectId(candidateId))
+      ? candidateId
+      : (c?.targetPetName || c?.petName || null);
+
+  if (candidateName) {
+    const hitByName = petsArr.find(p => (p.petId?.petName || p.petName) === candidateName);
+    if (hitByName) return hitByName.petId?.petName || hitByName.petName || '—';
+  }
+
+  // 4) single-pet reservation fallback
+  if (petsArr.length === 1) return petsArr[0].petId?.petName || petsArr[0].petName || '—';
+
+  return '—';
+}
+
+
+
+    // Enrich medications/services with prices (from Inventory/Service)
+    const consultations = [];
+for (const c of latestByPet.values()) {
+  const petName = resolvePetName(c);
+
+  // ----- Medications -----
+  const meds = [];
+  for (const m of (c.medications || [])) {
+    const medName = m.name || m.medicationName || '';
+    let inv = null;
+    if (medName) inv = await Inventory.findOne({ name: medName }).lean();
+const unitPrice =
+  (typeof m.unitPrice === 'number')
+    ? m.unitPrice
+    : (typeof inv?.basePrice === 'number'
+        ? inv.basePrice
+        : (typeof inv?.price === 'number' ? inv.price : 0));
+
+    const hasConsultTarget = !!(c.targetPetId || c.targetPetName || c.petId || c.petName);
+    const medHasTarget     = !!(m.targetPetId || m.petId || m.targetPetName || m.petName);
+    const inferredAdded    = m.added === true ? true : (!hasConsultTarget && !medHasTarget);
+
+    meds.push({
+      ...m,
+      name: medName,
+      unitPrice,
+      category: m.category || inv?.category || 'Uncategorized',
+      quantity: Number(m.quantity || 0),
+      added: !!inferredAdded
+    });
+  }
+
+  // ----- Services -----
+  const svcs = [];
+  for (const s of (c.services || [])) {
+    let svcDoc = null;
+    if (s.serviceId) {
+      try { svcDoc = await Service.findById(s.serviceId).lean(); } catch {}
+    }
+    if (!svcDoc && s.serviceName) {
+      svcDoc = await Service.findOne({ serviceName: s.serviceName }).lean();
+    }
+    svcs.push({
+      ...s,
+      serviceName: s.serviceName || svcDoc?.serviceName || '',
+      price: (typeof s.price === 'number') ? s.price : (svcDoc?.price || 0)
+    });
+  }
+
+  consultations.push({
+    petId: c.petId || null,
+    petName,
+    medications: meds,
+    services: svcs
+  });
+}
+
+    // Payment present?
+    const payment = await Payment.findOne({ reservation: reservationId }).lean();
+
+    res.json({
+      success: true,
+      data: { reservation, consultations, payment: payment || null }
+    });
+  } catch (err) {
+    console.error('get-consultation-details failed:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+
+// Put this near your other Joi schemas in hrroutes.js
+
+// Accept extra keys on each line item (e.g., pet, category, etc.)
+const lineItemSchema = Joi.object({
+  name:      Joi.string().required(),
+  quantity:  Joi.number().min(0).required(),
+  unitPrice: Joi.number().min(0).required(),
+  lineTotal: Joi.number().min(0).required()
+}).unknown(true);
+
 const markPaidSchema = Joi.object({
   reservationId: Joi.string().required(),
   amount:        Joi.number().min(0).required(),
-  products:      Joi.array()
-                     .items(
-                       Joi.object({
-                         name:      Joi.string().required(),
-                         quantity:  Joi.number().min(0).required(),
-                         unitPrice: Joi.number().min(0).required(),
-                         lineTotal: Joi.number().min(0).required()
-                       })
-                     )
-                     .default([]),    // ← allow empty by default
-  services:      Joi.array()
-                     .items(
-                       Joi.object({
-                         name:      Joi.string().required(),
-                         quantity:  Joi.number().min(0).required(),
-                         unitPrice: Joi.number().min(0).required(),
-                         lineTotal: Joi.number().min(0).required()
-                       })
-                     )
-                     .default([])     // ← allow empty by default
+  products:      Joi.array().items(lineItemSchema).default([]),
+  services:      Joi.array().items(lineItemSchema).default([])
+});
+
+router.get('/get-consultation', authMiddleware, async (req, res) => {
+  try {
+    const { reservationId } = req.query;
+    if (!reservationId) {
+      return res.status(400).json({ success: false, message: 'reservationId is required.' });
+    }
+
+    const reservation = await Reservation.findById(reservationId)
+      .populate('doctor', 'username')
+      .populate('pets.petId', 'petName birthday species breed sex') // so we can show more pet info
+      .lean();
+
+    if (!reservation) {
+      return res.status(404).json({ success: false, message: 'Reservation not found.' });
+    }
+
+    // merge its Consultation (if any)
+    const consult = await Consultation.findOne({ reservation: reservationId }).lean();
+    if (consult) {
+      reservation.physicalExam       = consult.physicalExam;
+      reservation.diagnosis          = consult.diagnosis;
+      reservation.services           = consult.services;
+      reservation.medications        = consult.medications;
+      reservation.notes              = consult.notes;
+      reservation.confinementStatus  = consult.confinementStatus;
+    }
+
+    return res.json({ success: true, reservation });
+  } catch (err) {
+    console.error('HR get-consultation error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
 });
 
 // HR: Check inventory quantity for medications (so your HR UI can call it)
@@ -736,8 +874,12 @@ router.get('/inventory/categories', authMiddleware, async (req, res) => {
 router.get('/inventory/listByCategory', authMiddleware, async (req, res) => {
   try {
     const { category } = req.query;
-    const products = await Inventory.find({ category }).lean();
-    res.json({ success: true, products });
+  const products = await Inventory.find({ category }, 'name basePrice').lean();
+res.json({
+  success: true,
+  products: products.map(p => ({ name: p.name, price: p.basePrice }))
+});
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -752,6 +894,20 @@ router.post(
   async (req, res) => {
     try {
       const { reservationId, amount, products, services } = req.body;
+// keep only the fields we actually store
+const cleanProducts = (products || []).map(p => ({
+  name:      p.name,
+  quantity:  Number(p.quantity)  || 0,
+  unitPrice: Number(p.unitPrice) || 0,
+  lineTotal: Number(p.lineTotal) || 0
+}));
+
+const cleanServices = (services || []).map(s => ({
+  name:      s.name,
+  quantity:  Number(s.quantity)  || 0,
+  unitPrice: Number(s.unitPrice) || 0,
+  lineTotal: Number(s.lineTotal) || 0
+}));
 
       // 1) Find & mark reservation paid
       const reservation = await Reservation.findById(reservationId);
@@ -761,26 +917,30 @@ router.post(
       reservation.status = 'Paid';
       await reservation.save();
 
-      // 2) Decrement each product’s inventory
-      for (let { name, quantity } of products) {
-        const inv = await Inventory.findOne({ name });
-        if (inv) {
-          inv.quantity = Math.max(inv.quantity - quantity, 0);
-          await inv.save();
-        }
-      }
+// 2) Decrement each product’s inventory (skip full-doc validation)
+for (const { name, quantity } of cleanProducts) {
+  const invDoc = await Inventory.findOne({ name }).lean();
+  if (!invDoc) continue;
+
+  const newQty = Math.max((invDoc.quantity || 0) - Number(quantity || 0), 0);
+
+  // Only update the quantity field; this won't trigger required validators on other fields
+  await Inventory.updateOne(
+    { _id: invDoc._id },
+    { $set: { quantity: newQty } }
+  );
+}
 
       // 3) Save the payment record — now with customer & by
-      const payment = new Payment({
-        reservation: reservation._id,
-        customer:    reservation.owner,      // ← who the payment is for
-        by:          req.user.userId,        // ← which field holds your HR’s ID?
-        products,
-        services,
-        amount
-      });
-
-      await payment.save();
+   const payment = new Payment({
+  reservation: reservation._id,
+  customer:    reservation.owner,
+  by:          req.user.userId,
+  products:    cleanProducts,
+  services:    cleanServices,
+  amount
+});
+await payment.save();
 
       return res.json({ success: true, reservation });
     } catch (err) {
@@ -853,25 +1013,22 @@ const addMedicationSchema = Joi.object({
   quantity:        Joi.number().min(1).required()
 });
 
-router.post(
-  '/add-medication',
-  authMiddleware,
-  validateRequest(addMedicationSchema),
-  async (req, res) => {
-    try {
-      const { reservationId, medicationName, quantity } = req.body;
-      const consult = await Consultation.findOne({ reservation: reservationId });
-      if (!consult) {
-        return res.status(404).json({ success:false, message:'Consultation not found.' });
-      }
-      consult.medications.push({ name: medicationName, quantity });
-      await consult.save();
-      res.json({ success:true });
-    } catch (err) {
-      console.error('Error adding medication:', err);
-      res.status(500).json({ success:false, message:'Server error.' });
-    }
+// Add a new medication to the consultation
+router.post('/add-medication', authMiddleware, validateRequest(addMedicationSchema), async (req, res) => {
+  try {
+    const { reservationId, medicationName, quantity } = req.body;
+    const consult = await Consultation.findOne({ reservation: reservationId });
+    if (!consult) return res.status(404).json({ success:false, message:'Consultation not found.' });
+
+    // 👇 mark manual additions
+    consult.medications.push({ name: medicationName, quantity, added: true });
+    await consult.save();
+    res.json({ success:true });
+  } catch (err) {
+    console.error('Error adding medication:', err);
+    res.status(500).json({ success:false, message:'Server error.' });
   }
-);
+});
+
 
 module.exports = router;
