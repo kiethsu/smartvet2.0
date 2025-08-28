@@ -622,6 +622,8 @@
           $('#sidebarProfilePic').attr('src', res.profilePic + '?v=' + Date.now());
           if (res.user) {
             refreshProfileOverview(res.user);
+              if (window.applyUserToShell) window.applyUserToShell({ profilePic: res.profilePic });
+    $(document).trigger('user:updated', [{ profilePic: res.profilePic }]);
           }
         }
       }).fail(() => {
@@ -643,6 +645,8 @@
         Swal.fire(res.success ? 'Success' : 'Error', res.message, res.success ? 'success' : 'error');
         if (res.success && res.user) {
           refreshProfileOverview(res.user);
+              if (window.applyUserToShell) window.applyUserToShell(res.user);
+    $(document).trigger('user:updated', [res.user]);
         }
       })
       .fail(xhr => {
