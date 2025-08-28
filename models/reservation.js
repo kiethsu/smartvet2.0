@@ -1,73 +1,68 @@
+// models/reservation.js
 const mongoose = require('mongoose');
 
-/**
- * Each Reservation represents a single appointment/consultation event.
- * 
- * - consultationNotes, medications[]: The doctor's notes and prescribed meds
- *   for THIS reservation.
- * - petAdded: Tracks whether the pet data has been "added/updated" in the system,
- *   so you can hide it from the Ongoing list once done.
- */
-const ReservationSchema = new mongoose.Schema(
-  {
-    // The user (owner) who booked this reservation
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    ownerName: { type: String, required: true },
+const PetEntrySchema = new mongoose.Schema({
+  petId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Pet' },
+  petName: { type: String },
 
-    // Pet info stored inline, plus an optional petId link if that pet is in your Pet collection
-    pets: [
-      {
-        petId: { type: mongoose.Schema.Types.ObjectId, ref: 'Pet' },
-        petName: String,
-      },
-    ],
-
-    service: { type: String, required: true },
-
-    // Date & time for the appointment
-    date: { type: Date, required: true },
-    time: { type: String, required: true },
-
-    // Owner concerns / reason for visit
-    concerns: { type: String },
-
-    // Reservation status (e.g. 'Pending', 'Approved', 'Done', etc.)
-    status: { type: String, default: 'Pending' },
-
-    // Assigned doctor
-    doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-
-    // Optional contact info
-    address: { type: String, default: "" },
-    phone: { type: String, default: "" },
-
-    // === Consultation fields ===
-    // The doctor can fill these out once the appointment is complete
-    consultationNotes: { type: String, default: "" },
-    medications: [
-      { 
-        medicationName: { type: String },
-        dosage: { type: String },
-        frequency: { type: String },
-        adminTime: { type: String },
-        additionalInstructions: { type: String },
-        quantity: { type: String }  // New field added for medication quantity
-      }
-    ],
-
-    // Follow-up schedule (if any)
-    schedule: {
-      scheduleDate: { type: Date },
-      scheduleDetails: { type: String }
-    },
-
-    // Flag to indicate if the pet was "added/updated" in the system from this consultation
-    petAdded: { type: Boolean, default: false },
-
-    // Timestamp when the reservation was canceled (if applicable)
-    canceledAt: { type: Date }
+  // Per-pet schedule & flags
+  schedule: {
+    scheduleDate:    { type: Date },
+    scheduleDetails: { type: String }
   },
-  { timestamps: true }
-);
+  done:       { type: Boolean, default: false },
+  hasConsult: { type: Boolean, default: false }
+}, { _id: false });
+
+const PetRequestSchema = new mongoose.Schema({
+  petId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Pet' },
+  petName:  { type: String },
+  service:  { type: String },
+  concerns: { type: String }
+}, { _id: false });
+
+const ReservationSchema = new mongoose.Schema({
+  owner:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  ownerName: { type: String, required: true },
+
+  // Multi-pet support
+  pets:        [PetEntrySchema],     // used by doctor-facing UI
+  petRequests: [PetRequestSchema],   // requested service per pet (from booking)
+
+  // Legacy reservation-level fields (kept for compatibility)
+  service:   { type: String },
+  concerns:  { type: String },
+
+  // Booking slot used for capacity checks
+  // date = calendar day; time = label like "8:00 AM"
+  date:  { type: Date },
+  time:  { type: String },
+
+  // Doctor assignment & status
+  doctor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  status: { type: String, default: 'Pending' }, // Pending/Approved/Done/etc.
+
+  // Optional reservation-level follow-up
+  schedule: {
+    scheduleDate:    { type: Date },
+    scheduleDetails: { type: String }
+  },
+
+  isFollowUp: { type: Boolean, default: false },
+  petAdded:   { type: Boolean, default: false },
+
+  canceledAt: { type: Date },
+
+  // Idempotency key to prevent duplicate submissions when users double-click submit
+  // (Set this from the client and check server-side before creating a new doc)
+  idemKey: { type: String }
+}, { timestamps: true });
+
+// Fast counting by slot for: date + time + active statuses
+ReservationSchema.index({ date: 1, time: 1, status: 1 });
+
+// Ensure only one reservation per idempotency key;
+// sparse allows multiple docs with no idemKey at all.
+ReservationSchema.index({ idemKey: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Reservation', ReservationSchema);
