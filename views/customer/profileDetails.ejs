@@ -427,9 +427,24 @@
                   <div class="tab-pane fade show active" id="profile-details" role="tabpanel">
                     <form id="profileDetailsForm">
                       <div class="form-group">
-                        <label for="fullName">Username/Full Name</label>
-                        <input type="text" class="form-control" id="fullName" value="<%= user.username %>">
-                      </div>
+  <label for="fullName">Username/Full Name</label>
+  <input
+    type="text"
+    class="form-control"
+    id="fullName"
+    value="<%= user.username %>"
+    maxlength="40"
+    autocomplete="name"
+    aria-describedby="fullNameHelp fullNameCounter fullNameError"
+  >
+<small id="fullNameHelp" class="form-text text-muted">Up to 40 characters.</small>
+
+  <div class="d-flex justify-content-between mt-1">
+    <small id="fullNameCounter" class="text-muted">0/40</small>
+    <small id="fullNameError" class="text-danger d-none">Invalid character(s).</small>
+  </div>
+</div>
+
                       <div class="form-group">
                         <label for="address">Address</label>
                         <input type="text" class="form-control" id="address" value="<%= user.address || '' %>">
@@ -529,239 +544,297 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.12/dist/sweetalert2.all.min.js"></script>
 
-  <script>
-    // PATCH helper: update overview & form fields from returned user object
-    function refreshProfileOverview(user) {
-      $('.profile-info h4').text(user.username || '');
+ <script>
+  // ---------- Shared helpers ----------
+  // Update overview card + sidebar + (if present) welcome card
+  function refreshProfileOverview(user) {
+    const name = user?.username || '';
+    const email = user?.email || '';
+    const address = user?.address || '';
+    const cellphone = user?.cellphone || '';
 
-      const emailElem = $('.contact-card .contact-row').filter(function() {
-        return $(this).find('i').hasClass('fa-envelope');
-      }).find('.value');
-      if (user.email) {
-        emailElem.removeClass('muted').text(user.email);
-      } else {
-        emailElem.addClass('muted').text('No email provided');
-      }
+    // Overview header
+    $('.profile-info h4').text(name);
 
-      const addrElem = $('.contact-card .contact-row').filter(function() {
-        return $(this).find('i').hasClass('fa-map-marker-alt');
-      }).find('.value');
-      if (user.address) {
-        addrElem.removeClass('muted').text(user.address);
-      } else {
-        addrElem.addClass('muted').text('No address provided');
-      }
+    // Sidebar display name
+    $('#sidebarUserName').text(name);
 
-      const phoneElem = $('.contact-card .contact-row').filter(function() {
-        return $(this).find('i').hasClass('fa-phone');
-      }).find('.value');
-      if (user.cellphone) {
-        phoneElem.removeClass('muted').text(user.cellphone);
-      } else {
-        phoneElem.addClass('muted').text('No cellphone number provided');
-      }
-
-      $('#fullName').val(user.username || '');
-      $('#address').val(user.address || '');
-      $('#cellphone').val(user.cellphone || '');
-      $('#currentEmail').val(user.email || '');
+    // Dashboard welcome (if this page has it mounted in your shell)
+    if (document.getElementById('welcomeUser')) {
+      $('#welcomeUser').text((name || '') + '!');
     }
 
-    // Tab switching for card header
-    $(document).on('click', '.profile-tab-item button', function() {
-      const parent = $(this).closest('.profile-tab-item');
-      const target = parent.data('target');
+    // Contact blocks
+    const emailElem = $('.contact-card .contact-row')
+      .filter(function () { return $(this).find('i').hasClass('fa-envelope'); })
+      .find('.value');
+    if (email) emailElem.removeClass('muted').text(email);
+    else       emailElem.addClass('muted').text('No email provided');
 
-      $('.profile-tab-item').removeClass('active');
-      parent.addClass('active');
+    const addrElem = $('.contact-card .contact-row')
+      .filter(function () { return $(this).find('i').hasClass('fa-map-marker-alt'); })
+      .find('.value');
+    if (address) addrElem.removeClass('muted').text(address);
+    else         addrElem.addClass('muted').text('No address provided');
 
-      $('#profileTabContent .tab-pane').removeClass('show active');
-      $('#' + target).addClass('show active');
-    });
+    const phoneElem = $('.contact-card .contact-row')
+      .filter(function () { return $(this).find('i').hasClass('fa-phone'); })
+      .find('.value');
+    if (cellphone) phoneElem.removeClass('muted').text(cellphone);
+    else           phoneElem.addClass('muted').text('No cellphone number provided');
 
-    // Toggle password visibility
-    $(document).on('click', '.toggle-password', function(){
-      const input = $(this).closest('.input-group').find('input');
-      const icon  = $(this).find('i');
-      if (input.attr('type') === 'password') {
-        input.attr('type', 'text');
-        icon.removeClass('fa-eye').addClass('fa-eye-slash');
-      } else {
-        input.attr('type', 'password');
-        icon.removeClass('fa-eye-slash').addClass('fa-eye');
-      }
-    });
+    // Form fields
+    $('#fullName').val(name);
+    $('#address').val(address);
+    $('#cellphone').val(cellphone);
+    $('#currentEmail').val(email);
+  }
 
-    // upload image
-    $(document).on('click', '#uploadImageButton', function(e) {
-      e.preventDefault();
-      $('#profileImageInput').click();
-    });
+  // ---------- Tabs ----------
+  $(document).on('click', '.profile-tab-item button', function () {
+    const parent = $(this).closest('.profile-tab-item');
+    const target = parent.data('target');
 
-    $(document).on('change', '#profileImageInput', function(){
-      const file = this.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = e => {
-        $('#profileImgContainer').find('.profile-img, #profilePreview').remove();
-        $('#profileImgContainer').prepend(`<img src="${e.target.result}" class="profile-img" id="profilePreviewImg">`);
-      };
-      reader.readAsDataURL(file);
+    $('.profile-tab-item').removeClass('active');
+    parent.addClass('active');
 
-      const formData = new FormData();
-      formData.append('profilePic', file);
-      $.ajax({
-        url: '/customer/update-profile-image',
-        method: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false
-      }).done(res => {
-        Swal.fire(res.success ? 'Success' : 'Error', res.message || (res.success ? 'Profile image updated.' : 'Failed to update image.'), res.success ? 'success' : 'error');
+    $('#profileTabContent .tab-pane').removeClass('show active');
+    $('#' + target).addClass('show active');
+  });
+
+  // ---------- Password visibility ----------
+  $(document).on('click', '.toggle-password', function () {
+    const input = $(this).closest('.input-group').find('input');
+    const icon = $(this).find('i');
+    const isPw = input.attr('type') === 'password';
+    input.attr('type', isPw ? 'text' : 'password');
+    icon.toggleClass('fa-eye fa-eye-slash');
+  });
+
+  // ---------- Profile image upload ----------
+  $(document).on('click', '#uploadImageButton', function (e) {
+    e.preventDefault();
+    $('#profileImageInput').click();
+  });
+
+  $(document).on('change', '#profileImageInput', function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    // local preview
+    const reader = new FileReader();
+    reader.onload = e => {
+      $('#profileImgContainer').find('.profile-img, #profilePreview').remove();
+      $('#profileImgContainer').prepend(
+        `<img src="${e.target.result}" class="profile-img" id="profilePreviewImg">`
+      );
+    };
+    reader.readAsDataURL(file);
+
+    // upload to server
+    const formData = new FormData();
+    formData.append('profilePic', file);
+    $.ajax({
+      url: '/customer/update-profile-image',
+      method: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false
+    })
+      .done(res => {
+        Swal.fire(
+          res.success ? 'Success' : 'Error',
+          res.message || (res.success ? 'Profile image updated.' : 'Failed to update image.'),
+          res.success ? 'success' : 'error'
+        );
         if (res.success) {
+          // sidebar avatar
           $('#sidebarProfilePic').attr('src', res.profilePic + '?v=' + Date.now());
-          if (res.user) {
-            refreshProfileOverview(res.user);
-              if (window.applyUserToShell) window.applyUserToShell({ profilePic: res.profilePic });
-    $(document).trigger('user:updated', [{ profilePic: res.profilePic }]);
-          }
+          // notify shell + other pages
+          if (window.applyUserToShell) window.applyUserToShell({ profilePic: res.profilePic });
+          $(document).trigger('user:updated', [{ profilePic: res.profilePic }]);
         }
-      }).fail(() => {
+      })
+      .fail(() => {
         Swal.fire('Error', 'Server error updating image.', 'error');
       });
-    });
+  });
 
-    // profile details submit
-    $(document).on('submit', '#profileDetailsForm', function(e) {
-      e.preventDefault();
-      const fullName = $('#fullName').val().trim();
-      if (!fullName) return Swal.fire('Error', 'Full name is required.', 'error');
-      $.post('/customer/update-profile-details', {
-        fullName,
-        address: $('#address').val().trim(),
-        cellphone: $('#cellphone').val().trim()
-      })
+  // ---------- Name limit + validation ----------
+  const NAME_MAX = 40;
+  // Letters, numbers, spaces, period, comma, apostrophe, hyphen (unicode-aware for names)
+  const NAME_ALLOWED_RE = /^[\p{L}\p{N} .,'-]+$/u;
+
+  const $fullName = $('#fullName');
+  const $counter = $('#fullNameCounter');      // optional helper element
+  const $nameErr = $('#fullNameError');        // optional helper element
+
+  function sanitizeName(s) {
+    return String(s || '').replace(/\s+/g, ' ').trim();
+  }
+  function nameLooksValid(s) {
+    if (!s) return false;
+    if (s.length > NAME_MAX) return false;
+    return NAME_ALLOWED_RE.test(s);
+  }
+  function updateNameUI() {
+    if (!$fullName.length) return true;
+    let val = $fullName.val() || '';
+    if (val.length > NAME_MAX) {
+      val = val.slice(0, NAME_MAX);
+      $fullName.val(val);
+    }
+    if ($counter.length) $counter.text(`${val.length}/${NAME_MAX}`);
+    const ok = nameLooksValid(val);
+    if ($nameErr.length) $nameErr.toggleClass('d-none', ok);
+    return ok;
+  }
+  // live counter + validation feedback
+  $fullName.on('input', updateNameUI);
+  // initialize once DOM is ready
+  $(function(){ updateNameUI(); });
+
+  // ---------- Profile details submit ----------
+  $(document).on('submit', '#profileDetailsForm', function (e) {
+    e.preventDefault();
+
+    const rawName = $('#fullName').val();
+    const fullName = sanitizeName(rawName);
+    const address = $('#address').val().trim();
+    const cellphone = $('#cellphone').val().trim();
+
+    if (!fullName) {
+      return Swal.fire('Error', 'Full name is required.', 'error');
+    }
+    if (!nameLooksValid(fullName)) {
+      updateNameUI();
+    return Swal.fire('Error', 'Up to 40 characters.', 'error');
+
+    }
+
+    $.post('/customer/update-profile-details', { fullName, address, cellphone })
       .done(res => {
-        Swal.fire(res.success ? 'Success' : 'Error', res.message, res.success ? 'success' : 'error');
+        Swal.fire(res.success ? 'Success' : 'Error', res.message || 'Profile updated.', res.success ? 'success' : 'error');
         if (res.success && res.user) {
+          // Update local UI
           refreshProfileOverview(res.user);
-              if (window.applyUserToShell) window.applyUserToShell(res.user);
-    $(document).trigger('user:updated', [res.user]);
+
+          // Inform the shell / other pages
+          if (window.applyUserToShell) window.applyUserToShell(res.user);
+          $(document).trigger('user:updated', [res.user]);
         }
       })
       .fail(xhr => {
         Swal.fire('Error', xhr.responseJSON?.message || 'Server error.', 'error');
       });
-    });
+  });
 
-    // email OTP & update flows
-    $(document).on('click', '#sendEmailOTP', function() {
-      const newEmail = $('#newEmail').val().trim();
-      if (!newEmail) return Swal.fire('Error', 'Enter a new email.', 'error');
-      $.post('/customer/send-email-otp', { newEmail })
-        .done(res => Swal.fire(res.success ? 'Success' : 'Error', res.message, res.success ? 'success' : 'error'))
-        .fail(xhr => Swal.fire('Error', xhr.responseJSON?.message || 'Server error.', 'error'));
-    });
+  // ---------- Email OTP & update ----------
+  $(document).on('click', '#sendEmailOTP', function () {
+    const newEmail = $('#newEmail').val().trim();
+    if (!newEmail) return Swal.fire('Error', 'Enter a new email.', 'error');
+    $.post('/customer/send-email-otp', { newEmail })
+      .done(res => Swal.fire(res.success ? 'Success' : 'Error', res.message, res.success ? 'success' : 'error'))
+      .fail(xhr => Swal.fire('Error', xhr.responseJSON?.message || 'Server error.', 'error'));
+  });
 
-    $(document).on('submit', '#emailUpdateForm', function(e) {
-      e.preventDefault();
-      const newEmail = $('#newEmail').val().trim();
-      const emailOTP = $('#emailOTP').val().trim();
-      if (!newEmail || !emailOTP) return Swal.fire('Error', 'Email & OTP required.', 'error');
-      $.post('/customer/update-email', { newEmail, emailOTP })
-        .done(res => {
-          Swal.fire(res.success ? 'Success' : 'Error', res.message, res.success ? 'success' : 'error');
-          if (res.success && res.user) {
-            refreshProfileOverview(res.user);
-            $('#newEmail').val('');
-            $('#emailOTP').val('');
-          }
-        })
-        .fail(xhr => Swal.fire('Error', xhr.responseJSON?.message || 'Server error.', 'error'));
-    });
+  $(document).on('submit', '#emailUpdateForm', function (e) {
+    e.preventDefault();
+    const newEmail = $('#newEmail').val().trim();
+    const emailOTP = $('#emailOTP').val().trim();
+    if (!newEmail || !emailOTP) return Swal.fire('Error', 'Email & OTP required.', 'error');
 
-    // password validation logic
-    const rules = {
-      length: /.{8,}/,
-      uppercase: /[A-Z]/,
-      lowercase: /[a-z]/,
-      special: /[^A-Za-z0-9]/
-    };
-
-    function updateRequirementUI(password) {
-      Object.entries(rules).forEach(([ruleName, regex]) => {
-        const passed = regex.test(password);
-        const li = $(`#password-requirements li[data-rule="${ruleName}"]`);
-        const icon = li.find('.requirement-icon');
-        if (passed) {
-          icon.text('✅');
-          li.removeClass('requirement-failed').addClass('requirement-passed');
-        } else {
-          icon.text('❌');
-          li.removeClass('requirement-passed').addClass('requirement-failed');
+    $.post('/customer/update-email', { newEmail, emailOTP })
+      .done(res => {
+        Swal.fire(res.success ? 'Success' : 'Error', res.message, res.success ? 'success' : 'error');
+        if (res.success && res.user) {
+          refreshProfileOverview(res.user);
+          $('#newEmail').val('');
+          $('#emailOTP').val('');
         }
-      });
-    }
+      })
+      .fail(xhr => Swal.fire('Error', xhr.responseJSON?.message || 'Server error.', 'error'));
+  });
 
-    function checkPasswordMatch() {
-      const pw = $('#newPassword').val();
-      const cpw = $('#confirmPassword').val();
-      const feedback = $('#password-match-feedback');
-      if (!cpw) {
-        feedback.text('');
-        return false;
-      }
-      if (pw === cpw) {
-        feedback.text('Passwords match.').css('color', 'green');
-        return true;
-      } else {
-        feedback.text('Passwords do not match.').css('color', 'red');
-        return false;
-      }
-    }
+  // ---------- Password validation ----------
+  const rules = {
+    length: /.{8,}/,
+    uppercase: /[A-Z]/,
+    lowercase: /[a-z]/,
+    special: /[^A-Za-z0-9]/
+  };
 
-    function passwordMeetsAllRules(pw) {
-      return Object.values(rules).every(r => r.test(pw));
-    }
-
-    $(document).on('input', '#newPassword', function() {
-      const pw = $(this).val();
-      updateRequirementUI(pw);
-      checkPasswordMatch();
+  function updateRequirementUI(password) {
+    Object.entries(rules).forEach(([ruleName, regex]) => {
+      const passed = regex.test(password);
+      const li = $(`#password-requirements li[data-rule="${ruleName}"]`);
+      const icon = li.find('.requirement-icon');
+      icon.text(passed ? '✅' : '❌');
+      li.toggleClass('requirement-passed', passed)
+        .toggleClass('requirement-failed', !passed);
     });
-    $(document).on('input', '#confirmPassword', checkPasswordMatch);
+  }
 
-    $(document).on('submit', '#passwordUpdateForm', function(e) {
-      e.preventDefault();
-      const pw  = $('#newPassword').val().trim();
-      const cpw = $('#confirmPassword').val().trim();
+  function checkPasswordMatch() {
+    const pw = $('#newPassword').val();
+    const cpw = $('#confirmPassword').val();
+    const feedback = $('#password-match-feedback');
+    if (!cpw) {
+      feedback.text('');
+      return false;
+    }
+    if (pw === cpw) {
+      feedback.text('Passwords match.').css('color', 'green');
+      return true;
+    } else {
+      feedback.text('Passwords do not match.').css('color', 'red');
+      return false;
+    }
+  }
 
-      if (!pw || !cpw) {
-        return Swal.fire('Error', 'Both password fields are required.', 'error');
-      }
-      if (!passwordMeetsAllRules(pw)) {
-        return Swal.fire(
-          'Error',
-          'Password must be at least 8 characters and include one uppercase letter, one lowercase letter, and one special character.',
-          'error'
-        );
-      }
-      if (pw !== cpw) {
-        return Swal.fire('Error', 'Passwords do not match.', 'error');
-      }
+  function passwordMeetsAllRules(pw) {
+    return Object.values(rules).every(r => r.test(pw));
+  }
 
-      $.post('/customer/update-password', { newPassword: pw })
-        .done(res => {
-          Swal.fire(res.success ? 'Success' : 'Error', res.message, res.success ? 'success' : 'error');
-          if (res.success) {
-            $('#newPassword').val('');
-            $('#confirmPassword').val('');
-            updateRequirementUI('');
-            $('#password-match-feedback').text('');
-          }
-        })
-        .fail(xhr => Swal.fire('Error', xhr.responseJSON?.message || 'Server error.', 'error'));
-    });
-  </script>
+  $(document).on('input', '#newPassword', function () {
+    const pw = $(this).val();
+    updateRequirementUI(pw);
+    checkPasswordMatch();
+  });
+  $(document).on('input', '#confirmPassword', checkPasswordMatch);
+
+  $(document).on('submit', '#passwordUpdateForm', function (e) {
+    e.preventDefault();
+    const pw = $('#newPassword').val().trim();
+    const cpw = $('#confirmPassword').val().trim();
+
+    if (!pw || !cpw) {
+      return Swal.fire('Error', 'Both password fields are required.', 'error');
+    }
+    if (!passwordMeetsAllRules(pw)) {
+      return Swal.fire(
+        'Error',
+        'Password must be at least 8 characters and include one uppercase letter, one lowercase letter, and one special character.',
+        'error'
+      );
+    }
+    if (pw !== cpw) {
+      return Swal.fire('Error', 'Passwords do not match.', 'error');
+    }
+
+    $.post('/customer/update-password', { newPassword: pw })
+      .done(res => {
+        Swal.fire(res.success ? 'Success' : 'Error', res.message, res.success ? 'success' : 'error');
+        if (res.success) {
+          $('#newPassword').val('');
+          $('#confirmPassword').val('');
+          updateRequirementUI('');
+          $('#password-match-feedback').text('');
+        }
+      })
+      .fail(xhr => Swal.fire('Error', xhr.responseJSON?.message || 'Server error.', 'error'));
+  });
+</script>
+
 </body>
 </html>
