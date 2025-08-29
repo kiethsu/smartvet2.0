@@ -10,6 +10,8 @@ const Joi = require("joi"); // <-- Added for input validation
 let otpStore = {};       // For registration OTP
 let resetOtpStore = {};  // For password reset OTP
 let adminOtpStore = {};  // For admin login OTP
+let otpCooldown = {};     // { email: lastSentMs }
+let resetOtpCooldown = {}; // optional: throttle for password-reset OTPs
 
 // In-memory login attempt counter (for demo only)
 const loginAttempts = {};  // e.g. { "admin@example.com": { count: 0, lockoutStart: Date } }
@@ -56,6 +58,17 @@ exports.sendOTP = async (req, res) => {
       return res.status(400).json({ message: "Admin email cannot be used for registration!" });
     }
 
+    // === NEW: Cooldown guard (before generating/sending the OTP) ===
+    const now = Date.now();
+    const COOLDOWN_MS = 60 * 1000; // 60 seconds
+    const last = otpCooldown[normalizedEmail] || 0;
+    if (now - last < COOLDOWN_MS) {
+      const wait = Math.ceil((COOLDOWN_MS - (now - last)) / 1000);
+      return res.status(429).json({ message: `Please wait ${wait}s before requesting another OTP.` });
+    }
+    otpCooldown[normalizedEmail] = now;
+    // ===============================================================
+
     const existingUser = await User.findOne({ email: { $regex: `^${normalizedEmail}$`, $options: "i" } });
     if (existingUser) {
       return res.status(400).json({ message: "This email is already registered! Please log in." });
@@ -73,6 +86,8 @@ exports.sendOTP = async (req, res) => {
 
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
+        // NEW: clear cooldown if send failed so the user can retry
+        delete otpCooldown[normalizedEmail];
         console.error("SMTP ERROR:", error);
         return res.status(500).json({ message: "Failed to send OTP. Check SMTP settings." });
       }
@@ -80,10 +95,13 @@ exports.sendOTP = async (req, res) => {
       res.status(200).json({ message: "OTP sent. Check your email!" });
     });
   } catch (error) {
+    // (Optional) also clear on unexpected errors
+    delete otpCooldown[normalizedEmail];
     console.error("Error Sending OTP:", error);
     res.status(500).json({ message: "Failed to send OTP" });
   }
 };
+
 
 // ================================
 // Verify OTP & Register User
@@ -363,6 +381,9 @@ exports.checkEmailAvailability = async (req, res) => {
 // ================================
 // SEND OTP for Password Reset (All Users)
 // ================================
+// ================================
+// SEND OTP for Password Reset (All Users) — with cooldown
+// ================================
 exports.sendResetOTP = async (req, res) => {
   const { email } = req.body;
   const normalizedEmail = email.trim().toLowerCase();
@@ -372,11 +393,23 @@ exports.sendResetOTP = async (req, res) => {
   }
 
   try {
+    // 1) Make sure the account exists first
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res.status(400).json({ message: "This email is not registered!" });
     }
 
+    // 2) Cooldown guard — before generating/sending OTP
+    const now = Date.now();
+    const COOLDOWN_MS = 60 * 1000; // 60 seconds
+    const last = resetOtpCooldown[normalizedEmail] || 0;
+    if (now - last < COOLDOWN_MS) {
+      const wait = Math.ceil((COOLDOWN_MS - (now - last)) / 1000);
+      return res.status(429).json({ message: `Please wait ${wait}s before requesting another OTP.` });
+    }
+    resetOtpCooldown[normalizedEmail] = now;
+
+    // 3) Generate and send OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     resetOtpStore[normalizedEmail] = otp;
 
@@ -389,6 +422,8 @@ exports.sendResetOTP = async (req, res) => {
 
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
+        // IMPORTANT: clear cooldown on SMTP failure so the user can retry
+        delete resetOtpCooldown[normalizedEmail];
         console.error("❌ SMTP ERROR:", error);
         return res.status(500).json({ message: "Failed to send OTP. Check SMTP settings." });
       }
@@ -396,10 +431,13 @@ exports.sendResetOTP = async (req, res) => {
       res.status(200).json({ message: "OTP sent. Check your email!" });
     });
   } catch (error) {
+    // Also clear cooldown on unexpected error
+    delete resetOtpCooldown[normalizedEmail];
     console.error("❌ Error sending reset OTP:", error);
     res.status(500).json({ message: "Failed to send OTP" });
   }
 };
+
 
 // ================================
 // VERIFY RESET OTP
