@@ -213,6 +213,22 @@
 
 /* smaller screens */
 @media (max-width: 576px){ .rv-grid{ grid-template-columns: 1fr; } }
+/* Make the whole card reliably clickable */
+/* Keep scroller above neighboring content */
+#allPetsScroller { position: relative; z-index: 10; }
+
+/* The card itself is the click target */
+.horizontal-scroll .vetcard {
+  position: relative;
+  cursor: pointer;
+  z-index: 1;
+}
+
+/* Ensure inner content never steals the click */
+.horizontal-scroll .vetcard .circle,
+.horizontal-scroll .vetcard .circle * {
+  pointer-events: none;
+}
 
   </style>
 </head>
@@ -240,10 +256,11 @@
               <div class="horizontal-scroll mb-3" id="allPetsScroller">
                 <% if (pets && pets.length > 0) { %>
                   <% pets.forEach(function(pet) { %>
-                    <div class="vetcard"
-                         data-petid="<%= pet._id %>"
-                         data-petname="<%= pet.petName %>"
-                         data-petpic="<%= pet.petPic || '' %>">
+<div class="vetcard"
+     role="button" tabindex="0"
+     data-petid="<%= String(pet._id) %>"
+     data-petname="<%= pet.petName %>"
+     data-petpic="<%= pet.petPic || '' %>">
                       <div class="circle">
                         <% if (pet.petPic) { %>
                           <img src="<%= pet.petPic %>" alt="<%= pet.petName %>" style="width:50px;height:50px;object-fit:cover;border-radius:50%;"/>
@@ -275,7 +292,7 @@
                   </div>
                   <div class="form-group">
                     <label for="date">Date</label>
-                    <input type="date" class="form-control" id="date" min="<%= new Date().toISOString().split('T')[0] %>">
+<input type="date" class="form-control" id="date">
                   </div>
                   <div class="form-group">
                     <label for="timeSelect">Time</label>
@@ -346,7 +363,24 @@
                               </td>
                               <td><button class="btn btn-primary btn-sm" onclick="viewReservation('<%= res._id %>')">View</button></td>
                               <td><span class="badge badge-<%= res.status==='Approved'?'success':'info' %>"><%= res.status %></span></td>
-                              <td><button class="btn btn-danger btn-sm" onclick="cancelReservation('<%= res._id %>')">Cancel</button></td>
+<td>
+  <% const doctorAssigned = !!res.doctor; %>
+  <% if (doctorAssigned) { %>
+    <button
+      class="btn btn-secondary btn-sm"
+      disabled
+      aria-disabled="true"
+      title="Doctor already assigned—cancellation is disabled">
+      Cancel
+    </button>
+  <% } else { %>
+    <button
+      class="btn btn-danger btn-sm"
+      onclick="cancelReservation('<%= res._id %>')">
+      Cancel
+    </button>
+  <% } %>
+</td>
                             </tr>
                           <% } %>
                         <% }); %>
@@ -429,6 +463,15 @@
     window.selectedPets = window.selectedPets || {}; // { petId: { name, pic } }
     window.appointmentLimit = window.appointmentLimit || 1;
 let isSubmittingReservation = false; // <— NEW
+// ---- local date helpers (use local time, not UTC) ----
+function localToday() {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD in local time
+}
+function selectedOrToday() {
+  return $('#date').val() || localToday();
+}
 
 // Build a deterministic idempotency key from date, time, and pets
 function buildIdemKey(payload) {
@@ -445,46 +488,75 @@ function buildIdemKey(payload) {
       const year = d.getFullYear();
       return month + ' ' + day + ' ' + year;
     };
+function buildTimeOptionsIfMissing() {
+  if ($('#timeSelect option').length) return;
+  var timeOptions = '';
+  for (var hour = 8; hour <= 17; hour++) {
+    var suffix = hour < 12 ? 'AM' : 'PM';
+    var hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    var display = hour12 + ':00 ' + suffix;
+    var slug = hour12 + (suffix.toLowerCase());
+    timeOptions += '<option value="' + display + '" data-hour="' + hour + '" id="slot-' + slug + '">' + display + '</option>';
+  }
+  $('#timeSelect').html(timeOptions);
+}
 
     // ===== Time slot helpers =====
     function checkTimeSlots() {
-      const selectedDate = $('#date').val() || new Date().toISOString().slice(0,10);
-      $('#timeSelect option').each(function(){
-        const $opt = $(this);
-        $.ajax({
-          url: '/customer/consult/appointmentCount',
-          method: 'GET',
-          data: { time: $opt.val(), date: selectedDate },
-          success: function(data){
-            if (data.count >= window.appointmentLimit) {
-              $opt.prop('disabled', true).addClass('full-slot').text($opt.val() + ' - Full').data('disabled-by-count', true);
-            } else if ($opt.data('disabled-by-count')) {
-              $opt.prop('disabled', false).removeClass('full-slot').text($opt.val()).removeData('disabled-by-count');
-            }
-          }
-        });
-      });
-    }
-
-    function updateTimeDropdownForToday() {
-      const selDate = $('#date').val() || new Date().toISOString().slice(0,10);
-      const today = new Date().toISOString().slice(0,10);
-      const currHour = new Date().getHours();
-      if (selDate === today) {
-        $('#timeSelect option').each(function() {
-          const slotHour = parseInt($(this).data('hour'), 10);
-          if (slotHour < currHour) {
-            $(this).attr('disabled', true).attr('data-disabled-by-past', true).text($(this).val() + ' - Passed');
-          } else if ($(this).attr('data-disabled-by-past')) {
-            $(this).removeAttr('disabled data-disabled-by-past').text($(this).val());
-          }
-        });
-      } else {
-        $('#timeSelect option[data-disabled-by-past]').each(function() {
-          $(this).removeAttr('disabled data-disabled-by-past').text($(this).val());
-        });
+  const selectedDate = selectedOrToday();   // local-safe date
+  $('#timeSelect option').each(function(){
+    const $opt = $(this);
+    $.ajax({
+      url: '/customer/consult/appointmentCount',
+      method: 'GET',
+      data: { time: $opt.val(), date: selectedDate },
+      success: function(data){
+        if (data.count >= window.appointmentLimit) {
+          $opt.prop('disabled', true)
+              .addClass('full-slot')
+              .text($opt.val() + ' - Full')
+              .data('disabled-by-count', true);
+        } else if ($opt.data('disabled-by-count')) {
+          $opt.prop('disabled', false)
+              .removeClass('full-slot')
+              .text($opt.val())
+              .removeData('disabled-by-count');
+        }
       }
-    }
+    });
+  });
+}
+
+function updateTimeDropdownForToday() {
+  buildTimeOptionsIfMissing();
+
+  const selDate  = selectedOrToday();  // local
+  const today    = localToday();       // local
+  const currHour = new Date().getHours();
+
+  if (selDate === today) {
+    $('#timeSelect option').each(function() {
+      const $opt = $(this);
+      const slotHour = parseInt($opt.data('hour'), 10);
+      if (slotHour < currHour) {
+        $opt.prop('disabled', true)
+            .attr('data-disabled-by-past', '1')
+            .text($opt.val() + ' - Passed');
+      } else if ($opt.attr('data-disabled-by-past')) {
+        $opt.prop('disabled', false)
+            .removeAttr('data-disabled-by-past')
+            .text($opt.val());
+      }
+    });
+  } else {
+    $('#timeSelect option[data-disabled-by-past]').each(function() {
+      $(this).prop('disabled', false)
+             .removeAttr('data-disabled-by-past')
+             .text($(this).val());
+    });
+  }
+}
+
 
     // ===== UI helpers for multi-select =====
     function renderChip(petId) {
@@ -904,170 +976,194 @@ window.viewReservation = function(id) {
       });
     };
 
-    function initConsultInteractions() {
-      // Tabs
-      $(document).off('click', '.profile-tab-item button').on('click', '.profile-tab-item button', function () {
-        var parent = $(this).closest('.profile-tab-item');
-        var target = parent.data('target');
-        if (!target) return;
-        $('.profile-tab-item').removeClass('active');
-        parent.addClass('active');
-        $('.tab-content').removeClass('active');
-        $('#' + target).addClass('active');
-      });
+  function initConsultInteractions() {
+  // wipe only our namespace before rebinding
+  $(document).off('.consult');
 
-      // Select/unselect pets (MULTI)
-      $('#allPetsScroller').off('click', '.vetcard').on('click', '.vetcard', function () {
-        var petId   = $(this).data('petid');
-        var petName = $(this).data('petname');
-        var petPic  = $(this).data('petpic') || '';
-        if (!petId) return;
+  // Tabs
+  $(document).on('click.consult', '.profile-tab-item button', function () {
+    var parent = $(this).closest('.profile-tab-item');
+    var target = parent.data('target');
+    if (!target) return;
+    $('.profile-tab-item').removeClass('active');
+    parent.addClass('active');
+    $('.tab-content').removeClass('active');
+    $('#' + target).addClass('active');
+  });
 
-        if ($(this).hasClass('selected')) {
-          removePetSelection(String(petId));
-        } else {
-          addPetSelection(String(petId), String(petName), String(petPic));
-        }
-      });
+  // Pet cards (already delegated in your code, keep as-is but namespace it)
+  $(document).on('click.consult', '#allPetsScroller .vetcard, #allPetsScroller .vetcard *', function (e) {
+    e.preventDefault();
+    const $card   = $(e.target).closest('.vetcard');
+    const petId   = ($card.attr('data-petid') || '').trim();
+    const petName = $card.attr('data-petname') || '';
+    const petPic  = $card.attr('data-petpic') || '';
+    if (!petId) return;
+    $card.hasClass('selected') ? removePetSelection(petId) : addPetSelection(petId, petName, petPic);
+  });
 
-      // Chip remove
-      $('#selectedPetsChips').off('click', '.chip .remove').on('click', '.chip .remove', function (e) {
-        e.stopPropagation();
-        var petId = $(this).closest('.chip').data('chipid');
-        removePetSelection(String(petId));
-      });
+  // Chip remove / activate
+  $(document).on('click.consult', '#selectedPetsChips .chip .remove', function (e) {
+    e.stopPropagation();
+    var petId = $(this).closest('.chip').data('chipid');
+    removePetSelection(String(petId));
+  });
+  $(document).on('click.consult', '#selectedPetsChips .chip', function () {
+    var petId = $(this).data('chipid');
+    activatePet(String(petId));
+  });
 
-      // Chip activate
-      $('#selectedPetsChips').off('click', '.chip').on('click', '.chip', function () {
-        var petId = $(this).data('chipid');
-        activatePet(String(petId));
-      });
+  // Date change
+  $(document).on('change.consult', '#date', function(){
+    updateTimeDropdownForToday();
+    checkTimeSlots();
+  });
 
-      // Date changes
-      $('#date').off('change').on('change', function(){
-        updateTimeDropdownForToday();
-        checkTimeSlots();
-      });
+  // Submit (delegated so it survives DOM swaps)
+  $(document).on('submit.consult', '#consultForm', function(e) {
+    e.preventDefault();
+    if (isSubmittingReservation) return;
 
-      // Submit
-      $('#consultForm').off('submit').on('submit', function(e) {
-  e.preventDefault();
-
-  if (isSubmittingReservation) return;                 // <— NEW (guard)
-
-  if (!Object.keys(window.selectedPets).length) {
-    Swal.fire({ icon: 'error', title: 'Error', text: 'Please select at least one pet.' });
-    return;
-  }
-
-  var payload = collectPayload();
-  if (!payload.date) { Swal.fire({ icon:'error', title:'Error', text:'Please choose a date.' }); return; }
-  if (!payload.time) { Swal.fire({ icon:'error', title:'Error', text:'Please choose a time.' }); return; }
-  for (var i=0; i<payload.petRequests.length; i++) {
-    if (!payload.petRequests[i].service) {
-      Swal.fire({ icon:'error', title:'Missing service', text:'Select a service for ' + payload.petRequests[i].petName + '.' });
+    if (!Object.keys(window.selectedPets).length) {
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Please select at least one pet.' });
       return;
     }
+
+    var payload = collectPayload();
+    const todayLocal = localToday();
+if (payload.date < todayLocal) {
+  Swal.fire({ icon: 'error', title: 'Invalid date', text: 'Please choose today or a future date.' });
+  return;
+}
+
+    if (!payload.date) { Swal.fire({ icon:'error', title:'Error', text:'Please choose a date.' }); return; }
+    if (!payload.time) { Swal.fire({ icon:'error', title:'Error', text:'Please choose a time.' }); return; }
+    for (var i = 0; i < payload.petRequests.length; i++) {
+      if (!payload.petRequests[i].service) {
+        Swal.fire({ icon:'error', title:'Missing service', text:'Select a service for ' + payload.petRequests[i].petName + '.' });
+        return;
+      }
+    }
+
+    const $btn = $('#consultForm button[type=submit]');
+    const origBtnHtml = $btn.html();
+    isSubmittingReservation = true;
+    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm mr-2"></span>Submitting...');
+    payload.idemKey = buildIdemKey(payload);
+
+    $.ajax({
+      url: '/customer/submit-reservation',
+      method: 'POST',
+      data: JSON.stringify(payload),
+      contentType: 'application/json',
+      success: function(response) {
+        isSubmittingReservation = false;
+        $btn.prop('disabled', false).html(origBtnHtml);
+        if (!response.success) return;
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: (response.duplicate ? 'Reservation already submitted.' : 'Reservation submitted successfully!')
+        });
+
+        if (response.duplicate) return;
+
+        var $tbody = $('#reservationDetailsTableBody');
+        if ($tbody.find('td[colspan]').length) $tbody.empty();
+
+        var visitDate = response.reservation.date ? window.formatVisitDate(response.reservation.date) : 'N/A';
+        var petNames = (response.reservation.pets || []).map(function(i){return i.petName;}).join(', ');
+        var rowHtml =
+          '<tr id="reservation-' + response.reservation._id + '">' +
+            '<td>' + petNames + '</td>' +
+            '<td>' + visitDate + '</td>' +
+            '<td><button class="btn btn-primary btn-sm" onclick="viewReservation(\'' + response.reservation._id + '\')">View</button></td>' +
+            '<td><span class="badge badge-info">Pending</span></td>' +
+            '<td><button class="btn btn-danger btn-sm" onclick="cancelReservation(\'' + response.reservation._id + '\')">Cancel</button></td>' +
+          '</tr>';
+        $tbody.append(rowHtml);
+        document.getElementById('reservation-' + response.reservation._id)?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+        // Reset + recheck
+        $('#consultForm')[0].reset();
+        $('#selectedPetsChips').empty();
+        $('#perPetForms').empty();
+        $('.horizontal-scroll .vetcard').removeClass('selected');
+        window.selectedPets = {};
+        $('#timeError').text('');
+        updateTimeDropdownForToday();
+        checkTimeSlots();
+      },
+      error: function(err) {
+        isSubmittingReservation = false;
+        $btn.prop('disabled', false).html(origBtnHtml);
+        if (err.responseJSON && err.responseJSON.message) {
+          $('#timeError').text(err.responseJSON.message);
+        } else {
+          Swal.fire({ icon:'error', title:'Error', text:'There was a problem submitting your reservation.' });
+        }
+      }
+    });
+  });
+}
+
+
+    // Helper: ensure the time dropdown exists (8AM–5PM)
+function buildTimeOptionsIfMissing() {
+  if ($('#timeSelect option').length) return; // already built
+  var timeOptions = '';
+  for (var hour = 8; hour <= 17; hour++) {
+    var suffix = hour < 12 ? 'AM' : 'PM';
+    var hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    var display = hour12 + ':00 ' + suffix;
+    var slug = hour12 + (suffix.toLowerCase());
+    timeOptions +=
+      '<option value="' + display + '" data-hour="' + hour + '" id="slot-' + slug + '">' +
+        display +
+      '</option>';
   }
+  $('#timeSelect').html(timeOptions);
+}
 
-  // —— lock UI & add idempotency key
-  const $btn = $('#consultForm button[type=submit]');
-  const origBtnHtml = $btn.html();
-  isSubmittingReservation = true;
-  $btn.prop('disabled', true).html(
-    '<span class="spinner-border spinner-border-sm mr-2" role="status" aria-hidden="true"></span>Submitting...'
-  );
-
-  payload.idemKey = buildIdemKey(payload);            // <— NEW
-
+// Boot the page (safe to call multiple times)
+function bootConsultPage() {
+  buildTimeOptionsIfMissing();
   $.ajax({
-    url: '/customer/submit-reservation',
-    method: 'POST',
-    data: JSON.stringify(payload),
-    contentType: 'application/json',
-    success: function(response) {
-      // always unlock
-      isSubmittingReservation = false;
-      $btn.prop('disabled', false).html(origBtnHtml);
-
-      if (!response.success) return;
-
-      // Show success only once (duplicate submits return the first reservation)
-      Swal.fire({ icon: 'success', title: 'Success', text: (response.duplicate ? 'Reservation already submitted.' : 'Reservation submitted successfully!') });
-
-      // If it was a true duplicate, don’t append a second row
-      if (response.duplicate) return;
-
-      var $tbody = $('#reservationDetailsTableBody');
-      if ($tbody.find('td[colspan]').length) $tbody.empty();
-
-      var visitDate = response.reservation.date ? window.formatVisitDate(response.reservation.date) : 'N/A';
-      var petNames = (response.reservation.pets || []).map(function(i){return i.petName;}).join(', ');
-      var rowHtml =
-        '<tr id="reservation-' + response.reservation._id + '">' +
-          '<td>' + petNames + '</td>' +
-          '<td>' + visitDate + '</td>' +
-          '<td><button class="btn btn-primary btn-sm" onclick="viewReservation(\'' + response.reservation._id + '\')">View</button></td>' +
-          '<td><span class="badge badge-info">Pending</span></td>' +
-          '<td><button class="btn btn-danger btn-sm" onclick="cancelReservation(\'' + response.reservation._id + '\')">Cancel</button></td>' +
-        '</tr>';
-      $tbody.append(rowHtml);
-      var el = document.getElementById('reservation-' + response.reservation._id);
-      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'end' });
-
-      // Reset form & re-check slots
-      $('#consultForm')[0].reset();
-      $('#selectedPetsChips').empty();
-      $('#perPetForms').empty();
-      $('.horizontal-scroll .vetcard').removeClass('selected');
-      window.selectedPets = {};
-      $('#timeError').text('');
+    url: '/customer/settings/appointmentLimit',
+    method: 'GET',
+    success: function (response) {
+      window.appointmentLimit = response.limit;
       updateTimeDropdownForToday();
       checkTimeSlots();
+      initConsultInteractions();
     },
-    error: function(err) {
-      isSubmittingReservation = false;                // <— unlock on error
-      $btn.prop('disabled', false).html(origBtnHtml);
-
-      if (err.responseJSON && err.responseJSON.message) {
-        $('#timeError').text(err.responseJSON.message);
-      } else {
-        Swal.fire({ icon:'error', title:'Error', text:'There was a problem submitting your reservation.' });
-      }
+    error: function () {
+      updateTimeDropdownForToday();
+      checkTimeSlots();
+      initConsultInteractions();
     }
   });
+}
+
+// Initial load
+$(document).ready(function () {
+    const today = localToday();
+  $('#date').attr('min', today);
+  if (!$('#date').val() || $('#date').val() < today) {
+    $('#date').val(today);
+  }
+  bootConsultPage();
 });
 
-    }
+// Also run when coming back via back/forward cache (e.g., after adding a pet)
+window.addEventListener('pageshow', function () {
+  buildTimeOptionsIfMissing();
+  updateTimeDropdownForToday();
+  checkTimeSlots();
+  initConsultInteractions();
+});
 
-    $(document).ready(function () {
-      // Time options 8AM–5PM
-      var timeOptions = '';
-      for (var hour = 8; hour <= 17; hour++) {
-        var suffix = hour < 12 ? 'AM' : 'PM';
-        var hour12 = hour % 12 === 0 ? 12 : hour % 12;
-        var display = hour12 + ':00 ' + suffix;
-        var slug = hour12 + (suffix.toLowerCase());
-        timeOptions += '<option value="' + display + '" data-hour="' + hour + '" id="slot-' + slug + '">' + display + '</option>';
-      }
-      $('#timeSelect').html(timeOptions);
-
-      $.ajax({
-   url: '/customer/settings/appointmentLimit',
-        method: 'GET',
-        success: function(response){
-           window.appointmentLimit = response.limit;
-          updateTimeDropdownForToday();
-          checkTimeSlots();
-          initConsultInteractions();
-        },
-        error: function(){
-          updateTimeDropdownForToday();
-          checkTimeSlots();
-          initConsultInteractions();
-        }
-      });
-    });
   </script>
 </body>
 </html>
