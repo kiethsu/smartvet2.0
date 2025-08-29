@@ -265,8 +265,7 @@ router.get('/mypet', authMiddleware, async (req, res) => {
 
 router.get('/consult', authMiddleware, async (req, res) => {
   try {
-    const pets = await Pet.find({ owner: req.user.userId });
-    const reservations = await Reservation.find({ owner: req.user.userId })
+const pets = await Pet.find({ owner: req.user.userId }).lean();    const reservations = await Reservation.find({ owner: req.user.userId })
                                           .sort({ createdAt: -1 })
                                           .populate('doctor', 'username')
                                           .lean();
