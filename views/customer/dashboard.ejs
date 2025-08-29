@@ -121,10 +121,41 @@
     .center-pad { fill: #fff; opacity: 1; animation: beatCenter 1.8s ease-in-out infinite; }
     @keyframes pulsePad { 0%{transform:scale(1);} 50%{transform:scale(1.1);} 100%{transform:scale(1);} }
     @keyframes beatCenter { 0%,100%{transform:scale(1);} 25%,75%{transform:scale(1.08);} 50%{transform:scale(1);} }
-    .welcome-text { position: relative; z-index: 1; max-width: calc(100% - 280px); min-width: 150px; }
-    .welcome-title { font-size: 1.25rem; font-weight: 500; margin: 0; }
-    .welcome-user { font-size: 2rem; font-weight: 700; margin: 4px 0; text-transform: lowercase; }
-    .welcome-msg { font-size: 1rem; opacity: .95; margin: 8px 0 16px; line-height: 1.4; }
+.welcome-text{
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;     /* NEW */
+  min-width: 0;       /* NEW: required for ellipsis/clamp in flex items */
+  max-width: none;    /* NEW */
+}    .welcome-title { font-size: 1.25rem; font-weight: 500; margin: 0; }
+/* clamp long names, break very long words, and ellipsis overflow */
+.welcome-user{
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 4px 0;
+  text-transform: lowercase;
+
+  /* handle long names gracefully */
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  /* multi-line clamp (2 lines on desktop) */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.15;
+
+  /* break unspaced strings/usernames */
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* allow 3 lines on small screens */
+@media (max-width: 768px){
+  .welcome-user{
+    -webkit-line-clamp: 3;
+  }
+}    .welcome-msg { font-size: 1rem; opacity: .95; margin: 8px 0 16px; line-height: 1.4; }
     .welcome-card .btn {
       background: var(--white);
       color: var(--primary-dark);
@@ -1062,6 +1093,30 @@ function safe(str){ return (typeof escapeHtml === 'function') ? escapeHtml(str) 
       window.open('/customer/prescription/' + reservationId, '_blank');
     }
   })();
+  (function () {
+  function setWelcome(name) {
+    if (!name) return;
+    $('#welcomeUser').text(name + '!');
+  }
+
+  // 1) On first load, mirror whatever’s in the sidebar (already live-updated)
+  const sidebarName = $('#sidebarUserName').text().trim();
+  if (sidebarName) setWelcome(sidebarName);
+
+  // 2) Live updates from Profile Details page
+  $(document).on('user:updated', function (_e, user) {
+    if (user && user.username) setWelcome(user.username);
+  });
+
+  // 3) If the shell exposes applyUserToShell, piggyback it
+  if (window.applyUserToShell) {
+    const prev = window.applyUserToShell;
+    window.applyUserToShell = function (u) {
+      if (typeof prev === 'function') prev(u);
+      if (u && u.username) setWelcome(u.username);
+    };
+  }
+})();
   </script>
 </body>
 </html>
