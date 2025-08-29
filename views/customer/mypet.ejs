@@ -662,723 +662,688 @@
   ></script>
 
   <script>
-    $(document).ready(function () {
-      // Populate breeds when species changes
-      $('#species').on('change', function() {
-        const selected = $(this).val(),
-              dropdown = $('#petBreed');
-        dropdown.empty().append('<option value="">Select breed</option>');
-        if (selected) {
-          $.get('/customer/get-pet-details', data => {
-            (data.speciesBreeds[selected] || []).forEach(b => {
-              dropdown.append(
-                `<option value="${b}">${b}</option>`
-              );
-            });
-          }).fail(console.error);
-        }
-      });
-
-      // Other disease toggle
-      $('#existingDisease').on('change', () => {
-        const isOther = $('#existingDisease').val() === 'Other';
-        $('#otherDisease').toggleClass('d-none', !isOther).val('');
-      });
-
-      // Preview pet picture
-      $('#petPic').on('change', function() {
-        const file = this.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = e => {
-            $('#petPicPreview').html(
-              `<img src="${e.target.result}"
-                    class="img-thumbnail"
-                    style="width:100px;height:100px;object-fit:cover;">`
-            );
-          };
-          reader.readAsDataURL(file);
-        }
-      });
-
-      // Add Pet
-      $('#addPetButton').click(e => {
-        e.preventDefault();
-        const fields = [
-          '#petName','#species','#petBreed',
-          '#petBirthday','#existingDisease','#sex'
-        ];
-        let valid = true;
-        fields.forEach(f => {
-          if (!$(f).val().trim()) {
-            $(f).addClass('is-invalid');
-            valid = false;
-          } else {
-            $(f).removeClass('is-invalid');
-          }
-        });
-        if ($('#existingDisease').val() === 'Other' &&
-            !$('#otherDisease').val().trim()) {
-          $('#otherDisease').addClass('is-invalid');
-          valid = false;
-        }
-        if (!valid) {
-          return Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Please fill all fields.'
-          });
-        }
-        const disease = $('#existingDisease').val() === 'Other'
-                      ? $('#otherDisease').val().trim()
-                      : $('#existingDisease').val();
-        const picSrc = $('#petPicPreview img').attr('src') || '';
-        const payload = {
-          petName: $('#petName').val(),
-          species: $('#species').val(),
-          breed: $('#petBreed').val(),
-          birthday: $('#petBirthday').val(),
-          existingDisease: disease,
-          sex: $('#sex').val(),
-          petPic: picSrc
-        };
-     
-  $.post('/customer/add-pet', payload, res => {
-    if (res.success) {
-      // 1) reset form & preview
-      $('#petForm')[0].reset();
-      $('#petPicPreview').empty();
-
-      // 2) build new row
-      const p = res.pet;
-      const picHtml = p.petPic
-        ? `<img src="${p.petPic}" class="pet-table-pic" alt="${p.petName}">`
-        : `<span class="pet-table-paw"><i class="fa-solid fa-paw"></i></span>`;
-      const newRow = $(`
-        <tr class="pet-row"
-            data-id="${p._id}"
-            data-petname="${p.petName}"
-            data-species="${p.species}"
-            data-breed="${p.breed}"
-            data-birthday="${p.birthday || ''}"
-            data-existingdisease="${p.existingDisease}"
-            data-sex="${p.sex}"
-            data-petpic="${p.petPic || ''}"
-            data-addedfromreservation="false">
-          <td>
-            <div class="pet-name-cell">
-              ${picHtml}
-              ${p.petName}
-            </div>
-          </td>
-          <td>${p.breed || 'N/A'}</td>
-          <td>${p.species || 'N/A'}</td>
-        </tr>
-      `);
-
-      // 3) append to table
-// 3) insert into table (replace empty-state row if present)
-const $tbody = $('.reservation-table-wrapper tbody');
-const $empty = $tbody.find('tr.no-pets-row');
-if ($empty.length) {
-  $empty.replaceWith(newRow);
-} else {
-  $tbody.append(newRow);
+// =======================
+// Helpers (spinner + slow)
+// =======================
+function lockBtn($btn, label) {
+  if (!$btn.length) return;
+  if (!$btn.data('orig-html')) $btn.data('orig-html', $btn.html());
+  $btn.prop('disabled', true).html(
+    '<span class="spinner-border spinner-border-sm mr-1" role="status" aria-hidden="true"></span>' +
+    (label || 'Working…')
+  );
 }
-
-      // 4) success message
-      Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: 'Pet added!'
-      });
-    } else {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: res.message || 'Add failed.'
-      });
-    }
-  }).fail(() => {
+function unlockBtn($btn) {
+  if (!$btn.length) return;
+  const html = $btn.data('orig-html');
+  if (html != null) $btn.html(html);
+  $btn.prop('disabled', false);
+  $btn.removeData('orig-html');
+}
+function trackSlow(jqXHR, ms = 7000, text = 'Your connection seems slow… still working') {
+  const t = setTimeout(() => {
     Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'Server error.'
-    });
-  });
-});
-     // OPEN MODAL: Table row click
-// OPEN MODAL: Table row click
-$(document).on('click', '.pet-row', function () {
-  const $c = $(this);
-  const meta = {
-    id:       $c.data('id'),
-    name:     $c.data('petname'),
-    birthday: $c.data('birthday'),
-    disease:  $c.data('existingdisease'),
-    pic:      $c.data('petpic'),
-    // true when this row came from PetList (clinic data)
-    added:    $c.data('addedfromreservation')
-  };
-
-  // Picture (keep the <img id="modalPetPic"> element; use a transparent fallback if none)
-  const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-  $('#modalPetPic').attr('src', meta.pic || transparentPixel);
-
-  // Fill fields (read-only by default)
-  $('#modalPetNameInput').val(meta.name);
-  $('#modalBirthdayInput').val(meta.birthday || '');
-  $('#modalExistingDiseaseInput').val(meta.disease || '');
-  $('#modalEditContent input, #modalEditContent select').prop('readonly', true);
-
-  // Record ids on buttons
-  $('#updatePetBtn').data({ id: meta.id, added: meta.added });
-  $('#savePetBtn').data('id', meta.id);
-
-  // Determine if this is a clinic (PetList) record
-  const isClinic = !!meta.added || String(meta.id || '').startsWith('list-');
-
-  // Delete button: block clinic records
-  $('#deletePetBtn')
-    .data({ id: meta.id, clinic: isClinic })
-    .prop('disabled', isClinic)
-    .toggleClass('disabled', isClinic)
-    .attr('title', isClinic ? 'Clinic record — cannot delete here' : '')
-    .text(isClinic ? 'Clinic Record' : 'Delete');
-
-  // Upload button: block clinic records
-  $('#uploadPetPicBtn')
-    .prop('disabled', isClinic)
-    .toggleClass('disabled', isClinic)
-    .attr('title', isClinic ? 'Clinic record — image managed by clinic' : '');
-
-  // Show modal on Edit tab
-  $('#tabEdit').trigger('click');
-  resetModalButtons();
-  $('#petDetailsModal').modal('show');
-});
-// ── Modal: Upload pet picture ────────────────────────────────────────────────
-$('#uploadPetPicBtn').off('click').on('click', function () {
-  // respect disabled state for clinic (PetList) rows
-  if ($(this).prop('disabled')) return;
-
-  const id = String($('#updatePetBtn').data('id') || '');
-  if (!id || id.startsWith('list-')) {
-    return Swal.fire({
+      toast: true,
+      position: 'top-end',
       icon: 'info',
-      title: 'Not allowed',
-      text: 'Clinic records cannot be updated here.'
+      title: 'Still working…',
+      text,
+      showConfirmButton: false,
+      timer: 4500
     });
-  }
-  // open file picker
-  $('#modalPetPicInput').trigger('click');
-});
-
-$('#modalPetPicInput').off('change').on('change', function () {
-  const file = this.files && this.files[0];
-  if (!file) return;
-
-  const id = String($('#updatePetBtn').data('id') || '');
-  if (!id || id.startsWith('list-')) {
-    this.value = '';
-    return Swal.fire({
-      icon: 'info',
-      title: 'Not allowed',
-      text: 'Clinic records cannot be updated here.'
-    });
-  }
-
-  // Basic validation
-  if (!/^image\//.test(file.type)) {
-    this.value = '';
-    return Swal.fire({ icon: 'error', title: 'Invalid file', text: 'Please choose an image file.' });
-  }
-  const MAX = 5 * 1024 * 1024; // 5MB
-  if (file.size > MAX) {
-    this.value = '';
-    return Swal.fire({ icon: 'error', title: 'Too large', text: 'Max size is 5MB.' });
-  }
-
-  // Show loading on the button
-  const $btn = $('#uploadPetPicBtn');
-  const orig = $btn.html();
-  $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm mr-1"></span>Uploading…');
-
-  const fd = new FormData();
-  fd.append('petPic', file);
-
-  $.ajax({
-    url: '/customer/update-pet-image/' + encodeURIComponent(id),
-    method: 'POST',
-    data: fd,
-    processData: false,
-    contentType: false,
-    success: function (res) {
-      if (res && res.success && res.petPic) {
-        // 1) update the modal image
-        $('#modalPetPic').attr('src', res.petPic);
-
-        // 2) update the row's data and thumbnail
-        const $row = $('.pet-row[data-id="' + id + '"]');
-        $row.attr('data-petpic', res.petPic);
-
-        const name = $('#modalPetNameInput').val() || 'Unnamed';
-        const picHtml = `<img src="${res.petPic}" alt="${name}" class="pet-table-pic">`;
-
-        const $cell = $row.find('td').eq(0).find('.pet-name-cell');
-        if ($cell.find('img.pet-table-pic').length) {
-          $cell.find('img.pet-table-pic').attr('src', res.petPic);
-        } else {
-          $cell.find('.pet-table-paw').replaceWith(picHtml);
-        }
-
-        Swal.fire({ icon: 'success', title: 'Updated', text: 'Pet picture updated.' });
-      } else {
-        Swal.fire({ icon: 'error', title: 'Upload failed', text: (res && res.message) || 'Please try again.' });
-      }
-    },
-    error: function (xhr) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Server error',
-        text: (xhr.responseJSON && xhr.responseJSON.message) || 'Upload failed.'
-      });
-    },
-    complete: function () {
-      $btn.prop('disabled', false).html(orig);
-      $('#modalPetPicInput').val(''); // allow re-selecting the same file later
-    }
-  });
-});
-
-// Tabs
-$('#tabEdit').click(function() {
-  $(this).addClass('active');
-  $('#tabHistory').removeClass('active');
-  $('#modalEditContent').removeClass('d-none');
-  $('#modalHistoryContent').addClass('d-none');
-  $('#modalPetPicContainer').show();
-  $('#modalEditFooter').removeClass('d-none');
-});
-
-function formatDateLong(dStr) {
-  const d = new Date(dStr);
-  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  }, ms);
+  jqXHR.always(() => clearTimeout(t));
+  return jqXHR;
 }
 
-// Normalize record shape so both HR & Customer payloads work
-function normalizeHistoryRecord(r) {
-  const date =
-    r.date ||
-    r.createdAt ||
-    (r.schedule && r.schedule.scheduleDate) ||
-    (r.reservation && r.reservation.schedule && r.reservation.schedule.scheduleDate) ||
-    null;
+$(document).ready(function () {
+  // Populate breeds when species changes
+  $('#species').on('change', function() {
+    const selected = $(this).val(),
+          dropdown = $('#petBreed');
+    dropdown.empty().append('<option value="">Select breed</option>');
+    if (selected) {
+      $.get('/customer/get-pet-details', data => {
+        (data.speciesBreeds[selected] || []).forEach(b => {
+          dropdown.append(`<option value="${b}">${b}</option>`);
+        });
+      }).fail(console.error);
+    }
+  });
 
-  const doctorUsername =
-    (r.doctor && r.doctor.username) ||
-    (r.reservation && r.reservation.doctor && r.reservation.doctor.username) ||
-    (typeof r.doctor === 'string' ? r.doctor : null) ||
-    null;
+  // Other disease toggle
+  $('#existingDisease').on('change', () => {
+    const isOther = $('#existingDisease').val() === 'Other';
+    $('#otherDisease').toggleClass('d-none', !isOther).val('');
+  });
 
-  const physical = r.physical || r.physicalExam || {};
-  const diagnosis = r.diagnosis || r.diagnose || '';
-  const notes = r.notes || r.consultationNotes || r.concerns || '';
+  // Preview pet picture
+  $('#petPic').on('change', function() {
+    const file = this.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        $('#petPicPreview').html(
+          `<img src="${e.target.result}" class="img-thumbnail" style="width:100px;height:100px;object-fit:cover;">`
+        );
+      };
+      reader.readAsDataURL(file);
+    }
+  });
 
-  const services = Array.isArray(r.services) ? r.services.map(s => ({
-    category: (s.category || 'Uncategorized'),
-    serviceName: (s.serviceName || s.name || (s.service && s.service.name) || ''),
-    details: (s.details || s.detail || s.description || ''),
-    file: (s.file || null)
-  })) : [];
+  // ==========================
+  // Add Pet (with spinner/slow)
+  // ==========================
+  $('#addPetButton').off('click').on('click', function (e) {
+    e.preventDefault();
 
-  const medications = Array.isArray(r.medications) ? r.medications.map(m => ({
-    name: (m.name || m.medicationName || ''),
-    quantity: (m.quantity != null ? m.quantity : '—'),
-    dosage: (m.dosage || '—'),
-    remarks: (m.remarks || '—')
-  })) : [];
+    const fields = ['#petName','#species','#petBreed','#petBirthday','#existingDisease','#sex'];
+    let valid = true;
+    fields.forEach(f => {
+      if (!$(f).val().trim()) { $(f).addClass('is-invalid'); valid = false; }
+      else { $(f).removeClass('is-invalid'); }
+    });
+    if ($('#existingDisease').val() === 'Other' && !$('#otherDisease').val().trim()) {
+      $('#otherDisease').addClass('is-invalid'); valid = false;
+    }
+    if (!valid) {
+      return Swal.fire({ icon: 'error', title: 'Error', text: 'Please fill all fields.' });
+    }
 
-  const confinement = r.confinement || r.confinementStatus || [];
-  const nextSchedule = r.nextSchedule
-    || (r.schedule ? { date: r.schedule.scheduleDate, details: r.schedule.scheduleDetails } : null);
+    const disease = $('#existingDisease').val() === 'Other'
+                  ? $('#otherDisease').val().trim()
+                  : $('#existingDisease').val();
+    const picSrc = $('#petPicPreview img').attr('src') || '';
+    const payload = {
+      petName: $('#petName').val(),
+      species: $('#species').val(),
+      breed: $('#petBreed').val(),
+      birthday: $('#petBirthday').val(),
+      existingDisease: disease,
+      sex: $('#sex').val(),
+      petPic: picSrc
+    };
+
+    const $btn = $('#addPetButton');
+    lockBtn($btn, 'Adding…');
+
+    const req = $.post('/customer/add-pet', payload);
+    trackSlow(req);
+
+    req.done(res => {
+      if (res.success) {
+        // reset form & preview
+        $('#petForm')[0].reset();
+        $('#petPicPreview').empty();
+
+        // build new row
+        const p = res.pet;
+        const picHtml = p.petPic
+          ? `<img src="${p.petPic}" class="pet-table-pic" alt="${p.petName}">`
+          : `<span class="pet-table-paw"><i class="fa-solid fa-paw"></i></span>`;
+        const newRow = $(`
+          <tr class="pet-row"
+              data-id="${p._id}"
+              data-petname="${p.petName}"
+              data-species="${p.species}"
+              data-breed="${p.breed}"
+              data-birthday="${p.birthday || ''}"
+              data-existingdisease="${p.existingDisease}"
+              data-sex="${p.sex}"
+              data-petpic="${p.petPic || ''}"
+              data-addedfromreservation="false">
+            <td><div class="pet-name-cell">${picHtml}${p.petName}</div></td>
+            <td>${p.breed || 'N/A'}</td>
+            <td>${p.species || 'N/A'}</td>
+          </tr>
+        `);
+
+        // insert into table (replace empty-state row if present)
+        const $tbody = $('.reservation-table-wrapper tbody');
+        const $empty = $tbody.find('tr.no-pets-row');
+        if ($empty.length) $empty.replaceWith(newRow);
+        else $tbody.append(newRow);
+
+        Swal.fire({ icon:'success', title:'Success', text:'Pet added!' });
+      } else {
+        Swal.fire({ icon:'error', title:'Error', text: res.message || 'Add failed.' });
+      }
+    }).fail(() => {
+      Swal.fire({ icon:'error', title:'Error', text:'Server error.' });
+    }).always(() => {
+      unlockBtn($btn);
+    });
+  });
+
+  // ==========================
+  // OPEN MODAL: Table row click
+  // ==========================
+  $(document).on('click', '.pet-row', function () {
+    const $c = $(this);
+    const meta = {
+      id:       $c.data('id'),
+      name:     $c.data('petname'),
+      birthday: $c.data('birthday'),
+      disease:  $c.data('existingdisease'),
+      pic:      $c.data('petpic'),
+      added:    $c.data('addedfromreservation') // true when row came from PetList
+    };
+
+    const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+    $('#modalPetPic').attr('src', meta.pic || transparentPixel);
+
+    // Fill fields (read-only by default)
+    $('#modalPetNameInput').val(meta.name);
+    $('#modalBirthdayInput').val(meta.birthday || '');
+    $('#modalExistingDiseaseInput').val(meta.disease || '');
+    $('#modalEditContent input, #modalEditContent select').prop('readonly', true);
+
+    // Record ids on buttons
+    $('#updatePetBtn').data({ id: meta.id, added: meta.added });
+    $('#savePetBtn').data('id', meta.id);
+
+    // Determine if this is a clinic (PetList) record
+    const isClinic = !!meta.added || String(meta.id || '').startsWith('list-');
+
+    // Delete button: block clinic records
+    $('#deletePetBtn')
+      .data({ id: meta.id, clinic: isClinic })
+      .prop('disabled', isClinic)
+      .toggleClass('disabled', isClinic)
+      .attr('title', isClinic ? 'Clinic record — cannot delete here' : '')
+      .text(isClinic ? 'Clinic Record' : 'Delete');
+
+    // Upload button: block clinic records
+    $('#uploadPetPicBtn')
+      .prop('disabled', isClinic)
+      .toggleClass('disabled', isClinic)
+      .attr('title', isClinic ? 'Clinic record — image managed by clinic' : '');
+
+    // Show modal on Edit tab
+    $('#tabEdit').trigger('click');
+    resetModalButtons();
+    $('#petDetailsModal').modal('show');
+  });
+
+  // ── Modal: Upload pet picture (kept with its own mini-spinner) ──
+  $('#uploadPetPicBtn').off('click').on('click', function () {
+    if ($(this).prop('disabled')) return;
+    const id = String($('#updatePetBtn').data('id') || '');
+    if (!id || id.startsWith('list-')) {
+      return Swal.fire({ icon: 'info', title: 'Not allowed', text: 'Clinic records cannot be updated here.' });
+    }
+    $('#modalPetPicInput').trigger('click');
+  });
+
+  $('#modalPetPicInput').off('change').on('change', function () {
+    const file = this.files && this.files[0];
+    if (!file) return;
+
+    const id = String($('#updatePetBtn').data('id') || '');
+    if (!id || id.startsWith('list-')) {
+      this.value = '';
+      return Swal.fire({ icon: 'info', title: 'Not allowed', text: 'Clinic records cannot be updated here.' });
+    }
+
+    if (!/^image\//.test(file.type)) {
+      this.value = '';
+      return Swal.fire({ icon: 'error', title: 'Invalid file', text: 'Please choose an image file.' });
+    }
+    const MAX = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX) {
+      this.value = '';
+      return Swal.fire({ icon: 'error', title: 'Too large', text: 'Max size is 5MB.' });
+    }
+
+    const $btn = $('#uploadPetPicBtn');
+    const orig = $btn.html();
+    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm mr-1"></span>Uploading…');
+
+    const fd = new FormData();
+    fd.append('petPic', file);
+
+    $.ajax({
+      url: '/customer/update-pet-image/' + encodeURIComponent(id),
+      method: 'POST',
+      data: fd,
+      processData: false,
+      contentType: false,
+      success: function (res) {
+        if (res && res.success && res.petPic) {
+          // update modal image
+          $('#modalPetPic').attr('src', res.petPic);
+
+          // update table row data + thumb
+          const $row = $('.pet-row[data-id="' + id + '"]');
+          $row.attr('data-petpic', res.petPic);
+
+          const name = $('#modalPetNameInput').val() || 'Unnamed';
+          const picHtml = `<img src="${res.petPic}" alt="${name}" class="pet-table-pic">`;
+          const $cell = $row.find('td').eq(0).find('.pet-name-cell');
+          if ($cell.find('img.pet-table-pic').length) {
+            $cell.find('img.pet-table-pic').attr('src', res.petPic);
+          } else {
+            $cell.find('.pet-table-paw').replaceWith(picHtml);
+          }
+          Swal.fire({ icon: 'success', title: 'Updated', text: 'Pet picture updated.' });
+        } else {
+          Swal.fire({ icon: 'error', title: 'Upload failed', text: (res && res.message) || 'Please try again.' });
+        }
+      },
+      error: function (xhr) {
+        Swal.fire({ icon: 'error', title: 'Server error', text: (xhr.responseJSON && xhr.responseJSON.message) || 'Upload failed.' });
+      },
+      complete: function () {
+        $btn.prop('disabled', false).html(orig);
+        $('#modalPetPicInput').val('');
+      }
+    });
+  });
+
+  // Tabs
+  $('#tabEdit').click(function() {
+    $(this).addClass('active');
+    $('#tabHistory').removeClass('active');
+    $('#modalEditContent').removeClass('d-none');
+    $('#modalHistoryContent').addClass('d-none');
+    $('#modalPetPicContainer').show();
+    $('#modalEditFooter').removeClass('d-none');
+  });
+
+  function formatDateLong(dStr) {
+    const d = new Date(dStr);
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  }
+
+  // Normalize record shape so both HR & Customer payloads work
+  function normalizeHistoryRecord(r) {
+    const date =
+      r.date ||
+      r.createdAt ||
+      (r.schedule && r.schedule.scheduleDate) ||
+      (r.reservation && r.reservation.schedule && r.reservation.schedule.scheduleDate) ||
+      null;
+
+    const doctorUsername =
+      (r.doctor && r.doctor.username) ||
+      (r.reservation && r.reservation.doctor && r.reservation.doctor.username) ||
+      (typeof r.doctor === 'string' ? r.doctor : null) ||
+      null;
+
+    const physical = r.physical || r.physicalExam || {};
+    const diagnosis = r.diagnosis || r.diagnose || '';
+    const notes = r.notes || r.consultationNotes || r.concerns || '';
+
+    const services = Array.isArray(r.services) ? r.services.map(s => ({
+      category: (s.category || 'Uncategorized'),
+      serviceName: (s.serviceName || s.name || (s.service && s.service.name) || ''),
+      details: (s.details || s.detail || s.description || ''),
+      file: (s.file || null)
+    })) : [];
+
+    const medications = Array.isArray(r.medications) ? r.medications.map(m => ({
+      name: (m.name || m.medicationName || ''),
+      quantity: (m.quantity != null ? m.quantity : '—'),
+      dosage: (m.dosage || '—'),
+      remarks: (m.remarks || '—')
+    })) : [];
+
+    const confinement = r.confinement || r.confinementStatus || [];
+    const nextSchedule = r.nextSchedule
+      || (r.schedule ? { date: r.schedule.scheduleDate, details: r.schedule.scheduleDetails } : null);
     const reservationId = (r.reservation && r.reservation._id) || r.reservationId || null;
 
+    return { date, doctorUsername, notes, physical, diagnosis, services, medications, confinement, nextSchedule, reservationId };
+  }
+  function escapeHtml(str){
+    return String(str ?? '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+      .replace(/'/g,'&#039;');
+  }
+  function safe(str){ return escapeHtml(str ?? ''); }
 
-return { date, doctorUsername, notes, physical, diagnosis, services, medications, confinement, nextSchedule, reservationId };
-}
-function escapeHtml(str){
-  return String(str ?? '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
-    .replace(/'/g,'&#039;');
-}
-function safe(str){ return escapeHtml(str ?? ''); }
+  $('#tabHistory').click(function () {
+    $(this).addClass('active');
+    $('#tabEdit').removeClass('active');
+    $('#modalHistoryContent').removeClass('d-none');
+    $('#modalEditContent').addClass('d-none');
+    $('#modalPetPicContainer').hide();
+    $('#modalEditFooter').addClass('d-none');
 
-$('#tabHistory').click(function () {
-  $(this).addClass('active');
-  $('#tabEdit').removeClass('active');
-  $('#modalHistoryContent').removeClass('d-none');
-  $('#modalEditContent').addClass('d-none');
-  $('#modalPetPicContainer').hide();
-  $('#modalEditFooter').addClass('d-none');
+    const rawId = String($('#updatePetBtn').data('id') || '');
+    const isPetListRow = rawId.startsWith('list-');
 
-  const rawId = String($('#updatePetBtn').data('id') || '');
-  const isPetListRow = rawId.startsWith('list-');
+    // Only send an id when it belongs to PetList (strip "list-").
+    const petId = isPetListRow ? rawId.slice(5) : null;
+    const petName = $('#modalPetNameInput').val();
+    const addedFromReservation = $('#updatePetBtn').data('added');
 
-  // Only send an id when it belongs to PetList (strip "list-").
-  const petId = isPetListRow ? rawId.slice(5) : null;
-  const petName = $('#modalPetNameInput').val();
-  const addedFromReservation = $('#updatePetBtn').data('added');
+    $('#petHistoryContainer').html('<p>Loading…</p>');
 
-  $('#petHistoryContainer').html('<p>Loading…</p>');
+    $.get('/customer/get-pet-history', { petId, petName, addedFromReservation })
+      .done(({ success, history }) => {
+        if (!success) {
+          $('#petHistoryContainer').html('<p>No history available.</p>');
+          return;
+        }
+        if (!Array.isArray(history) || history.length === 0) {
+          $('#petHistoryContainer').html('<p>No consultations found.</p>');
+          return;
+        }
 
-  $.get('/customer/get-pet-history', { petId, petName, addedFromReservation })
-    .done(({ success, history }) => {
-      if (!success) {
-        $('#petHistoryContainer').html('<p>No history available.</p>');
-        return;
-      }
-      if (!Array.isArray(history) || history.length === 0) {
-        $('#petHistoryContainer').html('<p>No consultations found.</p>');
-        return;
-      }
+        // newest first (just in case)
+        history.sort((a, b) => {
+          const ad = new Date(a.date || a.createdAt || a.schedule?.scheduleDate || 0);
+          const bd = new Date(b.date || b.createdAt || b.schedule?.scheduleDate || 0);
+          return bd - ad;
+        });
 
-      // newest first (just in case)
-      history.sort((a, b) => {
-        const ad = new Date(a.date || a.createdAt || a.schedule?.scheduleDate || 0);
-        const bd = new Date(b.date || b.createdAt || b.schedule?.scheduleDate || 0);
-        return bd - ad;
-      });
-let html = '';
+        let html = '';
+        history.forEach((raw, idx) => {
+          const rec = normalizeHistoryRecord(raw);
+          const dateStr = rec.date ? formatDateLong(rec.date) : '—';
+          const doctor  = rec.doctorUsername || 'Not Assigned';
+          const weight = rec.physical.weight || '—';
+          const temp   = rec.physical.temperature || '—';
+          const obs    = rec.physical.observations || '—';
 
-history.forEach((raw, idx) => {
-  const rec = normalizeHistoryRecord(raw);
-  const dateStr = rec.date ? formatDateLong(rec.date) : '—';
-  const doctor  = rec.doctorUsername || 'Not Assigned';
-
-  const weight = rec.physical.weight || '—';
-  const temp   = rec.physical.temperature || '—';
-  const obs    = rec.physical.observations || '—';
-
-  html += `
-    <div class="history-item">
-      <!-- Toggler -->
-      <div class="history-header" role="button" tabindex="0"
-           data-target="#historyRecord${idx}" aria-expanded="false"
-           aria-controls="historyRecord${idx}">
-        <span><i class="fa-solid fa-calendar-check"></i> ${safe(dateStr)} — Dr. ${safe(doctor)}</span>
-        <i class="fas fa-chevron-down"></i>
-      </div>
-
-      <!-- Collapsible body (starts closed) -->
-      <div id="historyRecord${idx}" class="collapse">
-    <div class="history-content">
-  <div class="rv-card">
-
-            ${rec.notes ? `
-              <div class="rv-section">
-                <div class="rv-label" style="margin-bottom:6px;">
-                  <i class="fa-regular fa-note-sticky"></i> Notes
-                </div>
-                <div class="rv-note">${safe(rec.notes)}</div>
-              </div>` : ''}
-
-            ${(weight !== '—' || temp !== '—' || obs !== '—') ? `
-              <div class="rv-section">
-                <div class="rv-label" style="margin-bottom:6px;">
-                  <i class="fa-solid fa-heart-pulse"></i> Physical Exam
-                </div>
-                <div class="table-responsive">
-                  <table class="rv-table">
-                    <thead><tr><th>Weight</th><th>Temperature</th><th>Observations</th></tr></thead>
-                    <tbody><tr>
-                      <td>${safe(weight)}</td>
-                      <td>${safe(temp)}</td>
-                      <td>${safe(obs)}</td>
-                    </tr></tbody>
-                  </table>
-                </div>
-              </div>` : ''}
-
-            ${rec.diagnosis ? `
-              <div class="rv-section">
-                <div class="rv-label" style="margin-bottom:6px;">
-                  <i class="fa-solid fa-dna"></i> Diagnosis
-                </div>
-                <div class="rv-note">${safe(rec.diagnosis)}</div>
-              </div>` : ''}
-
-            ${(Array.isArray(rec.services) && rec.services.length) ? `
-              <div class="rv-section">
-                <div class="rv-label" style="margin-bottom:6px;">
-                  <i class="fa-solid fa-stethoscope"></i> Services
-                </div>
-                <div class="table-responsive">
-                  <table class="rv-table">
-                    <thead><tr><th>Category</th><th>Service</th><th>Details</th><th>File</th></tr></thead>
-                    <tbody>
-                      ${rec.services.map(s => {
-                        let fileUrl = s.file || '';
-                        if (fileUrl) {
-                          fileUrl = String(fileUrl).replace(/^public/, '');
-                          if (!fileUrl.startsWith('/')) fileUrl = '/' + fileUrl;
-                        }
-                        return `
-                          <tr>
-                            <td>${safe(s.category || '—')}</td>
-                            <td><span class="rv-chip">${safe(s.serviceName || '—')}</span></td>
-                            <td>${safe(s.details || '—')}</td>
-                            <td>${fileUrl ? `<a href="${safe(fileUrl)}" download>Download</a>` : '—'}</td>
-                          </tr>`;
-                      }).join('')}
-                    </tbody>
-                  </table>
-                </div>
-              </div>` : ''}
-
-            ${(Array.isArray(rec.medications) && rec.medications.length) ? `
-              <div class="rv-section">
-                <div class="rv-header" style="margin-bottom:6px;">
-                  <div class="rv-label" style="margin:0;">
-                    <i class="fa-solid fa-pills"></i> Medications
-                  </div>
-                  ${rec.reservationId ? `
-                    <button class="btn btn-outline-secondary btn-sm"
-                            onclick="window.open('/customer/prescription/${safe(rec.reservationId)}','_blank')">
-                      <i class="fas fa-file-download"></i> Prescription
-                    </button>` : ''}
-                </div>
-                <div class="table-responsive">
-                  <table class="rv-table">
-                    <thead><tr><th>Name</th><th>Qty</th><th>Dosage</th><th>Remarks</th></tr></thead>
-                    <tbody>
-                      ${rec.medications.map(m => `
-                        <tr>
-                          <td>${safe(m.name || '—')}</td>
-                          <td>${safe(m.quantity ?? '—')}</td>
-                          <td>${safe(m.dosage || '—')}</td>
-                          <td>${safe(m.remarks || '—')}</td>
-                        </tr>`).join('')}
-                    </tbody>
-                  </table>
-                </div>
-              </div>` : ''}
-
-            <div class="rv-section">
-              <div class="rv-grid">
-                <div class="rv-kv">
-                  <div class="rv-label"><i class="fa-solid fa-hospital"></i> Confinement</div>
-                  <div class="rv-value" style="white-space:normal;">
-                    ${safe((Array.isArray(rec.confinement) && rec.confinement.length) ? rec.confinement.join(', ') : 'N/A')}
-                  </div>
-                </div>
-                <div class="rv-kv">
-                  <div class="rv-label"><i class="fa-solid fa-calendar-plus"></i> Next Follow-Up</div>
-                  <div class="rv-value" style="white-space:normal;">
-                    ${rec.nextSchedule
-                      ? `${safe(formatDateLong(rec.nextSchedule.date))}${rec.nextSchedule.details ? ' — ' + safe(rec.nextSchedule.details) : ''}`
-                      : 'N/A'}
-                  </div>
-                </div>
+          html += `
+            <div class="history-item">
+              <div class="history-header" role="button" tabindex="0"
+                   data-target="#historyRecord${idx}" aria-expanded="false"
+                   aria-controls="historyRecord${idx}">
+                <span><i class="fa-solid fa-calendar-check"></i> ${safe(dateStr)} — Dr. ${safe(doctor)}</span>
+                <i class="fas fa-chevron-down"></i>
               </div>
-            </div>
-          </div><!-- /.rv-card -->
-        </div><!-- /.history-content -->
-      </div><!-- /.collapse -->
-    </div><!-- /.history-item -->
-  `;
-});
+              <div id="historyRecord${idx}" class="collapse">
+                <div class="history-content">
+                  <div class="rv-card">
+                    ${rec.notes ? `
+                      <div class="rv-section">
+                        <div class="rv-label" style="margin-bottom:6px;">
+                          <i class="fa-regular fa-note-sticky"></i> Notes
+                        </div>
+                        <div class="rv-note">${safe(rec.notes)}</div>
+                      </div>` : ''}
 
-$('#petHistoryContainer').html(html);
+                    ${(weight !== '—' || temp !== '—' || obs !== '—') ? `
+                      <div class="rv-section">
+                        <div class="rv-label" style="margin-bottom:6px;">
+                          <i class="fa-solid fa-heart-pulse"></i> Physical Exam
+                        </div>
+                        <div class="table-responsive">
+                          <table class="rv-table">
+                            <thead><tr><th>Weight</th><th>Temperature</th><th>Observations</th></tr></thead>
+                            <tbody><tr>
+                              <td>${safe(weight)}</td>
+                              <td>${safe(temp)}</td>
+                              <td>${safe(obs)}</td>
+                            </tr></tbody>
+                          </table>
+                        </div>
+                      </div>` : ''}
 
-/* Wire header clicks to toggle (explicit, reliable) */
-$('#petHistoryContainer').off('click.history')
-  .on('click.history', '.history-header', function () {
-    const target = $(this).data('target');
-    $(target).collapse('toggle');
-  });
+                    ${rec.diagnosis ? `
+                      <div class="rv-section">
+                        <div class="rv-label" style="margin-bottom:6px;">
+                          <i class="fa-solid fa-dna"></i> Diagnosis
+                        </div>
+                        <div class="rv-note">${safe(rec.diagnosis)}</div>
+                      </div>` : ''}
 
-/* Start closed and keep chevron in sync */
-$('#petHistoryContainer .collapse').each(function () {
-  $(this).removeClass('show').collapse({ toggle: false });
-});
-$('#petHistoryContainer').off('show.bs.collapse hide.bs.collapse')
-  .on('show.bs.collapse', '.collapse', function () {
-    $(`.history-header[data-target="#${this.id}"]`).attr('aria-expanded', 'true');
-  })
-  .on('hide.bs.collapse', '.collapse', function () {
-    $(`.history-header[data-target="#${this.id}"]`).attr('aria-expanded', 'false');
-  });
+                    ${(Array.isArray(rec.services) && rec.services.length) ? `
+                      <div class="rv-section">
+                        <div class="rv-label" style="margin-bottom:6px;">
+                          <i class="fa-solid fa-stethoscope"></i> Services
+                        </div>
+                        <div class="table-responsive">
+                          <table class="rv-table">
+                            <thead><tr><th>Category</th><th>Service</th><th>Details</th><th>File</th></tr></thead>
+                            <tbody>
+                              ${rec.services.map(s => {
+                                let fileUrl = s.file || '';
+                                if (fileUrl) {
+                                  fileUrl = String(fileUrl).replace(/^public/, '');
+                                  if (!fileUrl.startsWith('/')) fileUrl = '/' + fileUrl;
+                                }
+                                return `
+                                  <tr>
+                                    <td>${safe(s.category || '—')}</td>
+                                    <td><span class="rv-chip">${safe(s.serviceName || '—')}</span></td>
+                                    <td>${safe(s.details || '—')}</td>
+                                    <td>${fileUrl ? `<a href="${safe(fileUrl)}" download>Download</a>` : '—'}</td>
+                                  </tr>`;
+                              }).join('')}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>` : ''}
 
-/* (Optional) true accordion: only one open at a time */
-// $('#petHistoryContainer').on('show.bs.collapse', '.collapse', function () {
-//   $('#petHistoryContainer .collapse.show').not(this).collapse('hide');
-// });
+                    ${(Array.isArray(rec.medications) && rec.medications.length) ? `
+                      <div class="rv-section">
+                        <div class="rv-header" style="margin-bottom:6px;">
+                          <div class="rv-label" style="margin:0;">
+                            <i class="fa-solid fa-pills"></i> Medications
+                          </div>
+                          ${rec.reservationId ? `
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    onclick="window.open('/customer/prescription/${safe(rec.reservationId)}','_blank')">
+                              <i class="fas fa-file-download"></i> Prescription
+                            </button>` : ''}
+                        </div>
+                        <div class="table-responsive">
+                          <table class="rv-table">
+                            <thead><tr><th>Name</th><th>Qty</th><th>Dosage</th><th>Remarks</th></tr></thead>
+                            <tbody>
+                              ${rec.medications.map(m => `
+                                <tr>
+                                  <td>${safe(m.name || '—')}</td>
+                                  <td>${safe(m.quantity ?? '—')}</td>
+                                  <td>${safe(m.dosage || '—')}</td>
+                                  <td>${safe(m.remarks || '—')}</td>
+                                </tr>`).join('')}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>` : ''}
 
+                    <div class="rv-section">
+                      <div class="rv-grid">
+                        <div class="rv-kv">
+                          <div class="rv-label"><i class="fa-solid fa-hospital"></i> Confinement</div>
+                          <div class="rv-value" style="white-space:normal;">
+                            ${safe((Array.isArray(rec.confinement) && rec.confinement.length) ? rec.confinement.join(', ') : 'N/A')}
+                          </div>
+                        </div>
+                        <div class="rv-kv">
+                          <div class="rv-label"><i class="fa-solid fa-calendar-plus"></i> Next Follow-Up</div>
+                          <div class="rv-value" style="white-space:normal;">
+                            ${rec.nextSchedule
+                              ? `${safe(formatDateLong(rec.nextSchedule.date))}${rec.nextSchedule.details ? ' — ' + safe(rec.nextSchedule.details) : ''}`
+                              : 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div><!-- /.rv-card -->
+                </div><!-- /.history-content -->
+              </div><!-- /.collapse -->
+            </div><!-- /.history-item -->
+          `;
+        });
 
-// 3) (Optional) true-accordion behavior: open one, close the rest
-//    — uncomment if you want only one open at a time.
-// $('#petHistoryContainer').on('show.bs.collapse', '.collapse', function () {
-//   $('#petHistoryContainer .collapse.show').not(this).collapse('hide');
-// });
+        $('#petHistoryContainer').html(html);
 
-    })
-    .fail((xhr) => {
-      console.error('History load failed:', xhr?.status, xhr?.responseText);
-      $('#petHistoryContainer').html('<p>Error loading history.</p>');
-    });
-});
+        // Toggle + chevron sync
+        $('#petHistoryContainer').off('click.history')
+          .on('click.history', '.history-header', function () {
+            const target = $(this).data('target');
+            $(target).collapse('toggle');
+          });
 
-
-// Edit → Save toggle
-     $('#updatePetBtn').click(function() {
-  $('#modalEditContent input').prop('readonly', false);
-  $('#updatePetBtn').addClass('d-none');
-  $('#savePetBtn').removeClass('d-none');
-});
-
-      $('#petDetailsModal').on('hidden.bs.modal', function() {
-        resetModalButtons();
-        $('#tabEdit').addClass('active');
-        $('#tabHistory').removeClass('active');
-        $('#modalEditContent').removeClass('d-none');
-        $('#modalHistoryContent').addClass('d-none');
-        $('#modalPetPicContainer').show();
+        $('#petHistoryContainer .collapse').each(function () {
+          $(this).removeClass('show').collapse({ toggle: false });
+        });
+        $('#petHistoryContainer').off('show.bs.collapse hide.bs.collapse')
+          .on('show.bs.collapse', '.collapse', function () {
+            $(`.history-header[data-target="#${this.id}"]`).attr('aria-expanded', 'true');
+          })
+          .on('hide.bs.collapse', '.collapse', function () {
+            $(`.history-header[data-target="#${this.id}"]`).attr('aria-expanded', 'false');
+          });
+      })
+      .fail((xhr) => {
+        console.error('History load failed:', xhr?.status, xhr?.responseText);
+        $('#petHistoryContainer').html('<p>Error loading history.</p>');
       });
-      function resetModalButtons() {
-        $('#savePetBtn').addClass('d-none');
-        $('#updatePetBtn').removeClass('d-none');
-      }
+  });
 
-  // Save edits (real-time, no page reload)
-$('#savePetBtn').off('click').on('click', function (e) {
-  e.preventDefault(); e.stopPropagation();
+  // Edit → Save toggle
+  $('#updatePetBtn').click(function() {
+    $('#modalEditContent input').prop('readonly', false);
+    $('#updatePetBtn').addClass('d-none');
+    $('#savePetBtn').removeClass('d-none');
+  });
 
-  const id = String($(this).data('id') || '');
-  if (!id) return;
+  $('#petDetailsModal').on('hidden.bs.modal', function() {
+    resetModalButtons();
+    $('#tabEdit').addClass('active');
+    $('#tabHistory').removeClass('active');
+    $('#modalEditContent').removeClass('d-none');
+    $('#modalHistoryContent').addClass('d-none');
+    $('#modalPetPicContainer').show();
+  });
 
-  const payload = {
-    petName: $('#modalPetNameInput').val().trim(),
-    birthday: $('#modalBirthdayInput').val(),
-    existingDisease: $('#modalExistingDiseaseInput').val().trim()
-  };
-
-  // basic guard
-  if (!payload.petName) {
-    return Swal.fire({ icon: 'error', title: 'Missing name', text: 'Pet name is required.' });
+  function resetModalButtons() {
+    $('#savePetBtn').addClass('d-none');
+    $('#updatePetBtn').removeClass('d-none');
   }
 
-  const $save = $('#savePetBtn');
-  const originalHtml = $save.html();
-  $save.prop('disabled', true).html('<span class="spinner-border spinner-border-sm mr-1"></span> Saving…');
+  // ======================================
+  // Save edits (spinner + slow toast)
+  // ======================================
+  $('#savePetBtn').off('click').on('click', function (e) {
+    e.preventDefault(); e.stopPropagation();
 
-  $.ajax({
-    url: '/customer/update-pet/' + encodeURIComponent(id),
-    method: 'PUT',
-    data: payload,
-    success(res) {
+    const id = String($(this).data('id') || '');
+    if (!id) return;
+
+    const payload = {
+      petName: $('#modalPetNameInput').val().trim(),
+      birthday: $('#modalBirthdayInput').val(),
+      existingDisease: $('#modalExistingDiseaseInput').val().trim()
+    };
+
+    if (!payload.petName) {
+      return Swal.fire({ icon: 'error', title: 'Missing name', text: 'Pet name is required.' });
+    }
+
+    const $save = $('#savePetBtn');
+    lockBtn($save, 'Saving…');
+
+    const req = $.ajax({
+      url: '/customer/update-pet/' + encodeURIComponent(id),
+      method: 'PUT',
+      data: payload
+    });
+    trackSlow(req);
+
+    req.done(res => {
       if (!res || !res.success || !res.pet) {
         return Swal.fire({ icon: 'error', title: 'Error', text: (res && res.message) || 'Update failed.' });
       }
-
       const p = res.pet;
 
-      // 1) lock fields again
+      // lock fields again
       $('#modalEditContent input').prop('readonly', true);
       $('#savePetBtn').addClass('d-none');
       $('#updatePetBtn').removeClass('d-none');
 
-      // 2) update the row’s data-* so future opens show fresh values
-      const $row = $('.pet-row[data-id="' + id + '"]');
+      // update row dataset
+      const $row = $(`.pet-row[data-id="${id}"]`);
       $row
         .attr('data-petname', p.petName || '')
         .attr('data-birthday', p.birthday || '')
         .attr('data-existingdisease', p.existingDisease || '');
 
-      // 3) update visible name in table (keep the thumbnail HTML)
+      // update visible name (keep thumbnail)
       const $cell = $row.find('td').eq(0).find('.pet-name-cell');
-      const thumbHtml = $cell.find('img.pet-table-pic').length
-        ? $cell.find('img.pet-table-pic')[0].outerHTML
-        : $cell.find('.pet-table-paw')[0]?.outerHTML || '';
-      $cell.html((thumbHtml || '') + (p.petName || 'Unnamed'));
+      const thumb = $cell.find('img.pet-table-pic')[0]?.outerHTML
+                 || $cell.find('.pet-table-paw')[0]?.outerHTML
+                 || '';
+      $cell.html((thumb || '') + (p.petName || 'Unnamed'));
 
-      // 4) keep modal open and show success
       Swal.fire({ icon: 'success', title: 'Saved', text: 'Pet details updated.' });
-    },
-    error(xhr) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Server error',
-        text: (xhr.responseJSON && xhr.responseJSON.message) || 'Update failed.'
-      });
-    },
-    complete() {
-      $save.prop('disabled', false).html(originalHtml);
-    }
-  });
-});
-
-      // Delete
-     // replace your current #deletePetBtn handler with this
-$('#deletePetBtn').off('click').on('click', function () {
-  const id = String($(this).data('id') || '');
-  const isClinic = !!$(this).data('clinic');
-
-  if (!id) return;
-
-  // Block deletes for clinic (PetList) entries
-  if (isClinic || id.startsWith('list-')) {
-    Swal.fire({
-      icon: 'info',
-      title: 'Clinic record',
-      text: 'This entry is part of the clinic records and cannot be deleted from here.'
-    });
-    return;
-  }
-
-  // Proceed to delete ONLY real Pet documents
-  Swal.fire({
-    title: 'Delete Pet?',
-    text: 'This will delete the pet from your account.',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Yes, delete',
-    cancelButtonText: 'Cancel'
-  }).then(result => {
-    if (!result.isConfirmed) return;
-
-    $.post('/customer/delete-pet', { id }, res => {
-      if (res && res.success) {
-        // remove row from table without touching clinic data
-        $(`.pet-row[data-id="${id}"]`).remove();
-      const $tbody = $('.reservation-table-wrapper tbody');
-// if there are no pet rows left, show empty state
-if ($tbody.find('tr.pet-row').length === 0) {
-  $tbody.html('<tr class="no-pets-row"><td colspan="3" class="text-center">You have no pets.</td></tr>');
-}
-
-        $('#petDetailsModal').modal('hide');
-        Swal.fire({ icon: 'success', title: 'Deleted!', text: 'Pet removed from your account.' });
-      } else {
-        Swal.fire({ icon: 'error', title: 'Error', text: (res && res.message) || 'Delete failed.' });
-      }
     }).fail(xhr => {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: (xhr.responseJSON && xhr.responseJSON.message) || 'Server error.'
+      Swal.fire({ icon: 'error', title: 'Server error', text: (xhr.responseJSON && xhr.responseJSON.message) || 'Update failed.' });
+    }).always(() => {
+      unlockBtn($save);
+    });
+  });
+
+  // ==============================
+  // Delete (spinner + slow toast)
+  // ==============================
+  $('#deletePetBtn').off('click').on('click', function () {
+    const id = String($(this).data('id') || '');
+    const isClinic = !!$(this).data('clinic');
+    if (!id) return;
+
+    if (isClinic || id.startsWith('list-')) {
+      return Swal.fire({
+        icon: 'info',
+        title: 'Clinic record',
+        text: 'This entry is part of the clinic records and cannot be deleted from here.'
+      });
+    }
+
+    Swal.fire({
+      title: 'Delete Pet?',
+      text: 'This will delete the pet from your account.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel'
+    }).then(result => {
+      if (!result.isConfirmed) return;
+
+      const $del = $('#deletePetBtn');
+      lockBtn($del, 'Deleting…');
+
+      const req = $.post('/customer/delete-pet', { id });
+      trackSlow(req);
+
+      req.done(res => {
+        if (res && res.success) {
+          $(`.pet-row[data-id="${id}"]`).remove();
+
+          // empty-state row if none left
+          const $tbody = $('.reservation-table-wrapper tbody');
+          if ($tbody.find('tr.pet-row').length === 0) {
+            $tbody.html('<tr class="no-pets-row"><td colspan="3" class="text-center">You have no pets.</td></tr>');
+          }
+
+          $('#petDetailsModal').modal('hide');
+          Swal.fire({ icon:'success', title:'Deleted!', text:'Pet removed from your account.' });
+        } else {
+          Swal.fire({ icon:'error', title:'Error', text:(res && res.message) || 'Delete failed.' });
+        }
+      }).fail(xhr => {
+        Swal.fire({ icon:'error', title:'Error', text:(xhr.responseJSON && xhr.responseJSON.message) || 'Server error.' });
+      }).always(() => {
+        unlockBtn($del);
       });
     });
   });
-});
 
-      function formatVisitDate(date) {
-        const d = new Date(date);
-        const month = d.toLocaleString('en-US',{month:'long'}).toLowerCase();
-        return `${month} ${d.getDate()} ${d.getFullYear()}`;
-      }
-    });
-  </script>
+  function formatVisitDate(date) {
+    const d = new Date(date);
+    const month = d.toLocaleString('en-US',{month:'long'}).toLowerCase();
+    return `${month} ${d.getDate()} ${d.getFullYear()}`;
+  }
+});
+</script>
+
 </body>
 </html>
