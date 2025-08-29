@@ -1,4 +1,5 @@
 require("dotenv").config();
+
 const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
@@ -74,6 +75,15 @@ app.use(express.static(path.join(__dirname, "public")));
 // make files in public/uploads downloadable via /uploads/...
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
+// Do not cache any protected pages (prevents stale dashboards after logout)
+app.use((req, res, next) => {
+  if (/^\/(customer|doctor|hr|admin)/.test(req.path) || req.path.endsWith('-dashboard')) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+  next();
+});
 
 // Public landing page and auth endpoints
 app.use("/", authRoutes); // login, registration, forgot password, etc.
@@ -272,6 +282,7 @@ app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 // Additional routes and middleware
 app.use("/chatbot", chatbotRoutes);
 app.get('/logout', (req, res) => {
+  res.set('Cache-Control', 'no-store'); // don't cache the redirect page
   res.clearCookie('doctor_token');
   res.clearCookie('customer_token');
   res.clearCookie('hr_token');
@@ -279,5 +290,6 @@ app.get('/logout', (req, res) => {
   res.clearCookie('refreshToken');
   res.redirect('/');
 });
+
 
 
