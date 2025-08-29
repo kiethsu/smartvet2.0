@@ -694,7 +694,6 @@ footer a:hover{color:#fff;}
     </div>
   </section>
 
-
 <!-- Doctors -->
 <section id="doctorsSection">
   <div class="container">
@@ -825,7 +824,7 @@ footer a:hover{color:#fff;}
               <small id="password-error" class="text-danger d-none"></small>
             </div>
             <div class="mb-3">
-              <div class="g-recaptcha" data-sitekey="6Lf7gZsrAAAAAAjCBnjLPztaVMwvonl8DjGgm6Za"></div>
+              <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
             </div>
             <div class="mb-2">
               <a href="#" id="openForgotPasswordModal" class="text-primary small" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">Forgot Password?</a>
@@ -975,6 +974,11 @@ footer a:hover{color:#fff;}
 
   <script>
   document.addEventListener('DOMContentLoaded', function(){
+  let isSendingRegOtp = false;
+  let regOtpCountdownTimer = null;
+    // Forgot Password (reset) OTP guards
+  let isSendingResetOtp = false;
+  let resetOtpCountdownTimer = null;
 
     /* Active link on scroll & navbar color switch */
     const sections = document.querySelectorAll('section');
@@ -1085,7 +1089,7 @@ footer a:hover{color:#fff;}
         const uppercaseCriteria = /[A-Z]/.test(password);
         const lowercaseCriteria = /[a-z]/.test(password);
         const numberCriteria = /[0-9]/.test(password);
-        const specialCharCriteria = /[!@#$%^&*]/.test(password);
+const specialCharCriteria = /[^A-Za-z0-9]/.test(password);
         if (!(lengthCriteria && uppercaseCriteria && lowercaseCriteria && numberCriteria && specialCharCriteria)) {
           $("#reg-password").classList.add("is-invalid"); valid = false;
         }
@@ -1097,36 +1101,63 @@ footer a:hover{color:#fff;}
     }
 
     const sendCodeBtn = $("#sendCodeBtn");
-    if(sendCodeBtn){
-      sendCodeBtn.addEventListener("click", async () => {
-        const email = $("#reg-email").value;
-        if (!email) return alert("Enter an email!");
-        let response = await fetch("/send-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        });
-        let data = await response.json();
-        if (data.message.includes("OTP sent")) {
-          const otpInfo = $("#otp-info");
-          otpInfo.textContent = "Check your email for OTP";
-          otpInfo.classList.remove("d-none");
-        }
-        const sendBtn = $("#sendCodeBtn");
-        sendBtn.disabled = true;
-        let countdown = 60;
-        const originalText = "Send";
-        const timerInterval = setInterval(() => {
-          sendBtn.textContent = `${countdown}s`;
-          countdown--;
-          if (countdown < 0) {
-            clearInterval(timerInterval);
-            sendBtn.textContent = originalText;
-            sendBtn.disabled = false;
-          }
-        }, 1000);
+if (sendCodeBtn) {
+  sendCodeBtn.addEventListener("click", async () => {
+    const email = $("#reg-email").value.trim();
+    if (!email) { alert("Enter an email!"); return; }
+
+    // block re-entry immediately
+    if (isSendingRegOtp || sendCodeBtn.disabled) return;
+    isSendingRegOtp = true;
+
+    const originalText = sendCodeBtn.textContent;
+    sendCodeBtn.disabled = true;
+    sendCodeBtn.textContent = "Sending...";
+
+    try {
+      const resp = await fetch("/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
       });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        // server rejected (cooldown, invalid, etc.)
+        alert(data.message || "Failed to send OTP.");
+        sendCodeBtn.disabled = false;
+        sendCodeBtn.textContent = originalText;
+        isSendingRegOtp = false;
+        return;
+      }
+
+      // success → start 60s countdown
+      const otpInfo = $("#otp-info");
+      otpInfo.textContent = "Check your email for OTP";
+      otpInfo.classList.remove("d-none");
+
+      let countdown = 60;
+      sendCodeBtn.textContent = `${countdown}s`;
+      if (regOtpCountdownTimer) clearInterval(regOtpCountdownTimer);
+      regOtpCountdownTimer = setInterval(() => {
+        countdown--;
+        sendCodeBtn.textContent = `${countdown}s`;
+        if (countdown <= 0) {
+          clearInterval(regOtpCountdownTimer);
+          sendCodeBtn.textContent = originalText;
+          sendCodeBtn.disabled = false;
+        }
+      }, 1000);
+    } catch (e) {
+      console.error(e);
+      alert("Network error sending OTP.");
+      sendCodeBtn.disabled = false;
+      sendCodeBtn.textContent = originalText;
+    } finally {
+      isSendingRegOtp = false;
     }
+  });
+}
 
     const regEmail = $("#reg-email");
     if(regEmail){
@@ -1182,7 +1213,7 @@ footer a:hover{color:#fff;}
         const uppercaseCriteria = /[A-Z]/.test(password);
         const lowercaseCriteria = /[a-z]/.test(password);
         const numberCriteria = /[0-9]/.test(password);
-        const specialCharCriteria = /[!@#$%^&*]/.test(password);
+const specialCharCriteria = /[^A-Za-z0-9]/.test(password);
         if (!(lengthCriteria && uppercaseCriteria && lowercaseCriteria && numberCriteria && specialCharCriteria)) {
           $("#reg-password").classList.add("is-invalid"); valid = false;
         }
@@ -1241,16 +1272,18 @@ footer a:hover{color:#fff;}
         const up = /[A-Z]/.test(password);
         const low = /[a-z]/.test(password);
         const num = /[0-9]/.test(password);
-        const spe = /[!@#$%^&*]/.test(password);
-        $("#criteria-length").classList.toggle("text-success", len);
-        $("#criteria-length").classList.toggle("text-danger", !len);
-        $("#criteria-uppercase").classList.toggle("text-success", up);
-        $("#criteria-uppercase").classList.toggle("text-danger", !up);
-        $("#criteria-lowercase").classList.toggle("text-success", low);
-        $("#criteria-lowercase").classList.toggle("text-danger", !low);
-        $("#criteria-number").classList.toggle("text-success", num);
-        $("#criteria-number").classList.toggle("text-danger", !num);
-        $("#criteria-symbol").classList.toggle("text-success", spe);
+const spe = /[^A-Za-z0-9]/.test(password);  // any symbol
+$("#criteria-length").classList.toggle("text-success", len);
+$("#criteria-length").classList.toggle("text-danger", !len);
+$("#criteria-uppercase").classList.toggle("text-success", up);
+$("#criteria-uppercase").classList.toggle("text-danger", !up);
+$("#criteria-lowercase").classList.toggle("text-success", low);
+$("#criteria-lowercase").classList.toggle("text-danger", !low);
+$("#criteria-number").classList.toggle("text-success", num);
+$("#criteria-number").classList.toggle("text-danger", !num);
+$("#criteria-symbol").classList.toggle("text-success", spe);
+$("#criteria-symbol").classList.toggle("text-danger", !spe);
+
       });
     }
 
@@ -1422,38 +1455,88 @@ footer a:hover{color:#fff;}
         }
       });
     }
+const sendResetOTPBtn = $("#sendResetOTPBtn");
+if (sendResetOTPBtn) {
+  sendResetOTPBtn.addEventListener("click", async function () {
+    if (isSendingResetOtp) return; // guard against double-clicks
+    isSendingResetOtp = true;
 
-    const sendResetOTPBtn = $("#sendResetOTPBtn");
-    if(sendResetOTPBtn){
-      sendResetOTPBtn.addEventListener("click", async function () {
-        const emailInput = $("#reset-email");
-        const emailError = $("#reset-email-error");
-        const email = emailInput.value.trim();
-        emailError.textContent = "";
-        emailError.classList.add("d-none");
-        emailInput.classList.remove("is-invalid");
-        if (!email.includes("@gmail.com")) {
-          emailError.textContent = "Invalid Gmail address! Please enter a valid @gmail.com email.";
-          emailError.classList.remove("d-none");
-          emailInput.classList.add("is-invalid");
-          return;
-        }
-        let response = await fetch("/send-reset-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        });
-        let data = await response.json();
-        if (data.message.includes("OTP sent")) {
-          $("#step1").style.display = "none";
-          $("#step2").style.display = "block";
-        } else {
-          emailError.textContent = data.message;
-          emailError.classList.remove("d-none");
-          emailInput.classList.add("is-invalid");
-        }
-      });
+    const emailInput = $("#reset-email");
+    const emailError = $("#reset-email-error");
+    const btn = this;
+
+    emailError.textContent = "";
+    emailError.classList.add("d-none");
+    emailInput.classList.remove("is-invalid");
+
+    const email = emailInput.value.trim();
+    if (!email.includes("@gmail.com")) {
+      emailError.textContent = "Invalid Gmail address! Please enter a valid @gmail.com email.";
+      emailError.classList.remove("d-none");
+      emailInput.classList.add("is-invalid");
+      isSendingResetOtp = false;
+      return;
     }
+
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Sending...";
+
+    try {
+      const resp = await fetch("/send-reset-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      // If server throttles (429), respect the wait time
+      if (resp.status === 429) {
+        const data = await resp.json().catch(() => ({}));
+        const m = (data.message || "").match(/wait\s+(\d+)s/i);
+        let wait = m ? parseInt(m[1], 10) : 60;
+
+        clearInterval(resetOtpCountdownTimer);
+        resetOtpCountdownTimer = setInterval(() => {
+          btn.textContent = `Wait ${wait}s`;
+          wait--;
+          if (wait < 0) {
+            clearInterval(resetOtpCountdownTimer);
+            btn.textContent = originalText;
+            btn.disabled = false;
+          }
+        }, 1000);
+
+        return; // stop here (button stays disabled until countdown ends)
+      }
+
+      const data = await resp.json();
+
+      if (resp.ok && data.message?.includes("OTP sent")) {
+        // success → move to step 2 (button disappears there)
+        $("#step1").style.display = "none";
+        $("#step2").style.display = "block";
+        // no countdown needed here because Step 1 UI is hidden now
+      } else {
+        // server error: show and re-enable button
+        emailError.textContent = data.message || "Failed to send OTP.";
+        emailError.classList.remove("d-none");
+        emailInput.classList.add("is-invalid");
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    } catch (e) {
+      console.error(e);
+      emailError.textContent = "Failed to send OTP.";
+      emailError.classList.remove("d-none");
+      emailInput.classList.add("is-invalid");
+      btn.disabled = false;
+      btn.textContent = originalText;
+    } finally {
+      isSendingResetOtp = false;
+    }
+  });
+}
+
 
     const verifyResetOTPBtn = $("#verifyResetOTPBtn");
     if(verifyResetOTPBtn){
@@ -1481,31 +1564,70 @@ footer a:hover{color:#fff;}
       });
     }
 
-    const resendOTPLink = $("#resendOTP");
-    if(resendOTPLink){
-      resendOTPLink.addEventListener("click", async function (e) {
-        e.preventDefault();
-        const resendLink = this;
-        resendLink.classList.add("disabled");
-        let countdown = 60;
-        resendLink.textContent = `${countdown}s`;
-        const interval = setInterval(() => {
-          countdown--;
-          resendLink.textContent = `${countdown}s`;
-          if (countdown <= 0) {
-            clearInterval(interval);
-            resendLink.textContent = "Resend OTP";
-            resendLink.classList.remove("disabled");
-          }
-        }, 1000);
-        const email = $("#reset-email").value.trim();
-        await fetch("/send-reset-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        });
+   const resendOTPLink = $("#resendOTP");
+if (resendOTPLink) {
+  resendOTPLink.addEventListener("click", async function (e) {
+    e.preventDefault();
+    const resendLink = this;
+
+    // guard: if already disabled or mid-send, ignore
+    if (resendLink.classList.contains("disabled") || resendLink.dataset.sending === "1") return;
+    resendLink.dataset.sending = "1";
+
+    // disable immediately to avoid rapid clicks
+    resendLink.classList.add("disabled");
+
+    // start a default 60s countdown
+    let countdown = 60;
+    resendLink.textContent = `${countdown}s`;
+    let interval = setInterval(() => {
+      countdown--;
+      resendLink.textContent = `${countdown}s`;
+      if (countdown <= 0) {
+        clearInterval(interval);
+        resendLink.textContent = "Resend OTP";
+        resendLink.classList.remove("disabled");
+        delete resendLink.dataset.sending;
+      }
+    }, 1000);
+
+    const email = $("#reset-email").value.trim();
+    try {
+      const resp = await fetch("/send-reset-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       });
+
+      // If server says 429 with a different wait time, adopt it
+      if (resp.status === 429) {
+        const data = await resp.json().catch(() => ({}));
+        const m = (data.message || "").match(/wait\s+(\d+)s/i);
+        if (m) {
+          let wait = parseInt(m[1], 10);
+          clearInterval(interval);
+          interval = setInterval(() => {
+            resendLink.textContent = `${wait}s`;
+            wait--;
+            if (wait < 0) {
+              clearInterval(interval);
+              resendLink.textContent = "Resend OTP";
+              resendLink.classList.remove("disabled");
+              delete resendLink.dataset.sending;
+            }
+          }, 1000);
+        }
+      }
+    } catch (err) {
+      console.error("Resend error:", err);
+      // network error → allow retry immediately
+      clearInterval(interval);
+      resendLink.textContent = "Resend OTP";
+      resendLink.classList.remove("disabled");
+      delete resendLink.dataset.sending;
     }
+  });
+}
 
     const resendAdminOTP = $("#resendAdminOTP");
     if(resendAdminOTP){
@@ -1619,23 +1741,31 @@ footer a:hover{color:#fff;}
       });
     }
 
-    const newPasswordInput = $("#new-password");
-    if(newPasswordInput){
-      newPasswordInput.addEventListener("input", function () {
-        const password = this.value;
-        const len=password.length>=8, up=/[A-Z]/.test(password), low=/[a-z]/.test(password),
-              num=/[0-9]/.test(password), spe=/[!@#$%^&*]/.test(password);
-        $("#reset-criteria-length").classList.toggle("text-success", len);
-        $("#reset-criteria-length").classList.toggle("text-danger", !len);
-        $("#reset-criteria-uppercase").classList.toggle("text-success", up);
-        $("#reset-criteria-uppercase").classList.toggle("text-danger", !up);
-        $("#reset-criteria-lowercase").classList.toggle("text-success", low);
-        $("#reset-criteria-lowercase").classList.toggle("text-danger", !low);
-        $("#reset-criteria-number").classList.toggle("text-success", num);
-        $("#reset-criteria-number").classList.toggle("text-danger", !num);
-        $("#reset-criteria-symbol").classList.toggle("text-success", spe);
-      });
-    }
+  const newPasswordInput = $("#new-password");
+if (newPasswordInput) {
+  newPasswordInput.addEventListener("input", function () {
+    const password = this.value;
+
+    const len = password.length >= 8;
+    const up  = /[A-Z]/.test(password);
+    const low = /[a-z]/.test(password);
+    const num = /[0-9]/.test(password);
+    const spe = /[^A-Za-z0-9]/.test(password); // any symbol counts
+
+    const setState = (id, ok) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.toggle("text-success", ok);
+      el.classList.toggle("text-danger", !ok);
+    };
+
+    setState("reset-criteria-length", len);
+    setState("reset-criteria-uppercase", up);
+    setState("reset-criteria-lowercase", low);
+    setState("reset-criteria-number", num);
+    setState("reset-criteria-symbol", spe);
+  });
+}
 
     const confirmNewPassword = $("#confirm-new-password");
     if(confirmNewPassword){
@@ -1667,6 +1797,39 @@ footer a:hover{color:#fff;}
     }
 
   }); // DOMContentLoaded
+  (function () {
+  async function whoami() {
+    try {
+      // 1) Try the protected probe
+      let r = await fetch('/customer/session', { credentials: 'include' });
+
+      // 2) If access token expired, try to refresh and re-check
+      if (r.status === 401) {
+        await fetch('/refresh-token', { method: 'POST', credentials: 'include' });
+        r = await fetch('/customer/session', { credentials: 'include' });
+      }
+
+      // 3) If logged in, jump to the right dashboard
+      if (r.ok) {
+        const data = await r.json();
+        const role = (data.role || 'Customer').toLowerCase();
+        const dest =
+          role === 'doctor' ? '/doctor-dashboard' :
+          role === 'hr'     ? '/hr-dashboard'     :
+          role === 'admin'  ? '/admin-dashboard'  :
+                              '/customer-dashboard';
+
+        if (location.pathname === '/') location.replace(dest);
+      }
+    } catch(e) {
+      // network errors ignored
+    }
+  }
+
+  // Run on normal load AND when the page comes back from BFCache (back/forward)
+  document.addEventListener('DOMContentLoaded', whoami);
+  window.addEventListener('pageshow', whoami);
+})();
   </script>
 
 </body>
