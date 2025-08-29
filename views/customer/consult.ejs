@@ -23,214 +23,274 @@
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.12/dist/sweetalert2.min.css" />
-  <style>
-    :root {
-      --primary: #1E88E5;
-      --primary-dark: #0D47A1;
-      --accent: #90CAF9;
-      --white: #ffffff;
-      --text: #333;
-      --secondary-color: #264653;
-      --background-color: #f4f7fa;
-      --card-bg: #ffffff;
-      --border-color: #eaeaea;
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      background-color: var(--background-color);
-      color: var(--text);
-      margin: 0; padding: 0;
-      font-family: 'Roboto', Arial, sans-serif;
-      overflow-x: hidden;
-      -webkit-overflow-scrolling: touch;
-      height: auto !important;
-    }
-    .page-wrapper { min-height: 100vh; padding-bottom: 32px; display: flex; flex-direction: column; }
-    .container-fluid.p-0 { padding: 0 !important; margin: 0 !important; }
-    .content-wrapper { display: flex; flex-wrap: nowrap; gap: 16px; align-items: flex-start; width: 100%; margin-top: 8px; }
-    .left { flex: 1 1 100%; max-width: 560px; padding-left: 12px; min-width: 0; display: flex; flex-direction: column; }
-    .right { flex: 1 1 0; padding-right: 12px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-    .card {
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      background: var(--card-bg) !important;
-      box-shadow: 0 4px 24px rgba(30,136,229,0.12), 0 1.5px 12px rgba(32,39,55,0.08) !important;
-      min-width: 0; display: flex; flex-direction: column; position: relative;
-    }
-    .card.p-4.shadow-sm { padding: 28px 24px 0 !important; margin-top: 0; width: 100%; }
-    .form-control { border-radius: 5px; border: 1px solid #ced4da; box-shadow: none; }
-    .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 0.2rem rgba(30,136,229,0.25); }
-    label { font-weight: 500; color: var(--secondary-color); }
-    button.btn { border-radius: 5px; font-weight: 600; }
+<style>
+  :root {
+    --primary: #1E88E5;
+    --primary-dark: #0D47A1;
+    --accent: #90CAF9;
+    --white: #ffffff;
+    --text: #333;
+    --secondary-color: #264653;
+    --background-color: #f4f7fa;
+    --card-bg: #ffffff;
+    --border-color: #eaeaea;
+    /* unify card side padding so header/footer can align perfectly */
+    --card-xpad: 24px;
+  }
 
-    /* Select Pets card layout */
-    .select-pets-card { display: flex; flex-direction: column; min-height: 780px; }
-    .select-pets-body { flex: 1 1 auto; display: flex; flex-direction: column; gap: 8px; overflow: hidden; min-height: 0; }
-    .select-pets-form-wrapper { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding-bottom: 8px; }
-    #consultForm { display: flex; flex-direction: column; flex: 1 1 auto; margin-bottom: 0; }
-    #consultForm button[type=submit], #consultForm .btn { margin-top: auto; margin-bottom: 6px; }
+  * { box-sizing: border-box; }
 
-    .select-pets-header {
-      background: #f1f5fa; padding: 12px 18px; font-weight: 600; font-size: 0.95rem; color: #444;
-      border-radius: 12px 12px 0 0; border-bottom: 1px solid rgba(0,0,0,0.08);
-      margin: -28px -24px 8px; display: flex; align-items: center;
-    }
+  html, body {
+    background-color: var(--background-color);
+    color: var(--text);
+    margin: 0; padding: 0;
+    font-family: 'Roboto', Arial, sans-serif;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    height: auto !important;
+  }
 
-    .footer-hint {
-      margin-top: auto; padding: 8px 16px; font-size: 0.65rem; color: #6c757d; text-align: center;
-      background: rgba(0,0,0,0.03); border-top: 1px solid rgba(0,0,0,0.05); border-radius: 0 0 16px 16px;
-      width: 100%; box-sizing: border-box;
-    }
+  .page-wrapper { min-height: 100vh; padding-bottom: 32px; display: flex; flex-direction: column; }
+  .container-fluid.p-0 { padding: 0 !important; margin: 0 !important; }
+  .content-wrapper { display: flex; flex-wrap: nowrap; gap: 16px; align-items: flex-start; width: 100%; margin-top: 8px; }
+  .left { flex: 1 1 100%; max-width: 560px; padding-left: 12px; min-width: 0; display: flex; flex-direction: column; }
+  .right { flex: 1 1 0; padding-right: 12px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
-    .reservation-details-card { height: 700px; position: relative; min-width: 0; display: flex; flex-direction: column; }
-    .reservation-card-header { display: flex; align-items: center; padding: 0; background: transparent; border-radius: 12px 12px 0 0; position: sticky; top: 0; z-index: 2; }
-    .reservation-details-inner { flex: 1 1 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
-    .reservation-table-wrapper { flex: 1 1 0; overflow-x: auto; -webkit-overflow-scrolling: touch; position: relative; min-height: 0; padding: 0; min-width: 0; }
+  .card {
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: var(--card-bg) !important;
+    box-shadow: 0 4px 24px rgba(30,136,229,0.12), 0 1.5px 12px rgba(32,39,55,0.08) !important;
+    min-width: 0; display: flex; flex-direction: column; position: relative;
+  }
 
-    .horizontal-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; white-space: nowrap; padding-bottom: 5px; }
-    .horizontal-scroll .vetcard {
-      display: inline-block; vertical-align: top; width: 80px; margin-right: 15px; text-align: center; cursor: pointer; position: relative;
-    }
-    .horizontal-scroll .vetcard .circle {
-      position: relative; width: 50px; height: 50px; border-radius: 50%; background-color: #ddd; margin: 0 auto; overflow: hidden;
-      display: flex; align-items: center; justify-content: center; border: 2px solid transparent; transition: border .2s ease;
-    }
-    .horizontal-scroll .vetcard.selected .circle { border-color: var(--primary); }
-    .checkmark-overlay {
-      position: absolute; top: 0; left: 0; width: 50px; height: 50px; background: rgba(0,0,0,0.45); color: #fff;
-      display: none; align-items: center; justify-content: center; border-radius: 50%; font-size: 20px;
-    }
-    .vetcard.selected .checkmark-overlay { display: flex !important; }
-    .horizontal-scroll .vetcard .pet-name {
-      display: block; width: 80px; margin: 4px auto 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
-    }
+  /* use the shared side padding var */
+  .card.p-4.shadow-sm { padding: 28px var(--card-xpad) 0 !important; margin-top: 0; width: 100%; }
 
-    /* Selected pets chips row */
-    #selectedPetsChips {
-      display: flex; gap: 10px; flex-wrap: nowrap; overflow-x: auto; padding: 8px 2px; margin-bottom: 8px;
-    }
-    .chip {
-      display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; background: #eef5ff; border: 1px solid #d9e8ff; cursor: pointer;
-    }
-    .chip.active { background: #d7ebff; border-color: var(--primary); }
-    .chip .avatar { width: 26px; height: 26px; border-radius: 50%; overflow: hidden; flex: 0 0 26px; }
-    .chip .avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .chip .name { font-size: .85rem; font-weight: 600; color: #265f99; }
-    .chip .remove { margin-left: 4px; color: #777; font-weight: 700; }
+  .form-control { border-radius: 5px; border: 1px solid #ced4da; box-shadow: none; }
+  .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 0.2rem rgba(30,136,229,0.25); }
+  label { font-weight: 500; color: var(--secondary-color); }
+  button.btn { border-radius: 5px; font-weight: 600; }
 
-    /* Per-pet forms area */
-    #perPetForms { border: 1px dashed #dde7f5; border-radius: 12px; padding: 12px; background: #fafcff; }
-    .pet-form { display: none; }
-    .pet-form.active { display: block; }
-    .pet-form h6 { font-weight: 700; color: #224b7a; margin-bottom: 8px; }
+  /* Select Pets card layout */
+  .select-pets-card { display: flex; flex-direction: column; min-height: 780px; position: relative; }
+  .select-pets-body { flex: 1 1 auto; display: flex; flex-direction: column; gap: 8px; overflow: hidden; min-height: 0; }
+  .select-pets-form-wrapper { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding-bottom: 8px; }
 
-    #timeSelect option:disabled, #timeSelect option.full-slot { color: #dc3545; }
+  /* Make the form a flex column so the submit button can pin to the bottom of the card body */
+  #consultForm { display: flex; flex-direction: column; flex: 1 1 auto; margin-bottom: 0; }
 
-    .reservation-table-wrapper table {
-      border-radius: 0; overflow: auto; background: #ffffff;
-      box-shadow: 0 8px 30px rgba(32,39,55,0.08); font-size: 0.9rem; width: 100%; margin: 0; border-collapse: collapse; min-width: 800px;
-    }
-    .reservation-table-wrapper thead { background: #ffffff; }
-    .reservation-table-wrapper thead th {
-      color: #444; font-weight: 600; border: none; padding: 10px 12px; text-transform: uppercase; letter-spacing: 0.5px; background: transparent; white-space: nowrap;
-    }
-    .reservation-table-wrapper thead th:hover { background: rgba(30,136,229,0.03); }
-    .reservation-table-wrapper tbody tr { transition: background .2s ease; }
-    .reservation-table-wrapper tbody tr:nth-child(odd) { background: #f9fbfc; }
-    .reservation-table-wrapper tbody tr:hover { background: #e8f1fb; }
-    .reservation-table-wrapper td {
-      padding: 12px 16px; vertical-align: middle; border-top: 1px solid #e8ecf1; color: #2f3e56; white-space: nowrap;
-    }
-    .badge-info { background: #17a2b8; color: #fff; padding: 6px 10px; border-radius: 12px; font-size: 0.75rem; letter-spacing: 0.5px; }
-    .badge-success { background: #28a745; color: #fff; padding: 6px 10px; border-radius: 12px; font-size: 0.75rem; letter-spacing: 0.5px; }
+  /* Push the submit button down, keep a tiny breathing space above the footer */
+  #consultForm button[type=submit], #consultForm .btn {
+    margin-top: auto;
+    margin-bottom: 6px;
+  }
 
-    /* Profile‐style tabs */
-    .profile-tabs {
-      display: flex; gap: 8px; padding: 0; margin: 0; list-style: none; border-bottom: 1px solid rgba(0,0,0,0.08);
-      background: #f1f5fa; border-radius: 12px 12px 0 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; width: 100%;
-    }
-    .profile-tabs::-webkit-scrollbar { display: none; }
-    .profile-tab-item { flex-shrink: 0; }
-    .profile-tab-item button {
-      background: transparent; border: none; padding: 12px 18px; font-weight: 600; cursor: pointer; border-radius: 8px 8px 0 0;
-      font-size: 0.95rem; color: #444; transition: background .2s ease, color .2s ease; outline: none; line-height: 1;
-    }
-    .profile-tab-item button:hover, .profile-tab-item button:focus { color: var(--primary-dark); }
-    .profile-tab-item.active button { background: var(--primary); color: #fff; }
-    .tab-content { display: none; flex: 1 1 0; min-height: 0; }
-    .tab-content.active { display: flex; }
+  .select-pets-header {
+    background: #f1f5fa; padding: 12px 18px; font-weight: 600; font-size: 0.95rem; color: #444;
+    border-radius: 12px 12px 0 0; border-bottom: 1px solid rgba(0,0,0,0.08);
+    /* align header to card edges using shared padding var */
+    margin: -28px calc(-1 * var(--card-xpad)) 8px;
+    display: flex; align-items: center;
+  }
 
-    @media (max-width: 1199.98px) {
-      .left { flex: 1 1 100%; max-width: 100%; padding-left: 0; }
-      .right { flex: 1 1 100%; padding-right: 0; }
-      .content-wrapper { flex-wrap: wrap; }
-      .reservation-table-wrapper table { font-size: 0.8rem; }
-    }
+  /* Base footer look (applies to all footers) */
+  .footer-hint {
+    margin-top: auto; padding: 8px 16px; font-size: 0.65rem; color: #6c757d; text-align: center;
+    background: rgba(0,0,0,0.03); border-top: 1px solid rgba(0,0,0,0.05); border-radius: 0 0 16px 16px;
+    width: 100%; box-sizing: border-box;
+  }
 
-    /* ===== Modal styling ===== */
-    .modal-backdrop { z-index: 2499 !important; }
-    .modal { z-index: 3000 !important; }
-    .swal2-container { z-index: 5001 !important; }
-    .swal2-popup { z-index: 5002 !important; }
-    .modal-dialog { max-width: 600px; width: 100%; }
-    .modal-dialog-centered { display: flex; align-items: center; min-height: calc(100vh - 1.5rem); }
-    .modal-content { border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); border: none; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
-    .view-details-header {
-      background: #f1f5fa; padding: 12px 18px; font-weight: 600; font-size: 0.95rem; color: #444;
-      border-bottom: 1px solid rgba(0,0,0,0.08); border-radius: 12px 12px 0 0;
-    }
-    .modal-body { flex: 1 1 auto !important; overflow-y: auto !important; padding: 1rem 1.5rem !important; }
-    .modal-footer { display: flex; justify-content: flex-end; align-items: center; padding: 1rem; }
+  /* In the Select Pets card, remove the auto spacer on the footer so the form (and its submit button) sits right above it */
+  .select-pets-card > .footer-hint { margin-top: 0; }
 
-    .details-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
-    .details-table th, .details-table td { padding: 0.75rem 1.25rem; border: 1px solid var(--border-color); vertical-align: top; text-align: left; }
-    .details-table th { background: #f1f5fa; color: var(--secondary-color); font-weight: 600; width: 30%; }
+  /* Make the Select Pets footer truly edge-to-edge, regardless of scrollbars/rounding */
+  .select-pets-card > .footer-hint{
+    position: relative;
+    left: calc(-1 * var(--card-xpad));
+    width: calc(100% + (2 * var(--card-xpad)));
+    border-radius: 0 0 16px 16px;
+  }
+
+  .reservation-details-card { height: 700px; position: relative; min-width: 0; display: flex; flex-direction: column; }
+  .reservation-card-header { display: flex; align-items: center; padding: 0; background: transparent; border-radius: 12px 12px 0 0; position: sticky; top: 0; z-index: 2; }
+  .reservation-details-inner { flex: 1 1 0; overflow: hidden; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  .reservation-table-wrapper { flex: 1 1 0; overflow-x: auto; -webkit-overflow-scrolling: touch; position: relative; min-height: 0; padding: 0; min-width: 0; }
+
+  .horizontal-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; white-space: nowrap; padding-bottom: 5px; }
+  .horizontal-scroll .vetcard {
+    display: inline-block; vertical-align: top; width: 80px; margin-right: 15px; text-align: center; cursor: pointer; position: relative;
+  }
+  .horizontal-scroll .vetcard .circle {
+    position: relative; width: 50px; height: 50px; border-radius: 50%; background-color: #ddd; margin: 0 auto; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; border: 2px solid transparent; transition: border .2s ease;
+  }
+  .horizontal-scroll .vetcard.selected .circle { border-color: var(--primary); }
+  .checkmark-overlay {
+    position: absolute; top: 0; left: 0; width: 50px; height: 50px; background: rgba(0,0,0,0.45); color: #fff;
+    display: none; align-items: center; justify-content: center; border-radius: 50%; font-size: 20px;
+  }
+  .vetcard.selected .checkmark-overlay { display: flex !important; }
+  .horizontal-scroll .vetcard .pet-name {
+    display: block; width: 80px; margin: 4px auto 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+  }
+
+  /* Selected pets chips row */
+  #selectedPetsChips {
+    display: flex; gap: 10px; flex-wrap: nowrap; overflow-x: auto; padding: 8px 2px; margin-bottom: 8px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; background: #eef5ff; border: 1px solid #d9e8ff; cursor: pointer;
+  }
+  .chip.active { background: #d7ebff; border-color: var(--primary); }
+  .chip .avatar { width: 26px; height: 26px; border-radius: 50%; overflow: hidden; flex: 0 0 26px; }
+  .chip .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .chip .name { font-size: .85rem; font-weight: 600; color: #265f99; }
+  .chip .remove { margin-left: 4px; color: #777; font-weight: 700; }
+
+  /* Per-pet forms area */
+  #perPetForms { border: 1px dashed #dde7f5; border-radius: 12px; padding: 12px; background: #fafcff; }
+  .pet-form { display: none; }
+  .pet-form.active { display: block; }
+  .pet-form h6 { font-weight: 700; color: #224b7a; margin-bottom: 8px; }
+
+  #timeSelect option:disabled, #timeSelect option.full-slot { color: #dc3545; }
+
+  .reservation-table-wrapper table {
+    border-radius: 0; overflow: auto; background: #ffffff;
+    box-shadow: 0 8px 30px rgba(32,39,55,0.08); font-size: 0.9rem; width: 100%; margin: 0; border-collapse: collapse; min-width: 800px;
+  }
+  .reservation-table-wrapper thead { background: #ffffff; }
+  .reservation-table-wrapper thead th {
+    color: #444; font-weight: 600; border: none; padding: 10px 12px; text-transform: uppercase; letter-spacing: 0.5px; background: transparent; white-space: nowrap;
+  }
+  .reservation-table-wrapper thead th:hover { background: rgba(30,136,229,0.03); }
+  .reservation-table-wrapper tbody tr { transition: background .2s ease; }
+  .reservation-table-wrapper tbody tr:nth-child(odd) { background: #f9fbfc; }
+  .reservation-table-wrapper tbody tr:hover { background: #e8f1fb; }
+  .reservation-table-wrapper td {
+    padding: 12px 16px; vertical-align: middle; border-top: 1px solid #e8ecf1; color: #2f3e56; white-space: nowrap;
+  }
+  .badge-info { background: #17a2b8; color: #fff; padding: 6px 10px; border-radius: 12px; font-size: 0.75rem; letter-spacing: 0.5px; }
+  .badge-success { background: #28a745; color: #fff; padding: 6px 10px; border-radius: 12px; font-size: 0.75rem; letter-spacing: 0.5px; }
+
+  /* Profile‐style tabs */
+  .profile-tabs {
+    display: flex; gap: 8px; padding: 0; margin: 0; list-style: none; border-bottom: 1px solid rgba(0,0,0,0.08);
+    background: #f1f5fa; border-radius: 12px 12px 0 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; width: 100%;
+  }
+  .profile-tabs::-webkit-scrollbar { display: none; }
+  .profile-tab-item { flex-shrink: 0; }
+  .profile-tab-item button {
+    background: transparent; border: none; padding: 12px 18px; font-weight: 600; cursor: pointer; border-radius: 8px 8px 0 0;
+    font-size: 0.95rem; color: #444; transition: background .2s ease, color .2s ease; outline: none; line-height: 1;
+  }
+  .profile-tab-item button:hover, .profile-tab-item button:focus { color: var(--primary-dark); }
+  .profile-tab-item.active button { background: var(--primary); color: #fff; }
+  .tab-content { display: none; flex: 1 1 0; min-height: 0; }
+  .tab-content.active { display: flex; }
+
+  @media (max-width: 1199.98px) {
+    .left { flex: 1 1 100%; max-width: 100%; padding-left: 0; }
+    .right { flex: 1 1 100%; padding-right: 0; }
+    .content-wrapper { flex-wrap: wrap; }
+    .reservation-table-wrapper table { font-size: 0.8rem; }
+  }
+
+  /* ===== Modal styling ===== */
+  .modal-backdrop { z-index: 2499 !important; }
+  .modal { z-index: 3000 !important; }
+  .swal2-container { z-index: 5001 !important; }
+  .swal2-popup { z-index: 5002 !important; }
+/* Default: center and let Bootstrap handle width */
+.modal-dialog {
+  max-width: 600px;
+  width: auto;             /* <-- don't force 100% */
+  margin: .5rem auto;
+}
+
+/* Phones: ensure it never exceeds the viewport */
+@media (max-width: 576px) {
+  .modal-dialog {
+    max-width: calc(100% - 1rem);  /* viewport minus side margins */
+    width: auto;
+    margin: .5rem;                 /* equal side padding */
+  }
+  .modal-body { padding: .75rem 1rem !important; }
+}
+  .modal-dialog-centered { display: flex; align-items: center; min-height: calc(100vh - 1.5rem); }
+  .modal-content { border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); border: none; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+  .view-details-header {
+    background: #f1f5fa; padding: 12px 18px; font-weight: 600; font-size: 0.95rem; color: #444;
+    border-bottom: 1px solid rgba(0,0,0,0.08); border-radius: 12px 12px 0 0;
+  }
+  .modal-body { flex: 1 1 auto !important; overflow-y: auto !important; padding: 1rem 1.5rem !important; }
+  .modal-footer { display: flex; justify-content: flex-end; align-items: center; padding: 1rem; }
+
+  .details-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+  .details-table th, .details-table td { padding: 0.75rem 1.25rem; border: 1px solid var(--border-color); vertical-align: top; text-align: left; }
+  .details-table th { background: #f1f5fa; color: var(--secondary-color); font-weight: 600; width: 30%; }
+
   /* ===== Visit Details (rv) styles – reused from dashboard ===== */
-.rv-card{
-  border-radius:16px;
-  box-shadow:0 10px 30px rgba(13,71,161,.25);
-  border:1px solid rgba(13,71,161,.12);
-  overflow:hidden; background:#fff;
+  .rv-card{
+    border-radius:16px;
+    box-shadow:0 10px 30px rgba(13,71,161,.25);
+    border:1px solid rgba(13,71,161,.12);
+    overflow:hidden; background:#fff;
+  }
+  .rv-section{ padding:16px 18px; }
+  .rv-section + .rv-section{ border-top:1px solid #f0f3f8; }
+  .rv-header{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
+  .rv-date{ display:flex; align-items:center; gap:8px; font-weight:700; color:#0D47A1; }
+  .rv-meta{ font-size:.9rem; color:#5b6b82; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .rv-badge{ display:inline-block; padding:2px 10px; border-radius:999px; font-weight:700; font-size:.78rem; background:#e8f1fb; color:#0D47A1; border:1px solid #d8e6fb; }
+  .rv-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px 16px; }
+  .rv-kv{ min-width:0; }
+  .rv-label{ font-size:.78rem; font-weight:700; color:#6b7a90; text-transform:uppercase; letter-spacing:.45px; display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+  .rv-value{ font-weight:600; color:#2f3e56; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .rv-table{ width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:12px; border:1px solid #e9eef6; background:#fff; }
+  .rv-table thead th{ background:#f7faff; color:#213a63; font-weight:700; text-transform:uppercase; letter-spacing:.4px; padding:10px 12px; border-bottom:1px solid #e2e9f5; font-size:.85rem; }
+  .rv-table tbody td{ padding:10px 12px; border-top:1px solid #f0f4fa; vertical-align:middle; color:#2f3e56; }
+  .rv-table tbody tr:nth-child(odd){ background:#fbfdff; }
+
+  .rv-chip{ display:inline-block; padding:4px 10px; border-radius:999px; background:#e8f7ee; border:1px solid #cdebd7; color:#116b2d; font-weight:600; font-size:.85rem; }
+  .rv-note{ background:#fff; border:1px dashed #e2e8f0; border-radius:12px; padding:12px; color:#2f3e56; }
+
+  /* smaller screens */
+  @media (max-width: 576px){ .rv-grid{ grid-template-columns: 1fr; } }
+
+  /* Keep scroller above neighboring content */
+  #allPetsScroller { position: relative; z-index: 10; }
+
+  /* The card itself is the click target */
+  .horizontal-scroll .vetcard {
+    position: relative;
+    cursor: pointer;
+    z-index: 1;
+  }
+
+  /* Ensure inner content never steals the click */
+  .horizontal-scroll .vetcard .circle,
+  .horizontal-scroll .vetcard .circle * {
+    pointer-events: none;
+  }
+  /* No horizontal overflow inside the modal */
+.modal-content { overflow: hidden; }
+.modal-body { overflow-x: hidden !important; }
+
+/* Tables and blocks must never exceed the modal width */
+.details-table, .rv-table, .rv-card { max-width: 100%; }
+
+/* Long words/URLs wrap instead of stretching the dialog */
+.rv-note, .rv-value, .details-table td, .details-table th,
+.rv-table td, .rv-table th {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
-.rv-section{ padding:16px 18px; }
-.rv-section + .rv-section{ border-top:1px solid #f0f3f8; }
-.rv-header{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; }
-.rv-date{ display:flex; align-items:center; gap:8px; font-weight:700; color:#0D47A1; }
-.rv-meta{ font-size:.9rem; color:#5b6b82; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.rv-badge{ display:inline-block; padding:2px 10px; border-radius:999px; font-weight:700; font-size:.78rem; background:#e8f1fb; color:#0D47A1; border:1px solid #d8e6fb; }
-.rv-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px 16px; }
-.rv-kv{ min-width:0; }
-.rv-label{ font-size:.78rem; font-weight:700; color:#6b7a90; text-transform:uppercase; letter-spacing:.45px; display:flex; align-items:center; gap:6px; margin-bottom:4px; }
-.rv-value{ font-weight:600; color:#2f3e56; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-.rv-table{ width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:12px; border:1px solid #e9eef6; background:#fff; }
-.rv-table thead th{ background:#f7faff; color:#213a63; font-weight:700; text-transform:uppercase; letter-spacing:.4px; padding:10px 12px; border-bottom:1px solid #e2e9f5; font-size:.85rem; }
-.rv-table tbody td{ padding:10px 12px; border-top:1px solid #f0f4fa; vertical-align:middle; color:#2f3e56; }
-.rv-table tbody tr:nth-child(odd){ background:#fbfdff; }
+</style>
 
-.rv-chip{ display:inline-block; padding:4px 10px; border-radius:999px; background:#e8f7ee; border:1px solid #cdebd7; color:#116b2d; font-weight:600; font-size:.85rem; }
-.rv-note{ background:#fff; border:1px dashed #e2e8f0; border-radius:12px; padding:12px; color:#2f3e56; }
-
-/* smaller screens */
-@media (max-width: 576px){ .rv-grid{ grid-template-columns: 1fr; } }
-/* Make the whole card reliably clickable */
-/* Keep scroller above neighboring content */
-#allPetsScroller { position: relative; z-index: 10; }
-
-/* The card itself is the click target */
-.horizontal-scroll .vetcard {
-  position: relative;
-  cursor: pointer;
-  z-index: 1;
-}
-
-/* Ensure inner content never steals the click */
-.horizontal-scroll .vetcard .circle,
-.horizontal-scroll .vetcard .circle * {
-  pointer-events: none;
-}
-
-  </style>
 </head>
 <body id="consultPage" data-threshold="<%= threshold %>">
   <div class="page-wrapper">
@@ -241,15 +301,20 @@
           <div class="card p-4 shadow-sm select-pets-card">
             <div class="select-pets-header">Select Pets</div>
 
-            <% if (user.isSuspended) { %>
-              <div class="alert alert-danger">You’re currently suspended from submitting consultations.</div>
-            <% } %>
-            <% if (!user.isSuspended && user.cancelCount >= threshold - 1) { %>
-              <div class="alert alert-warning">
-                You’ve cancelled <strong><%= user.cancelCount %></strong> of <%= threshold %> allowed consultations.
-                One more and you’ll be suspended.
-              </div>
-            <% } %>
+             <!-- UPDATED: single container so we can update it live via JS -->
+            <div id="statusAlerts">
+              <% if (user.isSuspended) { %>
+                <div class="alert alert-danger mb-2">
+                  You’re currently suspended from submitting consultations.
+                </div>
+              <% } else if (user.cancelCount >= threshold - 1) { %>
+                <div class="alert alert-warning mb-2">
+                  You’ve cancelled <strong><%= user.cancelCount %></strong> of <%= threshold %> allowed consultations.
+                  One more and you’ll be suspended.
+                </div>
+              <% } %>
+            </div>
+
 
             <div class="select-pets-body">
               <!-- All Pets (tap to select) -->
@@ -306,11 +371,12 @@
                     <div id="perPetForms"></div>
                   </div>
 
-                  <% if (user.isSuspended) { %>
-                    <button type="button" class="btn btn-secondary btn-block mt-3">Submit (Suspended)</button>
-                  <% } else { %>
-                    <button type="submit" class="btn btn-primary btn-block mt-3">Submit</button>
-                  <% } %>
+                <% if (user.isSuspended) { %>
+  <button type="button" id="submitBtn" class="btn btn-secondary btn-block mt-3" disabled>Submit (Suspended)</button>
+<% } else { %>
+  <button type="submit" id="submitBtn" class="btn btn-primary btn-block mt-3">Submit</button>
+<% } %>
+
                 </form>
               </div>
             </div>
@@ -459,711 +525,753 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 
   <script>
-    // ===== State =====
-    window.selectedPets = window.selectedPets || {}; // { petId: { name, pic } }
-    window.appointmentLimit = window.appointmentLimit || 1;
-let isSubmittingReservation = false; // <— NEW
-// ---- local date helpers (use local time, not UTC) ----
-function localToday() {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD in local time
-}
-function selectedOrToday() {
-  return $('#date').val() || localToday();
-}
+  /* =========================
+     Consult page — UPDATED JS
+     ========================= */
 
-// Build a deterministic idempotency key from date, time, and pets
-function buildIdemKey(payload) {
-  const petsKey = (payload.petRequests || [])
-    .map(p => String(p.petId || p.petName || '').trim().toLowerCase())
-    .sort()
-    .join('|');
-  return [payload.date, payload.time, petsKey].join('#');
-}
-    window.formatVisitDate = function(date) {
-      const d = new Date(date);
-      const month = d.toLocaleString('en-US', { month: 'long' }).toLowerCase();
-      const day = d.getDate();
-      const year = d.getFullYear();
-      return month + ' ' + day + ' ' + year;
-    };
-function buildTimeOptionsIfMissing() {
-  if ($('#timeSelect option').length) return;
-  var timeOptions = '';
-  for (var hour = 8; hour <= 17; hour++) {
-    var suffix = hour < 12 ? 'AM' : 'PM';
-    var hour12 = hour % 12 === 0 ? 12 : hour % 12;
-    var display = hour12 + ':00 ' + suffix;
-    var slug = hour12 + (suffix.toLowerCase());
-    timeOptions += '<option value="' + display + '" data-hour="' + hour + '" id="slot-' + slug + '">' + display + '</option>';
+  // ---------- Global state ----------
+  window.selectedPets       = window.selectedPets || {}; // { [petId]: { name, pic } }
+  window.appointmentLimit   = window.appointmentLimit || 1;
+  let isSubmittingReservation = false;
+
+  // ---------- Helpers: dates (local, not UTC) ----------
+  function localToday() {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 10); // YYYY-MM-DD
   }
-  $('#timeSelect').html(timeOptions);
-}
+  function selectedOrToday() {
+    return $('#date').val() || localToday();
+  }
 
-    // ===== Time slot helpers =====
-    function checkTimeSlots() {
-  const selectedDate = selectedOrToday();   // local-safe date
-  $('#timeSelect option').each(function(){
-    const $opt = $(this);
-    $.ajax({
-      url: '/customer/consult/appointmentCount',
-      method: 'GET',
-      data: { time: $opt.val(), date: selectedDate },
-      success: function(data){
-        if (data.count >= window.appointmentLimit) {
-          $opt.prop('disabled', true)
-              .addClass('full-slot')
-              .text($opt.val() + ' - Full')
-              .data('disabled-by-count', true);
-        } else if ($opt.data('disabled-by-count')) {
-          $opt.prop('disabled', false)
-              .removeClass('full-slot')
-              .text($opt.val())
-              .removeData('disabled-by-count');
-        }
+  // ---------- Helpers: threshold + alerts ----------
+  function getThreshold() {
+    const t = Number(document.body.getAttribute('data-threshold') || 2);
+    return Number.isFinite(t) && t > 0 ? t : 2;
+  }
+
+  function renderStatusAlerts({ suspended = false, cancelCount = 0, threshold = getThreshold() } = {}) {
+    const $box = $('#statusAlerts');
+    if (!$box.length) return;
+
+    let html = '';
+    if (suspended) {
+      html += `
+        <div class="alert alert-danger mb-2">
+          You’re currently suspended from submitting consultations.
+        </div>`;
+    } else if (cancelCount >= (threshold - 1)) {
+      html += `
+        <div class="alert alert-warning mb-2">
+          You’ve cancelled <strong>${cancelCount}</strong> of ${threshold} allowed consultations.
+          One more and you’ll be suspended.
+        </div>`;
+    }
+    $box.html(html);
+  }
+
+  function toggleSubmitAvailability(suspended) {
+    const $formBtn = $('#consultForm button[type=submit]');
+    if (!$formBtn.length) return;
+
+    if (suspended) {
+      $formBtn
+        .addClass('btn-secondary')
+        .removeClass('btn-primary')
+        .prop('disabled', true)
+        .text('Submit (Suspended)');
+    } else {
+      $formBtn
+        .addClass('btn-primary')
+        .removeClass('btn-secondary')
+        .prop('disabled', false)
+        .text('Submit');
+    }
+  }
+
+  // Immediately refresh the unread badge (no page reload)
+  async function refreshBadgeNow() {
+    // Prefer the global helper from the shell if present
+    if (typeof window.refreshMessageBadge === 'function') {
+      window.refreshMessageBadge();
+      return;
+    }
+    // Fallback: do it ourselves
+    try {
+      const r = await $.getJSON('/customer/messages/unread-count');
+      const n = Number(r?.count || 0);
+      const $badge = $('#messageBadge');
+      const $icon  = $('.message-icon');
+      if (n > 0) {
+        $badge.text(n > 99 ? '99+' : n).show();
+        $icon.addClass('has-unread');
+      } else {
+        $badge.hide().text('');
+        $icon.removeClass('has-unread');
       }
-    });
-  });
-}
+    } catch (e) {
+      // ignore
+    }
+  }
 
-function updateTimeDropdownForToday() {
-  buildTimeOptionsIfMissing();
+  // ---------- Idempotency key ----------
+  function buildIdemKey(payload) {
+    const petsKey = (payload.petRequests || [])
+      .map(p => String(p.petId || p.petName || '').trim().toLowerCase())
+      .sort()
+      .join('|');
+    return [payload.date, payload.time, petsKey].join('#');
+  }
 
-  const selDate  = selectedOrToday();  // local
-  const today    = localToday();       // local
-  const currHour = new Date().getHours();
+  // ---------- Pretty date for table insertion ----------
+  window.formatVisitDate = function(date) {
+    const d = new Date(date);
+    const month = d.toLocaleString('en-US', { month: 'long' }).toLowerCase();
+    const day = d.getDate();
+    const year = d.getFullYear();
+    return month + ' ' + day + ' ' + year;
+  };
 
-  if (selDate === today) {
+  // ---------- Time options (8am–5pm) ----------
+  function buildTimeOptionsIfMissing() {
+    if ($('#timeSelect option').length) return;
+    let timeOptions = '';
+    for (let hour = 8; hour <= 17; hour++) {
+      const suffix = hour < 12 ? 'AM' : 'PM';
+      const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+      const display = `${hour12}:00 ${suffix}`;
+      const slug    = `${hour12}${suffix.toLowerCase()}`;
+      timeOptions += `<option value="${display}" data-hour="${hour}" id="slot-${slug}">${display}</option>`;
+    }
+    $('#timeSelect').html(timeOptions);
+  }
+
+  // ---------- Slot capacity & past-time disabling ----------
+  function checkTimeSlots() {
+    const selectedDate = selectedOrToday();
     $('#timeSelect option').each(function() {
       const $opt = $(this);
-      const slotHour = parseInt($opt.data('hour'), 10);
-      if (slotHour < currHour) {
-        $opt.prop('disabled', true)
-            .attr('data-disabled-by-past', '1')
-            .text($opt.val() + ' - Passed');
-      } else if ($opt.attr('data-disabled-by-past')) {
-        $opt.prop('disabled', false)
-            .removeAttr('data-disabled-by-past')
-            .text($opt.val());
-      }
-    });
-  } else {
-    $('#timeSelect option[data-disabled-by-past]').each(function() {
-      $(this).prop('disabled', false)
-             .removeAttr('data-disabled-by-past')
-             .text($(this).val());
+      $.ajax({
+        url: '/customer/consult/appointmentCount',
+        method: 'GET',
+        data: { time: $opt.val(), date: selectedDate },
+        success: function(data) {
+          if (data.count >= window.appointmentLimit) {
+            $opt.prop('disabled', true)
+                .addClass('full-slot')
+                .text($opt.val() + ' - Full')
+                .data('disabled-by-count', true);
+          } else if ($opt.data('disabled-by-count')) {
+            $opt.prop('disabled', false)
+                .removeClass('full-slot')
+                .text($opt.val())
+                .removeData('disabled-by-count');
+          }
+        }
+      });
     });
   }
-}
 
+  function updateTimeDropdownForToday() {
+    buildTimeOptionsIfMissing();
 
-    // ===== UI helpers for multi-select =====
-    function renderChip(petId) {
-      const data = window.selectedPets[petId];
-      if (!data) return '';
-      var imgHtml = data.pic
-        ? '<img src="' + data.pic + '" alt="' + data.name.replace(/"/g, '&quot;') + '">'
-        : '<i class="fa-solid fa-paw" style="font-size:14px;"></i>';
-      return [
-        '<div class="chip" data-chipid="' + petId + '">',
-          '<span class="avatar">', imgHtml, '</span>',
-          '<span class="name">', data.name, '</span>',
-          '<span class="remove" title="Remove">×</span>',
-        '</div>'
-      ].join('');
-    }
+    const selDate  = selectedOrToday();
+    const today    = localToday();
+    const currHour = new Date().getHours();
 
-    function renderPetForm(petId) {
-      const data = window.selectedPets[petId];
-      const services = <%- JSON.stringify((petDetails.services || []).map(String)) %>;
-      var opts = ['<option value="">Select a service</option>'];
-      services.forEach(function(s){ opts.push('<option value="' + s + '">' + s + '</option>'); });
-      return [
-        '<div class="pet-form" data-formid="' + petId + '">',
-          '<h6><i class="fa-solid fa-paw"></i> ' + data.name + '</h6>',
-          '<div class="form-group">',
-            '<label>Service for ' + data.name + '</label>',
-            '<select class="form-control pet-service">' + opts.join('') + '</select>',
-          '</div>',
-          '<div class="form-group">',
-            '<label>Concerns for ' + data.name + '</label>',
-            '<textarea class="form-control pet-concerns" rows="2" placeholder="Describe ' + data.name + '\'s concern"></textarea>',
-          '</div>',
-          '<hr class="mt-3 mb-2">',
-        '</div>'
-      ].join('');
-    }
-
-    function activatePet(petId) {
-      $('#selectedPetsChips .chip').removeClass('active');
-      $('#selectedPetsChips .chip[data-chipid="' + petId + '"]').addClass('active');
-      $('#perPetForms .pet-form').removeClass('active');
-      $('#perPetForms .pet-form[data-formid="' + petId + '"]').addClass('active');
-    }
-
-    function addPetSelection(petId, name, pic) {
-      if (window.selectedPets[petId]) return;
-      window.selectedPets[petId] = { name: name, pic: pic || '' };
-      $('#selectedPetsChips').append(renderChip(petId));
-      $('#perPetForms').append(renderPetForm(petId));
-      $('.horizontal-scroll .vetcard[data-petid="' + petId + '"]').addClass('selected');
-      activatePet(petId);
-    }
-
-    function removePetSelection(petId) {
-      delete window.selectedPets[petId];
-      $('#selectedPetsChips .chip[data-chipid="' + petId + '"]').remove();
-      $('#perPetForms .pet-form[data-formid="' + petId + '"]').remove();
-      $('.horizontal-scroll .vetcard[data-petid="' + petId + '"]').removeClass('selected');
-      const first = Object.keys(window.selectedPets)[0];
-      if (first) activatePet(first);
-    }
-
-    function collectPayload() {
-      const date = $('#date').val();
-      const time = $('#timeSelect').val();
-      const petRequests = [];
-
-      $('#perPetForms .pet-form').each(function () {
-        const petId = $(this).data('formid');
-        const name  = window.selectedPets[petId] ? window.selectedPets[petId].name : '';
-        const service  = $(this).find('.pet-service').val();
-        const concerns = $(this).find('.pet-concerns').val() || '';
-        petRequests.push({ petId: String(petId), petName: name, service: service, concerns: concerns });
+    if (selDate === today) {
+      $('#timeSelect option').each(function() {
+        const $opt = $(this);
+        const slotHour = parseInt($opt.data('hour'), 10);
+        if (slotHour < currHour) {
+          $opt.prop('disabled', true)
+              .attr('data-disabled-by-past', '1')
+              .text($opt.val() + ' - Passed');
+        } else if ($opt.attr('data-disabled-by-past')) {
+          $opt.prop('disabled', false)
+              .removeAttr('data-disabled-by-past')
+              .text($opt.val());
+        }
       });
-
-      return { date: date, time: time, petRequests: petRequests };
+    } else {
+      $('#timeSelect option[data-disabled-by-past]').each(function() {
+        $(this).prop('disabled', false)
+               .removeAttr('data-disabled-by-past')
+               .text($(this).val());
+      });
     }
- function escapeHtml(str){
+  }
+
+  // ---------- UI: chips & per-pet forms ----------
+  function renderChip(petId) {
+    const data = window.selectedPets[petId];
+    if (!data) return '';
+    const imgHtml = data.pic
+      ? `<img src="${data.pic}" alt="${data.name.replace(/"/g, '&quot;')}">`
+      : '<i class="fa-solid fa-paw" style="font-size:14px;"></i>';
+    return [
+      `<div class="chip" data-chipid="${petId}">`,
+        `<span class="avatar">${imgHtml}</span>`,
+        `<span class="name">${data.name}</span>`,
+        '<span class="remove" title="Remove">×</span>',
+      '</div>'
+    ].join('');
+  }
+
+  function renderPetForm(petId) {
+    const data = window.selectedPets[petId];
+    const services = <%- JSON.stringify((petDetails.services || []).map(String)) %>;
+    const opts = ['<option value="">Select a service</option>'];
+    services.forEach(s => opts.push(`<option value="${s}">${s}</option>`));
+
+    return [
+      `<div class="pet-form" data-formid="${petId}">`,
+        `<h6><i class="fa-solid fa-paw"></i> ${data.name}</h6>`,
+        '<div class="form-group">',
+          `<label>Service for ${data.name}</label>`,
+          `<select class="form-control pet-service">${opts.join('')}</select>`,
+        '</div>',
+        '<div class="form-group">',
+          `<label>Concerns for ${data.name}</label>`,
+          `<textarea class="form-control pet-concerns" rows="2" placeholder="Describe ${data.name}'s concern"></textarea>`,
+        '</div>',
+        '<hr class="mt-3 mb-2">',
+      '</div>'
+    ].join('');
+  }
+
+  function activatePet(petId) {
+    $('#selectedPetsChips .chip').removeClass('active');
+    $(`#selectedPetsChips .chip[data-chipid="${petId}"]`).addClass('active');
+    $('#perPetForms .pet-form').removeClass('active');
+    $(`#perPetForms .pet-form[data-formid="${petId}"]`).addClass('active');
+  }
+
+  function addPetSelection(petId, name, pic) {
+    if (window.selectedPets[petId]) return;
+    window.selectedPets[petId] = { name, pic: pic || '' };
+    $('#selectedPetsChips').append(renderChip(petId));
+    $('#perPetForms').append(renderPetForm(petId));
+    $(`.horizontal-scroll .vetcard[data-petid="${petId}"]`).addClass('selected');
+    activatePet(petId);
+  }
+
+  function removePetSelection(petId) {
+    delete window.selectedPets[petId];
+    $(`#selectedPetsChips .chip[data-chipid="${petId}"]`).remove();
+    $(`#perPetForms .pet-form[data-formid="${petId}"]`).remove();
+    $(`.horizontal-scroll .vetcard[data-petid="${petId}"]`).removeClass('selected');
+    const first = Object.keys(window.selectedPets)[0];
+    if (first) activatePet(first);
+  }
+
+  function collectPayload() {
+    const date = $('#date').val();
+    const time = $('#timeSelect').val();
+    const petRequests = [];
+
+    $('#perPetForms .pet-form').each(function() {
+      const petId = $(this).data('formid');
+      const name  = window.selectedPets[petId] ? window.selectedPets[petId].name : '';
+      const service  = $(this).find('.pet-service').val();
+      const concerns = $(this).find('.pet-concerns').val() || '';
+      petRequests.push({ petId: String(petId), petName: name, service, concerns });
+    });
+
+    return { date, time, petRequests };
+  }
+
+  // ---------- HTML escaping for details modal ----------
+  function escapeHtml(str) {
     return String(str ?? '')
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
       .replace(/'/g,'&#039;');
   }
   function safe(str){ return escapeHtml(str); }
-    // ===== View / Cancel =====
- // REPLACE your existing window.viewReservation with this:
-window.viewReservation = function(id) {
-  // close any other open modals first
-  $('.modal').modal('hide');
 
-  // tiny helpers (defined only if missing)
-  if (typeof escapeHtml !== 'function') {
-    window.escapeHtml = function (str) {
-      return String(str || '')
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
-        .replace(/'/g,'&#039;');
-    };
-  }
-  if (typeof safe !== 'function') {
-    window.safe = function (str) { return escapeHtml(str); };
-  }
-  function formatVisitDateJS(date) {
-    const d = new Date(date);
-    return `${d.toLocaleString('en-US', { month: 'long' }).toLowerCase()} ${d.getDate()} ${d.getFullYear()}`;
-  }
+  // ---------- View reservation (unchanged layout; robust to multi-pet) ----------
+  window.viewReservation = function(id) {
+    $('.modal').modal('hide'); // close any open bootstrap modals
 
-  $.ajax({
-    url: '/customer/get-consultation',
-    method: 'GET',
-    data: { reservationId: id },
-    success(resp) {
-      if (!resp.success) {
-        return Swal.fire({ icon:'error', title:'Error', text: resp.message || 'Error fetching details.' });
-      }
+    function formatVisitDateJS(date) {
+      const d = new Date(date);
+      return `${d.toLocaleString('en-US', { month: 'long' }).toLowerCase()} ${d.getDate()} ${d.getFullYear()}`;
+    }
 
-      const r = resp.reservation || {};
-      const perPets = Array.isArray(resp.perPets) ? resp.perPets : []; // <<< stacked source
-      const visitDate = r.schedule?.scheduleDate || r.createdAt;
-      const time = r.time || '';
-      const doctor = (r.doctor && r.doctor.username) ? r.doctor.username : 'Not Assigned';
-      const petCount = perPets.length || (Array.isArray(r.pets) ? r.pets.length : 1);
+    $.ajax({
+      url: '/customer/get-consultation',
+      method: 'GET',
+      data: { reservationId: id },
+      success(resp) {
+        if (!resp.success) {
+          return Swal.fire({ icon:'error', title:'Error', text: resp.message || 'Error fetching details.' });
+        }
+        const r = resp.reservation || {};
+        const perPets  = Array.isArray(resp.perPets) ? resp.perPets : [];
+        const visitDate = r.schedule?.scheduleDate || r.createdAt;
+        const time = r.time || '';
+        const doctor = (r.doctor && r.doctor.username) ? r.doctor.username : 'Not Assigned';
+        const petCount = perPets.length || (Array.isArray(r.pets) ? r.pets.length : 1);
 
-      // ---------- Header ----------
-      let html = `
-        <div class="rv-card">
-          <div class="rv-section">
-            <div class="rv-header">
-              <div class="rv-date">
-                <i class="fa-solid fa-calendar-check"></i>
-                ${safe(formatVisitDateJS(visitDate))}${time ? ` · ${safe(time)}` : ''}
-              </div>
-              <div class="rv-meta">
-                <span class="rv-badge">Dr. ${safe(doctor)}</span>
-                <span class="rv-badge" title="Pet Count">${petCount} pet${petCount > 1 ? 's' : ''}</span>
-                <span class="rv-badge" title="Reservation ID">${safe(String(r._id || '').slice(-6) || '—')}</span>
+        let html = `
+          <div class="rv-card">
+            <div class="rv-section">
+              <div class="rv-header">
+                <div class="rv-date">
+                  <i class="fa-solid fa-calendar-check"></i>
+                  ${safe(formatVisitDateJS(visitDate))}${time ? ` · ${safe(time)}` : ''}
+                </div>
+                <div class="rv-meta">
+                  <span class="rv-badge">Dr. ${safe(doctor)}</span>
+                  <span class="rv-badge" title="Pet Count">${petCount} pet${petCount > 1 ? 's' : ''}</span>
+                  <span class="rv-badge" title="Reservation ID">${safe(String(r._id || '').slice(-6) || '—')}</span>
+                </div>
               </div>
             </div>
-          </div>
-      `;
+        `;
 
-      // ---------- Per-pet stacked sections (preferred) ----------
-      if (perPets.length) {
-        perPets.forEach((pp, idx) => {
-          const petLabel = safe(pp.petName || `Pet ${idx+1}`);
-          const svc = safe(pp.service || '—');
-          const cn  = safe(pp.concerns || '—');
+        if (perPets.length) {
+          perPets.forEach((pp, idx) => {
+            const petLabel = safe(pp.petName || `Pet ${idx+1}`);
+            const svc = safe(pp.service || '—');
+            const cn  = safe(pp.concerns || '—');
 
-          html += `
-            <div class="rv-section">
-              <div class="rv-header" style="margin-bottom:8px;">
-                <div class="rv-label" style="margin:0;">
-                  <i class="fa-solid fa-paw"></i> ${petLabel}
-                </div>
-              </div>
-
-              <div class="rv-grid" style="margin-bottom:8px;">
-                <div class="rv-kv">
-                  <div class="rv-label"><i class="fa-solid fa-stethoscope"></i> Requested Service</div>
-                  <div class="rv-value"><span class="rv-chip">${svc}</span></div>
-                </div>
-                <div class="rv-kv" style="grid-column: 1 / -1;">
-                  <div class="rv-label"><i class="fa-solid fa-notes-medical"></i> Concern</div>
-                  <div class="rv-value" style="white-space:normal;">${cn}</div>
-                </div>
-              </div>
-          `;
-
-          // Physical exam (with overview fallback)
-          const pe = pp.physicalExam || {};
-          const ov = pp.overview || {};
-          const weight = pe.weight || ov.weight || '—';
-          const temp   = pe.temperature || ov.temperature || '—';
-          const obs    = pe.observations || ov.others || '—';
-
-          if (weight !== '—' || temp !== '—' || obs !== '—') {
             html += `
-              <div style="margin-bottom:10px;">
+              <div class="rv-section">
+                <div class="rv-header" style="margin-bottom:8px;">
+                  <div class="rv-label" style="margin:0;">
+                    <i class="fa-solid fa-paw"></i> ${petLabel}
+                  </div>
+                </div>
+
+                <div class="rv-grid" style="margin-bottom:8px;">
+                  <div class="rv-kv">
+                    <div class="rv-label"><i class="fa-solid fa-stethoscope"></i> Requested Service</div>
+                    <div class="rv-value"><span class="rv-chip">${svc}</span></div>
+                  </div>
+                  <div class="rv-kv" style="grid-column: 1 / -1;">
+                    <div class="rv-label"><i class="fa-solid fa-notes-medical"></i> Concern</div>
+                    <div class="rv-value" style="white-space:normal;">${cn}</div>
+                  </div>
+                </div>
+            `;
+
+            const pe = pp.physicalExam || {};
+            const ov = pp.overview || {};
+            const weight = pe.weight || ov.weight || '—';
+            const temp   = pe.temperature || ov.temperature || '—';
+            const obs    = pe.observations || ov.others || '—';
+
+            if (weight !== '—' || temp !== '—' || obs !== '—') {
+              html += `
+                <div style="margin-bottom:10px;">
+                  <div class="rv-label" style="margin-bottom:6px;"><i class="fa-solid fa-heart-pulse"></i> Physical Exam</div>
+                  <div class="table-responsive">
+                    <table class="rv-table">
+                      <thead><tr><th>Weight</th><th>Temperature</th><th>Observations</th></tr></thead>
+                      <tbody><tr>
+                        <td>${safe(weight)}</td>
+                        <td>${safe(temp)}</td>
+                        <td>${safe(obs)}</td>
+                      </tr></tbody>
+                    </table>
+                  </div>
+                </div>`;
+            }
+
+            if (pp.diagnosis) {
+              html += `
+                <div style="margin-bottom:10px;">
+                  <div class="rv-label" style="margin-bottom:6px;"><i class="fa-solid fa-dna"></i> Diagnosis</div>
+                  <div class="rv-note">${safe(pp.diagnosis)}</div>
+                </div>`;
+            }
+
+            if (Array.isArray(pp.services) && pp.services.length) {
+              html += `
+                <div style="margin-bottom:10px;">
+                  <div class="rv-label" style="margin-bottom:6px;"><i class="fa-solid fa-briefcase-medical"></i> Services Rendered</div>
+                  <div class="table-responsive">
+                    <table class="rv-table">
+                      <thead><tr><th>Service</th><th>Details</th><th>File</th></tr></thead>
+                      <tbody>`;
+              pp.services.forEach(s => {
+                let fileUrl = s.file || '';
+                if (fileUrl) {
+                  fileUrl = fileUrl.replace(/^public/, '');
+                  if (!fileUrl.startsWith('/')) fileUrl = '/' + fileUrl;
+                  if (!/^https?:\/\//.test(fileUrl)) fileUrl = window.location.origin + fileUrl;
+                }
+                html += `
+                  <tr>
+                    <td><span class="rv-chip">${safe(s.serviceName || '—')}</span></td>
+                    <td>${safe(s.details || '—')}</td>
+                    <td>${fileUrl ? `<a href="${fileUrl}" download>Download</a>` : '—'}</td>
+                  </tr>`;
+              });
+              html += `</tbody></table></div></div>`;
+            }
+
+            if (Array.isArray(pp.medications) && pp.medications.length) {
+              html += `
+                <div style="margin-bottom:10px;">
+                  <div class="rv-header" style="margin-bottom:6px;">
+                    <div class="rv-label" style="margin:0;"><i class="fa-solid fa-pills"></i> Medications</div>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="rv-table">
+                      <thead><tr><th>Name</th><th>Qty</th><th>Dosage</th><th>Remarks</th></tr></thead>
+                      <tbody>`;
+              pp.medications.forEach(m => {
+                html += `
+                  <tr>
+                    <td>${safe(m.name || m.medicationName || '—')}</td>
+                    <td>${safe(m.quantity ?? '—')}</td>
+                    <td>${safe(m.dosage || '—')}</td>
+                    <td>${safe(m.remarks || '—')}</td>
+                  </tr>`;
+              });
+              html += `</tbody></table></div></div>`;
+            }
+
+            if (Array.isArray(pp.confinementStatus) && pp.confinementStatus.length) {
+              html += `
+                <div style="margin-bottom:10px;">
+                  <div class="rv-label" style="margin-bottom:6px;"><i class="fa-solid fa-hospital"></i> Confinement</div>
+                  <div class="rv-note">${safe(pp.confinementStatus.join(', '))}</div>
+                </div>`;
+            }
+            if (pp.notes) {
+              html += `
+                <div>
+                  <div class="rv-label" style="margin-bottom:6px;"><i class="fa-regular fa-note-sticky"></i> Notes</div>
+                  <div class="rv-note">${safe(pp.notes)}</div>
+                </div>`;
+            }
+
+            html += `</div>`; // end per-pet
+          });
+        } else {
+          // Fallback to older single-reservation fields
+          if (r.notes) {
+            html += `
+              <div class="rv-section">
+                <div class="rv-label" style="margin-bottom:6px;"><i class="fa-regular fa-note-sticky"></i> Notes</div>
+                <div class="rv-note">${safe(r.notes)}</div>
+              </div>`;
+          }
+          if (r.physicalExam && (r.physicalExam.weight || r.physicalExam.temperature || r.physicalExam.observations)) {
+            html += `
+              <div class="rv-section">
                 <div class="rv-label" style="margin-bottom:6px;"><i class="fa-solid fa-heart-pulse"></i> Physical Exam</div>
                 <div class="table-responsive">
                   <table class="rv-table">
                     <thead><tr><th>Weight</th><th>Temperature</th><th>Observations</th></tr></thead>
                     <tbody><tr>
-                      <td>${safe(weight)}</td>
-                      <td>${safe(temp)}</td>
-                      <td>${safe(obs)}</td>
+                      <td>${safe(r.physicalExam.weight || '—')}</td>
+                      <td>${safe(r.physicalExam.temperature || '—')}</td>
+                      <td>${safe(r.physicalExam.observations || '—')}</td>
                     </tr></tbody>
                   </table>
                 </div>
-              </div>
-            `;
+              </div>`;
           }
-
-          // Diagnosis
-          if (pp.diagnosis) {
+          if (r.diagnosis) {
             html += `
-              <div style="margin-bottom:10px;">
+              <div class="rv-section">
                 <div class="rv-label" style="margin-bottom:6px;"><i class="fa-solid fa-dna"></i> Diagnosis</div>
-                <div class="rv-note">${safe(pp.diagnosis)}</div>
-              </div>
-            `;
+                <div class="rv-note">${safe(r.diagnosis)}</div>
+              </div>`;
           }
-
-          // Services for this pet
-          if (Array.isArray(pp.services) && pp.services.length) {
+          if (Array.isArray(r.services) && r.services.length) {
             html += `
-              <div style="margin-bottom:10px;">
-                <div class="rv-label" style="margin-bottom:6px;"><i class="fa-solid fa-briefcase-medical"></i> Services Rendered</div>
+              <div class="rv-section">
+                <div class="rv-label" style="margin-bottom:6px;"><i class="fa-solid fa-stethoscope"></i> Services</div>
                 <div class="table-responsive">
                   <table class="rv-table">
-                    <thead><tr><th>Service</th><th>Details</th><th>File</th></tr></thead>
-                    <tbody>
-            `;
-            pp.services.forEach(s => {
-              let fileUrl = s.file || '';
-              if (fileUrl) {
-                fileUrl = fileUrl.replace(/^public/, '');
-                if (!fileUrl.startsWith('/')) fileUrl = '/' + fileUrl;
-                if (!/^https?:\/\//.test(fileUrl)) fileUrl = window.location.origin + fileUrl;
+                    <thead><tr><th>Category</th><th>Service</th><th>Details</th><th>File</th></tr></thead>
+                    <tbody>`;
+            r.services.forEach(s => {
+              let url = s.file || '';
+              if (url) {
+                url = String(url).replace(/^public/, '');
+                if (url && url[0] !== '/') url = '/' + url;
               }
               html += `
                 <tr>
+                  <td>${safe(s.category || '—')}</td>
                   <td><span class="rv-chip">${safe(s.serviceName || '—')}</span></td>
                   <td>${safe(s.details || '—')}</td>
-                  <td>${fileUrl ? `<a href="${fileUrl}" download>Download</a>` : '—'}</td>
-                </tr>
-              `;
+                  <td>${url ? (`<a href="${safe(url)}" download>Download</a>`) : '—'}</td>
+                </tr>`;
             });
             html += `</tbody></table></div></div>`;
           }
-
-          // Medications for this pet
-          if (Array.isArray(pp.medications) && pp.medications.length) {
+          if (Array.isArray(r.medications) && r.medications.length) {
             html += `
-              <div style="margin-bottom:10px;">
+              <div class="rv-section">
                 <div class="rv-header" style="margin-bottom:6px;">
                   <div class="rv-label" style="margin:0;"><i class="fa-solid fa-pills"></i> Medications</div>
                 </div>
                 <div class="table-responsive">
                   <table class="rv-table">
                     <thead><tr><th>Name</th><th>Qty</th><th>Dosage</th><th>Remarks</th></tr></thead>
-                    <tbody>
-            `;
-            pp.medications.forEach(m => {
+                    <tbody>`;
+            r.medications.forEach(m => {
               html += `
                 <tr>
                   <td>${safe(m.name || m.medicationName || '—')}</td>
                   <td>${safe(m.quantity ?? '—')}</td>
                   <td>${safe(m.dosage || '—')}</td>
                   <td>${safe(m.remarks || '—')}</td>
-                </tr>
-              `;
+                </tr>`;
             });
             html += `</tbody></table></div></div>`;
           }
-
-          // Confinement / Notes for this pet
-          if (Array.isArray(pp.confinementStatus) && pp.confinementStatus.length) {
-            html += `
-              <div style="margin-bottom:10px;">
-                <div class="rv-label" style="margin-bottom:6px;"><i class="fa-solid fa-hospital"></i> Confinement</div>
-                <div class="rv-note">${safe(pp.confinementStatus.join(', '))}</div>
-              </div>
-            `;
-          }
-          if (pp.notes) {
-            html += `
-              <div>
-                <div class="rv-label" style="margin-bottom:6px;"><i class="fa-regular fa-note-sticky"></i> Notes</div>
-                <div class="rv-note">${safe(pp.notes)}</div>
-              </div>
-            `;
-          }
-
-          html += `</div>`; // end pet section
-        });
-
-      } else {
-        // ---------- Fallback: old single-reservation fields ----------
-        // (keeps showing something even if perPets isn't provided)
-        if (r.notes) {
-          html += `
-            <div class="rv-section">
-              <div class="rv-label" style="margin-bottom:6px;"><i class="fa-regular fa-note-sticky"></i> Notes</div>
-              <div class="rv-note">${safe(r.notes)}</div>
-            </div>
-          `;
         }
 
-        if (r.physicalExam && (r.physicalExam.weight || r.physicalExam.temperature || r.physicalExam.observations)) {
-          html += `
-            <div class="rv-section">
-              <div class="rv-label" style="margin-bottom:6px;"><i class="fa-solid fa-heart-pulse"></i> Physical Exam</div>
-              <div class="table-responsive">
-                <table class="rv-table">
-                  <thead><tr><th>Weight</th><th>Temperature</th><th>Observations</th></tr></thead>
-                  <tbody><tr>
-                    <td>${safe(r.physicalExam.weight || '—')}</td>
-                    <td>${safe(r.physicalExam.temperature || '—')}</td>
-                    <td>${safe(r.physicalExam.observations || '—')}</td>
-                  </tr></tbody>
-                </table>
-              </div>
-            </div>
-          `;
-        }
+        html += `</div>`; // end .rv-card
 
-        if (r.diagnosis) {
-          html += `
-            <div class="rv-section">
-              <div class="rv-label" style="margin-bottom:6px;"><i class="fa-solid fa-dna"></i> Diagnosis</div>
-              <div class="rv-note">${safe(r.diagnosis)}</div>
-            </div>
-          `;
-        }
-
-        if (Array.isArray(r.services) && r.services.length) {
-          html += `
-            <div class="rv-section">
-              <div class="rv-label" style="margin-bottom:6px;"><i class="fa-solid fa-stethoscope"></i> Services</div>
-              <div class="table-responsive">
-                <table class="rv-table">
-                  <thead><tr><th>Category</th><th>Service</th><th>Details</th><th>File</th></tr></thead>
-                  <tbody>
-          `;
-          r.services.forEach(s => {
-            let url = s.file || '';
-            if (url) {
-              url = String(url).replace(/^public/, '');
-              if (url && url[0] !== '/') url = '/' + url;
-            }
-            html += `
-              <tr>
-                <td>${safe(s.category || '—')}</td>
-                <td><span class="rv-chip">${safe(s.serviceName || '—')}</span></td>
-                <td>${safe(s.details || '—')}</td>
-                <td>${url ? ('<a href="'+ safe(url) +'" download>Download</a>') : '—'}</td>
-              </tr>
-            `;
-          });
-          html += `</tbody></table></div></div>`;
-        }
-
-        if (Array.isArray(r.medications) && r.medications.length) {
-          html += `
-            <div class="rv-section">
-              <div class="rv-header" style="margin-bottom:6px;">
-                <div class="rv-label" style="margin:0;"><i class="fa-solid fa-pills"></i> Medications</div>
-              </div>
-              <div class="table-responsive">
-                <table class="rv-table">
-                  <thead><tr><th>Name</th><th>Qty</th><th>Dosage</th><th>Remarks</th></tr></thead>
-                  <tbody>
-          `;
-          r.medications.forEach(m => {
-            html += `
-              <tr>
-                <td>${safe(m.name || m.medicationName || '—')}</td>
-                <td>${safe(m.quantity ?? '—')}</td>
-                <td>${safe(m.dosage || '—')}</td>
-                <td>${safe(m.remarks || '—')}</td>
-              </tr>
-            `;
-          });
-          html += `</tbody></table></div></div>`;
-        }
-      }
-
-      // Follow-up (global)
-     
-
-      html += `</div>`; // end .rv-card
-
-      $('#consultationDetails').html(html);
-      $('#viewConsultationModal').modal('show');
-    },
-    error() {
-      Swal.fire({ icon:'error', title:'Error', text:'Server error loading details.' });
-    }
-  });
-};
-
-    window.cancelReservation = function(reservationId) {
-      Swal.fire({
-        title: 'Cancel Reservation?',
-        text: 'Are you sure you want to cancel this reservation?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, cancel it',
-        cancelButtonText: 'No, keep it'
-      }).then(function(result) {
-        if (!result.isConfirmed) return;
-        $.ajax({
-          url: '/customer/cancel-reservation',
-          method: 'POST',
-          data: { reservationId: reservationId },
-          success: function(response) {
-            if (!response.success) {
-              Swal.fire('Error', response.message || 'Unable to cancel.', 'error');
-              return;
-            }
-            $('#reservation-' + reservationId).remove();
-            $('#historyTableBody').append(
-              '<tr id="history-' + response.reservation._id + '">' +
-                '<td>' + response.reservation.pets.map(function(p){return p.petName;}).join(', ') + '</td>' +
-                '<td>' + ((response.reservation.doctor && response.reservation.doctor.username) ? response.reservation.doctor.username : 'Not Assigned') + '</td>' +
-                '<td><span class="badge badge-secondary">Canceled</span></td>' +
-              '</tr>'
-            );
-            Swal.fire('Canceled', 'Your reservation has been canceled.', 'success');
-          },
-          error: function() {
-            Swal.fire('Server Error','There was a problem cancelling the reservation.','error');
-          }
-        });
-      });
-    };
-
-  function initConsultInteractions() {
-  // wipe only our namespace before rebinding
-  $(document).off('.consult');
-
-  // Tabs
-  $(document).on('click.consult', '.profile-tab-item button', function () {
-    var parent = $(this).closest('.profile-tab-item');
-    var target = parent.data('target');
-    if (!target) return;
-    $('.profile-tab-item').removeClass('active');
-    parent.addClass('active');
-    $('.tab-content').removeClass('active');
-    $('#' + target).addClass('active');
-  });
-
-  // Pet cards (already delegated in your code, keep as-is but namespace it)
-  $(document).on('click.consult', '#allPetsScroller .vetcard, #allPetsScroller .vetcard *', function (e) {
-    e.preventDefault();
-    const $card   = $(e.target).closest('.vetcard');
-    const petId   = ($card.attr('data-petid') || '').trim();
-    const petName = $card.attr('data-petname') || '';
-    const petPic  = $card.attr('data-petpic') || '';
-    if (!petId) return;
-    $card.hasClass('selected') ? removePetSelection(petId) : addPetSelection(petId, petName, petPic);
-  });
-
-  // Chip remove / activate
-  $(document).on('click.consult', '#selectedPetsChips .chip .remove', function (e) {
-    e.stopPropagation();
-    var petId = $(this).closest('.chip').data('chipid');
-    removePetSelection(String(petId));
-  });
-  $(document).on('click.consult', '#selectedPetsChips .chip', function () {
-    var petId = $(this).data('chipid');
-    activatePet(String(petId));
-  });
-
-  // Date change
-  $(document).on('change.consult', '#date', function(){
-    updateTimeDropdownForToday();
-    checkTimeSlots();
-  });
-
-  // Submit (delegated so it survives DOM swaps)
-  $(document).on('submit.consult', '#consultForm', function(e) {
-    e.preventDefault();
-    if (isSubmittingReservation) return;
-
-    if (!Object.keys(window.selectedPets).length) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'Please select at least one pet.' });
-      return;
-    }
-
-    var payload = collectPayload();
-    const todayLocal = localToday();
-if (payload.date < todayLocal) {
-  Swal.fire({ icon: 'error', title: 'Invalid date', text: 'Please choose today or a future date.' });
-  return;
-}
-
-    if (!payload.date) { Swal.fire({ icon:'error', title:'Error', text:'Please choose a date.' }); return; }
-    if (!payload.time) { Swal.fire({ icon:'error', title:'Error', text:'Please choose a time.' }); return; }
-    for (var i = 0; i < payload.petRequests.length; i++) {
-      if (!payload.petRequests[i].service) {
-        Swal.fire({ icon:'error', title:'Missing service', text:'Select a service for ' + payload.petRequests[i].petName + '.' });
-        return;
-      }
-    }
-
-    const $btn = $('#consultForm button[type=submit]');
-    const origBtnHtml = $btn.html();
-    isSubmittingReservation = true;
-    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm mr-2"></span>Submitting...');
-    payload.idemKey = buildIdemKey(payload);
-
-    $.ajax({
-      url: '/customer/submit-reservation',
-      method: 'POST',
-      data: JSON.stringify(payload),
-      contentType: 'application/json',
-      success: function(response) {
-        isSubmittingReservation = false;
-        $btn.prop('disabled', false).html(origBtnHtml);
-        if (!response.success) return;
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Success',
-          text: (response.duplicate ? 'Reservation already submitted.' : 'Reservation submitted successfully!')
-        });
-
-        if (response.duplicate) return;
-
-        var $tbody = $('#reservationDetailsTableBody');
-        if ($tbody.find('td[colspan]').length) $tbody.empty();
-
-        var visitDate = response.reservation.date ? window.formatVisitDate(response.reservation.date) : 'N/A';
-        var petNames = (response.reservation.pets || []).map(function(i){return i.petName;}).join(', ');
-        var rowHtml =
-          '<tr id="reservation-' + response.reservation._id + '">' +
-            '<td>' + petNames + '</td>' +
-            '<td>' + visitDate + '</td>' +
-            '<td><button class="btn btn-primary btn-sm" onclick="viewReservation(\'' + response.reservation._id + '\')">View</button></td>' +
-            '<td><span class="badge badge-info">Pending</span></td>' +
-            '<td><button class="btn btn-danger btn-sm" onclick="cancelReservation(\'' + response.reservation._id + '\')">Cancel</button></td>' +
-          '</tr>';
-        $tbody.append(rowHtml);
-        document.getElementById('reservation-' + response.reservation._id)?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-
-        // Reset + recheck
-        $('#consultForm')[0].reset();
-        $('#selectedPetsChips').empty();
-        $('#perPetForms').empty();
-        $('.horizontal-scroll .vetcard').removeClass('selected');
-        window.selectedPets = {};
-        $('#timeError').text('');
-        updateTimeDropdownForToday();
-        checkTimeSlots();
+        $('#consultationDetails').html(html);
+        $('#viewConsultationModal').modal('show');
       },
-      error: function(err) {
-        isSubmittingReservation = false;
-        $btn.prop('disabled', false).html(origBtnHtml);
-        if (err.responseJSON && err.responseJSON.message) {
-          $('#timeError').text(err.responseJSON.message);
-        } else {
-          Swal.fire({ icon:'error', title:'Error', text:'There was a problem submitting your reservation.' });
-        }
+      error() {
+        Swal.fire({ icon:'error', title:'Error', text:'Server error loading details.' });
       }
     });
-  });
-}
+  };
 
+  // ---------- Cancel reservation (now updates UI + badge immediately) ----------
+  window.cancelReservation = function(reservationId) {
+    Swal.fire({
+      title: 'Cancel Reservation?',
+      text: 'Are you sure you want to cancel this reservation?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, cancel it',
+      cancelButtonText: 'No, keep it'
+    }).then(function(result) {
+      if (!result.isConfirmed) return;
 
-    // Helper: ensure the time dropdown exists (8AM–5PM)
-function buildTimeOptionsIfMissing() {
-  if ($('#timeSelect option').length) return; // already built
-  var timeOptions = '';
-  for (var hour = 8; hour <= 17; hour++) {
-    var suffix = hour < 12 ? 'AM' : 'PM';
-    var hour12 = hour % 12 === 0 ? 12 : hour % 12;
-    var display = hour12 + ':00 ' + suffix;
-    var slug = hour12 + (suffix.toLowerCase());
-    timeOptions +=
-      '<option value="' + display + '" data-hour="' + hour + '" id="slot-' + slug + '">' +
-        display +
-      '</option>';
+      $.ajax({
+        url: '/customer/cancel-reservation',
+        method: 'POST',
+        data: { reservationId },
+        success: function(response) {
+          if (!response.success) {
+            Swal.fire('Error', response.message || 'Unable to cancel.', 'error');
+            return;
+          }
+
+          // Move row from reservations to history
+          $(`#reservation-${reservationId}`).remove();
+          $('#historyTableBody').append(
+            `<tr id="history-${response.reservation._id}">
+              <td>${(response.reservation.pets || []).map(p => p.petName).join(', ')}</td>
+              <td>${
+                (response.reservation.doctor && response.reservation.doctor.username)
+                  ? response.reservation.doctor.username
+                  : 'Not Assigned'
+              }</td>
+              <td><span class="badge badge-secondary">Canceled</span></td>
+            </tr>`
+          );
+
+          // Live alerts + submit state
+          const threshold = getThreshold();
+          const cc = Number(response.cancelCount || 0);
+          const justSusp = !!response.justSuspended;
+          renderStatusAlerts({
+            suspended: justSusp || cc >= threshold,
+            cancelCount: cc,
+            threshold
+          });
+          toggleSubmitAvailability(justSusp || cc >= threshold);
+
+          // Unread badge may change (warning/suspension message pushed by server)
+          refreshBadgeNow();
+
+          Swal.fire('Canceled', 'Your reservation has been canceled.', 'success');
+        },
+        error: function() {
+          Swal.fire('Server Error','There was a problem cancelling the reservation.','error');
+        }
+      });
+    });
+  };
+
+  // ---------- Page interactions ----------
+  function initConsultInteractions() {
+    // wipe only our namespace before rebinding
+    $(document).off('.consult');
+
+    // Tabs
+    $(document).on('click.consult', '.profile-tab-item button', function () {
+      const parent = $(this).closest('.profile-tab-item');
+      const target = parent.data('target');
+      if (!target) return;
+      $('.profile-tab-item').removeClass('active');
+      parent.addClass('active');
+      $('.tab-content').removeClass('active');
+      $('#' + target).addClass('active');
+    });
+
+    // Pet cards (tap to toggle)
+    $(document).on('click.consult', '#allPetsScroller .vetcard, #allPetsScroller .vetcard *', function (e) {
+      e.preventDefault();
+      const $card   = $(e.target).closest('.vetcard');
+      const petId   = ($card.attr('data-petid') || '').trim();
+      const petName = $card.attr('data-petname') || '';
+      const petPic  = $card.attr('data-petpic') || '';
+      if (!petId) return;
+      $card.hasClass('selected') ? removePetSelection(petId) : addPetSelection(petId, petName, petPic);
+    });
+
+    // Chip remove / activate
+    $(document).on('click.consult', '#selectedPetsChips .chip .remove', function (e) {
+      e.stopPropagation();
+      const petId = $(this).closest('.chip').data('chipid');
+      removePetSelection(String(petId));
+    });
+    $(document).on('click.consult', '#selectedPetsChips .chip', function () {
+      const petId = $(this).data('chipid');
+      activatePet(String(petId));
+    });
+
+    // Date change
+    $(document).on('change.consult', '#date', function(){
+      updateTimeDropdownForToday();
+      checkTimeSlots();
+    });
+
+    // Submit (delegated)
+    $(document).on('submit.consult', '#consultForm', function(e) {
+      e.preventDefault();
+      if (isSubmittingReservation) return;
+
+      if (!Object.keys(window.selectedPets).length) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Please select at least one pet.' });
+        return;
+      }
+
+      const payload = collectPayload();
+      const todayLocal = localToday();
+
+      if (!payload.date) { Swal.fire({ icon:'error', title:'Error', text:'Please choose a date.' }); return; }
+      if (payload.date < todayLocal) {
+        Swal.fire({ icon: 'error', title: 'Invalid date', text: 'Please choose today or a future date.' });
+        return;
+      }
+      if (!payload.time) { Swal.fire({ icon:'error', title:'Error', text:'Please choose a time.' }); return; }
+      for (let i = 0; i < payload.petRequests.length; i++) {
+        if (!payload.petRequests[i].service) {
+          Swal.fire({ icon:'error', title:'Missing service', text:'Select a service for ' + payload.petRequests[i].petName + '.' });
+          return;
+        }
+      }
+
+      const $btn = $('#consultForm button[type=submit]');
+      const origBtnHtml = $btn.html();
+      isSubmittingReservation = true;
+      $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm mr-2"></span>Submitting...');
+      payload.idemKey = buildIdemKey(payload);
+
+      $.ajax({
+        url: '/customer/submit-reservation',
+        method: 'POST',
+        data: JSON.stringify(payload),
+        contentType: 'application/json',
+        success: function(response) {
+          isSubmittingReservation = false;
+          $btn.prop('disabled', false).html(origBtnHtml);
+          if (!response.success) return;
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Success',
+            text: (response.duplicate ? 'Reservation already submitted.' : 'Reservation submitted successfully!')
+          });
+
+          if (response.duplicate) return;
+
+          const $tbody = $('#reservationDetailsTableBody');
+          if ($tbody.find('td[colspan]').length) $tbody.empty();
+
+          const visitDate = response.reservation.date ? window.formatVisitDate(response.reservation.date) : 'N/A';
+          const petNames  = (response.reservation.pets || []).map(i => i.petName).join(', ');
+          const rowHtml =
+            `<tr id="reservation-${response.reservation._id}">
+              <td>${petNames}</td>
+              <td>${visitDate}</td>
+              <td><button class="btn btn-primary btn-sm" onclick="viewReservation('${response.reservation._id}')">View</button></td>
+              <td><span class="badge badge-info">Pending</span></td>
+              <td><button class="btn btn-danger btn-sm" onclick="cancelReservation('${response.reservation._id}')">Cancel</button></td>
+            </tr>`;
+          $tbody.append(rowHtml);
+          document.getElementById(`reservation-${response.reservation._id}`)?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+          // Reset + recheck
+          $('#consultForm')[0].reset();
+          $('#selectedPetsChips').empty();
+          $('#perPetForms').empty();
+          $('.horizontal-scroll .vetcard').removeClass('selected');
+          window.selectedPets = {};
+          $('#timeError').text('');
+          updateTimeDropdownForToday();
+          checkTimeSlots();
+        },
+        error: function(err) {
+          isSubmittingReservation = false;
+          $btn.prop('disabled', false).html(origBtnHtml);
+          if (err.responseJSON && err.responseJSON.message) {
+            $('#timeError').text(err.responseJSON.message);
+          } else {
+            Swal.fire({ icon:'error', title:'Error', text:'There was a problem submitting your reservation.' });
+          }
+        }
+      });
+    });
   }
-  $('#timeSelect').html(timeOptions);
-}
 
-// Boot the page (safe to call multiple times)
-function bootConsultPage() {
-  buildTimeOptionsIfMissing();
-  $.ajax({
-    url: '/customer/settings/appointmentLimit',
-    method: 'GET',
-    success: function (response) {
-      window.appointmentLimit = response.limit;
-      updateTimeDropdownForToday();
-      checkTimeSlots();
-      initConsultInteractions();
-    },
-    error: function () {
-      updateTimeDropdownForToday();
-      checkTimeSlots();
-      initConsultInteractions();
-    }
-  });
-}
+  // ---------- Boot ----------
+  function bootConsultPage() {
+    buildTimeOptionsIfMissing();
+    $.ajax({
+      url: '/customer/settings/appointmentLimit',
+      method: 'GET',
+      success: function (response) {
+        window.appointmentLimit = response.limit;
+        updateTimeDropdownForToday();
+        checkTimeSlots();
+        initConsultInteractions();
+      },
+      error: function () {
+        updateTimeDropdownForToday();
+        checkTimeSlots();
+        initConsultInteractions();
+      }
+    });
+  }
 
-// Initial load
-$(document).ready(function () {
+  // Initial load
+  $(document).ready(function () {
     const today = localToday();
-  $('#date').attr('min', today);
-  if (!$('#date').val() || $('#date').val() < today) {
-    $('#date').val(today);
-  }
-  bootConsultPage();
-});
+    $('#date').attr('min', today);
+    if (!$('#date').val() || $('#date').val() < today) {
+      $('#date').val(today);
+    }
+    bootConsultPage();
+  });
 
-// Also run when coming back via back/forward cache (e.g., after adding a pet)
-window.addEventListener('pageshow', function () {
-  buildTimeOptionsIfMissing();
-  updateTimeDropdownForToday();
-  checkTimeSlots();
-  initConsultInteractions();
-});
+  // When returning via bfcache
+  window.addEventListener('pageshow', function () {
+    buildTimeOptionsIfMissing();
+    updateTimeDropdownForToday();
+    checkTimeSlots();
+    initConsultInteractions();
+  });
+</script>
 
-  </script>
 </body>
 </html>
