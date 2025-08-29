@@ -253,15 +253,24 @@ exports.login = async (req, res) => {
       { expiresIn: "7d" }
     );
     // Role-specific access token cookie (expires in 1 minute for testing)
-    const accessCookieName = user.role.toLowerCase() + "_token";
-res.cookie(accessCookieName, accessToken, { httpOnly: true, maxAge: 60 * 60 * 1000, path: "/" });
-    // Set refresh token cookie under a unified name (expires in 7 days)
-    res.cookie("refreshToken", refreshToken, { 
-      httpOnly: true, 
-      maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days 
-      path: "/", 
-      sameSite: "lax"  // added sameSite option for local testing
-    });
+   const isProd = process.env.NODE_ENV === "production";
+const accessCookieName = user.role.toLowerCase() + "_token";
+res.cookie(accessCookieName, accessToken, {
+  httpOnly: true,
+  maxAge: 60 * 60 * 1000,
+  path: "/",
+  sameSite: "lax",
+  secure: isProd
+});
+// --- ADD THIS: set refresh token cookie (7 days) ---
+res.cookie("refreshToken", refreshToken, {
+  httpOnly: true,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  path: "/",
+  sameSite: "lax",
+  secure: isProd
+});
+
     // Send login notification email
     const mailOptions = {
       from: `"SmartVet" <dehe.marquez.au@phinmaed.com>`,
@@ -312,7 +321,14 @@ exports.verifyAdminOTP = async (req, res) => {
     process.env.JWT_SECRET,
     { expiresIn: "1h" }
   );
-  res.cookie("admin_token", accessToken, { httpOnly: true, maxAge: 60 * 60 * 1000, path: "/" });
+const isProd = process.env.NODE_ENV === "production";
+res.cookie("admin_token", accessToken, {
+  httpOnly: true,
+  maxAge: 60 * 60 * 1000,
+  path: "/",
+  sameSite: "lax",
+  secure: isProd
+});
   return res.status(200).json({
     message: "OTP verified! You are now logged in as Admin. Redirecting...",
     redirect: "/admin-dashboard"
@@ -494,7 +510,14 @@ exports.refreshToken = async (req, res) => {
       { expiresIn: "1h" } // You can test with "1h" or "1m" as needed
     );
     const cookieName = decoded.role.toLowerCase() + "_token";
-    res.cookie(cookieName, newAccessToken, { httpOnly: true, maxAge: 60 * 60 * 1000, path: "/" });
+const isProd = process.env.NODE_ENV === "production";
+res.cookie(cookieName, newAccessToken, {
+  httpOnly: true,
+  maxAge: 60 * 60 * 1000,
+  path: "/",
+  sameSite: "lax",
+  secure: isProd
+});
     res.status(200).json({ message: "Access token refreshed" });
   } catch (error) {
     console.error("Refresh token error:", error);
