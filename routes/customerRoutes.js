@@ -18,6 +18,50 @@ const Consultation = require('../models/consultation');
 const pdf = require('html-pdf');
 const Message = require('../models/message');
 
+// ===== SSE (Server-Sent Events) plumbing for realtime badge & status =====
+const clients = new Map(); // userId -> Set(res objects)
+
+function pushTo(userId, payload){
+  const set = clients.get(String(userId));
+  if (!set) return;
+  const data = `data: ${JSON.stringify(payload)}\n\n`;
+  for (const res of set) {
+    try { res.write(data); } catch(e) {}
+  }
+}
+
+router.get('/messages/stream', authMiddleware, async (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+  res.flushHeaders?.();
+  res.write('retry: 3000\n\n'); // auto-retry in 3s
+
+  const uid = String(req.user.userId);
+  if (!clients.has(uid)) clients.set(uid, new Set());
+  clients.get(uid).add(res);
+
+  // send initial snapshot
+  try {
+    const unread = await Message.countDocuments({ user: uid, isRead: false });
+    const me = await User.findById(uid, 'isSuspended cancelCount').lean();
+    res.write(`data: ${JSON.stringify({
+      topic: 'snapshot',
+      unread,
+      isSuspended: !!me?.isSuspended,
+      cancelCount: me?.cancelCount || 0
+    })}\n\n`);
+  } catch(e){}
+
+  const keepAlive = setInterval(() => res.write(':ka\n\n'), 25000);
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    const set = clients.get(uid);
+    if (set) { set.delete(res); if (!set.size) clients.delete(uid); }
+  });
+});
 
 // Helper to send “almost there” warning
 async function sendWarningEmail(toEmail, cancelCount) {
@@ -119,9 +163,19 @@ function validateRequest(schema, property = 'body') {
 
 // Schema for updating profile details
 const updateProfileSchema = Joi.object({
-  fullName: Joi.string().min(1).required(),
-  address: Joi.string().optional().allow(""),
-  cellphone: Joi.string().optional().allow("")
+  fullName: Joi.string()
+    .trim()
+    .max(40)
+    .pattern(/^[\p{L}\p{N} .,'-]+$/u)
+    .required()
+   .messages({
+  'string.empty': 'Full name is required.',
+  'string.max': 'Full name must be 40 characters or fewer.',
+  'string.pattern.base': 'Invalid full name.'
+})
+,
+  address: Joi.string().max(120).optional().allow(""),
+  cellphone: Joi.string().max(30).optional().allow("")
 });
 
 // Schema for adding a pet (unchanged)
@@ -163,6 +217,15 @@ async function pushMessage(userId, { type = 'info', title, body }) {
     console.error('pushMessage error:', e);
   }
 }
+// --- SESSION PROBE: check if user is still logged in ---
+router.get('/session', authMiddleware, (req, res) => {
+  res.json({
+    ok: true,
+    userId: req.user.userId,
+    username: req.user.username,
+    role: req.user.role
+  });
+});
 
 // -------------------- Routes --------------------
 
@@ -305,21 +368,38 @@ router.get('/profileDetails', authMiddleware, async (req, res) => {
 // Update Profile Details route with validation
 router.post('/update-profile-details', authMiddleware, validateRequest(updateProfileSchema), async (req, res) => {
   try {
-    const { fullName, address, cellphone } = req.body;
-    const userId = req.user.userId;
-    const existingUser = await User.findOne({ 
-      username: { $regex: `^${fullName}$`, $options: "i" },
+    // Normalize the name (collapse spaces)
+    const safeFullName = String(req.body.fullName || '').replace(/\s+/g, ' ').trim();
+    const address      = String(req.body.address || '').trim();
+    const cellphone    = String(req.body.cellphone || '').trim();
+    const userId       = req.user.userId;
+
+    // (Defense-in-depth) re-check allowed chars server-side
+    const NAME_ALLOWED_RE = /^[\p{L}\p{N} .,'-]+$/u;
+    if (!NAME_ALLOWED_RE.test(safeFullName) || safeFullName.length > 40 || !safeFullName) {
+ return res.status(400).json({
+  success: false,
+  message: "Invalid full name. Up to 40 characters."
+});
+
+    }
+
+    // Uniqueness (case-insensitive, excluding current user)
+    const existingUser = await User.findOne({
+      username: { $regex: `^${safeFullName}$`, $options: "i" },
       _id: { $ne: userId }
     });
     if (existingUser) {
       return res.status(400).json({ success: false, message: "This full name is already taken." });
     }
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { username: fullName, address, cellphone },
+      { username: safeFullName, address, cellphone },
       { new: true }
     );
-    return res.json({ success: true, user: updatedUser });
+
+    return res.json({ success: true, user: updatedUser, message: "Profile updated." });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ success: false, message: "Server error. Please try again later." });
@@ -1094,6 +1174,15 @@ router.get('/messages/unread-count', authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, count: 0 });
   }
 });
+router.get('/messages/count', authMiddleware, async (req, res) => {
+  try {
+    const unread = await Message.countDocuments({ user: req.user.userId, isRead: false });
+    res.json({ success: true, unread });
+  } catch (e) {
+    console.error('messages/count error:', e);
+    res.status(500).json({ success: false, unread: 0 });
+  }
+});
 
 // Full list (latest first)
 router.get('/messages', authMiddleware, async (req, res) => {
@@ -1108,20 +1197,37 @@ router.get('/messages', authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, messages: [] });
   }
 });
+// Optional: list endpoint with limit support for older clients
+router.get('/messages/list', authMiddleware, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+    const messages = await Message.find({ user: req.user.userId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+    res.json({ success: true, messages });
+  } catch (e) {
+    console.error('messages/list error:', e);
+    res.status(500).json({ success: false, messages: [] });
+  }
+});
 
 // Mark read (ids[] or all:true)
 router.post('/messages/mark-read', authMiddleware, async (req, res) => {
   try {
-    const { ids, all } = req.body || {};
+    const { ids, messageIds, all } = req.body || {};
+    const list = Array.isArray(ids) ? ids
+               : Array.isArray(messageIds) ? messageIds
+               : [];
+
     const filter = all
       ? { user: req.user.userId, isRead: false }
-      : (Array.isArray(ids) && ids.length
-          ? { user: req.user.userId, _id: { $in: ids } }
-          : null);
+      : (list.length ? { user: req.user.userId, _id: { $in: list } } : null);
 
     if (!filter) {
       return res.status(400).json({ success: false, message: 'Provide ids[] or all:true' });
     }
+
     await Message.updateMany(filter, { isRead: true, readAt: new Date() });
     res.json({ success: true });
   } catch (e) {
@@ -1129,5 +1235,6 @@ router.post('/messages/mark-read', authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
 
 module.exports = router;
