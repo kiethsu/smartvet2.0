@@ -1235,6 +1235,26 @@ router.post('/messages/mark-read', authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+// Hide a clinic PetList row by name (do NOT delete PetList)
+// POST /customer/hide-petlist
+router.post('/hide-petlist', authMiddleware, async (req, res) => {
+  try {
+    const { petName } = req.body;
+    if (!petName || !petName.trim()) {
+      return res.status(400).json({ success: false, message: 'petName is required.' });
+    }
+
+    await User.updateOne(
+      { _id: req.user.userId },
+      { $addToSet: { hiddenPetNames: petName.trim() } }
+    );
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('hide-petlist error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
 
 
 module.exports = router;
