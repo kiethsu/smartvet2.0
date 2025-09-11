@@ -83,7 +83,9 @@
 
 <div class="container-fluid reservation-container">
 <style>
-  /* Reservation Content Styles */
+  /* =========================
+     Reservation Content Styles
+     ========================= */
   .reservation-container {
     background-color: #f7f7f7;
     min-height: 100vh;
@@ -111,11 +113,13 @@
     text-decoration: none;
     color: #237c67;
   }
+
   /* Fixed height container for tables */
   .fixed-table-container {
-    height: 300px; /* adjust as needed */
+    height: 300px;
     overflow-y: auto;
   }
+
   /* Approved Reservations styling */
   .approved-table-wrapper {
     max-height: 500px;
@@ -126,7 +130,6 @@
     width: 100%;
     table-layout: fixed;
   }
-  /* Equal-width columns for Owner/Details/Actions */
   .approved-reservations .table-responsive table thead th {
     width: 33.33%;
     text-align: center;
@@ -140,11 +143,13 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
   /* Medication column */
   .medication-column {
     min-width: 140px;
     text-align: center;
   }
+
   /* Datepicker highlighting */
   .has-appointment a {
     background-color: #2a9d8f !important;
@@ -154,10 +159,10 @@
     background-color: #d9534f !important;
     color: #fff !important;
   }
+
   /* Dropdown on top */
-  .dropdown-menu {
-    z-index: 2000;
-  }
+  .dropdown-menu { z-index: 2000; }
+
   /* Navigation tab styling */
   .tab-link {
     cursor: pointer;
@@ -170,196 +175,211 @@
     font-weight: bold;
     border-bottom: 2px solid #2a9d8f;
   }
+
   /* Header buttons in left column */
-  .header-buttons {
-    font-size: 14px;
-  }
-  .header-buttons button {
-    margin-right: 5px;
-  }
+  .header-buttons { font-size: 14px; }
+  .header-buttons button { margin-right: 5px; }
+
   /* Search box styling */
-  .search-box {
-    width: 430px;
-    margin-left: 0;
-    height: 30px;
-  }
+  .search-box { width: 430px; margin-left: 0; height: 30px; }
+
   /* Equal button class for consistent sizing */
-  .equal-btn {
-    width: 120px;
+  .equal-btn { width: 120px; }
+
+  /* Center the action buttons */
+  .actions-column { text-align: center; }
+
+  /* ===== Receipt / Services tables (charcoal header, subtle stripes) ===== */
+  #receiptTable thead,
+  #servicesTable thead {
+    background-color: #343a40;
+    color: #ffffff;
   }
-  /* Center the Assign-Doctor (and other action) buttons */
-  .actions-column {
-    text-align: center;
+  #receiptTable tfoot tr,
+  #servicesTable tfoot tr {
+    background-color: #f1f1f1;
+    color: #212529;
+    font-weight: 600;
   }
-  /* Charcoal header, white text */
-#receiptTable thead,
-#servicesTable thead {
-  background-color: #343a40;  /* charcoal */
-  color: #ffffff;
-}
+  #medTotal, #svcTotal, #grandTotal { color: #20c997; }
+  #receiptTable tbody tr:hover,
+  #servicesTable tbody tr:hover { background-color: #e9ecef; }
+  #receiptTable.table-striped tbody tr:nth-of-type(odd),
+  #servicesTable.table-sm tbody tr:nth-of-type(odd) { background-color: #fafafa; }
+  #btnMarkPaid { background-color: #20c997; border-color: #17a589; }
+  #btnMarkPaid:hover { background-color: #17a589; }
+  .btn-remove { color: #dc3545; }
+  .btn-remove:hover { color: #bd2130; }
 
-/* Light gray footer rows */
-#receiptTable tfoot tr,
-#servicesTable tfoot tr {
-  background-color: #f1f1f1;
-  color: #212529;
-  font-weight: 600;
-}
+  /* Receipt modal scroll */
+  #medicationModal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-right: 1rem;
+  }
 
-/* Teal accents for totals */
-#medTotal,
-#svcTotal,
-#grandTotal {
-  color: #20c997;
-}
+  /* ---------- Category tables alignment ---------- */
+  #medicationsByCategory .table th:nth-child(1) { width: 40%; } /* product */
+  #medicationsByCategory .table th:nth-child(2) { width: 15%; } /* qty */
+  #medicationsByCategory .table th:nth-child(3) { width: 15%; } /* unit */
+  #medicationsByCategory .table th:nth-child(4) { width: 20%; } /* total */
+  #medicationsByCategory .table th:nth-child(5) { width: 10%; } /* edit */
+  #medicationsByCategory .table-responsive {
+    overflow-x: auto;
+    margin-bottom: 0.5rem;
+  }
+  .med-total-footer {
+    background-color: #f1f1f1;
+    color: #212529;
+    font-weight: 600;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    width: 100%;
+  }
+  .med-total-footer span#medTotal { color: #20c997; }
 
-/* Subtle hover and stripe */
-#receiptTable tbody tr:hover,
-#servicesTable tbody tr:hover {
-  background-color: #e9ecef;
-}
-#receiptTable.table-striped tbody tr:nth-of-type(odd),
-#servicesTable.table-sm tbody tr:nth-of-type(odd) {
-  background-color: #fafafa;
-}
+  /* ===== HR consult view (match consult.ejs) ===== */
+  .view-details-header{
+    background:#f1f5fa; padding:12px 18px; font-weight:600; font-size:.95rem; color:#444;
+    border-bottom:1px solid rgba(0,0,0,.08); border-radius:12px 12px 0 0;
+  }
+  .details-table{ width:100%; border-collapse:collapse; margin-bottom:1rem; }
+  .details-table th,.details-table td{
+    padding:.75rem 1.25rem; border:1px solid #eaeaea; vertical-align:top; text-align:left;
+  }
+  .details-table th{ background:#f1f5fa; color:#264653; font-weight:600; width:30%; }
 
-/* Button accent */
-#btnMarkPaid {
-  background-color: #20c997;
-  border-color: #17a589;
-}
-#btnMarkPaid:hover {
-  background-color: #17a589;
-}
+  /* Z-index: modals vs backdrops vs SweetAlert */
+  #hrConsultViewModal.modal { z-index: 3000 !important; }
+  .modal-backdrop { z-index: 2499 !important; }
+  #medicationModal.modal, #editMedModal.modal { z-index: 3001 !important; }
+  .swal2-container { z-index: 5001 !important; }
+  .swal2-popup { z-index: 5002 !important; }
 
-/* Remove-button styling */
-.btn-remove {
-  color: #dc3545;
-}
-.btn-remove:hover {
-  color: #bd2130;
-}
-/* make the receipt modal-body scrollable */
-#medicationModal .modal-body {
-  max-height: 70vh;
-  overflow-y: auto;
-  padding-right: 1rem; /* prevent scrollbar overlap */
-}
-/* ---------- make all category‐tables line up ---------- */
-/* give each column a fixed percentage width that’s the same in every table */
-#medicationsByCategory .table th:nth-child(1) { width: 40%; } /* product name */
-#medicationsByCategory .table th:nth-child(2) { width: 15%; } /* qty */
-#medicationsByCategory .table th:nth-child(3) { width: 15%; } /* unit price */
-#medicationsByCategory .table th:nth-child(4) { width: 20%; } /* line total */
-#medicationsByCategory .table th:nth-child(5) { width: 10%; } /* edit */
+  #hrConsultViewModal .modal-dialog { max-width: 600px; width: 100%; }
+  #hrConsultViewModal .modal-content {
+    border: none; border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  #hrConsultViewModal .modal-body {
+    flex: 1 1 auto !important; overflow-y: auto !important; padding: 1rem 1.5rem !important;
+  }
+  #hrConsultViewModal .footer-hint {
+    margin-top: auto; padding: 8px 16px; font-size: 0.65rem; color: #6c757d; text-align: center;
+    background: rgba(0,0,0,0.03); border-top: 1px solid rgba(0,0,0,0.05);
+    border-radius: 0 0 12px 12px; width: 100%; box-sizing: border-box;
+  }
+  #hrConsultViewModal .footer-hint .btn { min-width: 120px; margin-top: 6px; }
 
-/* allow horizontal scrolling if a product name is very long */
-#medicationsByCategory .table-responsive {
-  overflow-x: auto;
-  margin-bottom: 0.5rem;
-}
-.med-total-footer {
-  background-color: #f1f1f1;   /* same as your table tfoot */
-  color:           #212529;   /* same as your table tfoot */
-  font-weight:     600;        /* bold like your tfoot */
-  padding:         0.75rem;    /* match the cell padding */
-  margin-top:      0.5rem;     /* give a little breathing room */
-  width:           100%;       /* full-width to align under tables */
-}
-.med-total-footer span#medTotal {
-  color: #20c997;              /* keep your teal accent for the number */
-}
-/* HR consult view uses same look as customer */
-.view-details-header{
-  background:#f1f5fa;padding:12px 18px;font-weight:600;font-size:.95rem;color:#444;
-  border-bottom:1px solid rgba(0,0,0,.08);border-radius:12px 12px 0 0;
-}
-.details-table{width:100%;border-collapse:collapse;margin-bottom:1rem}
-.details-table th,.details-table td{padding:.75rem 1.25rem;border:1px solid #eaeaea;vertical-align:top;text-align:left}
-.details-table th{background:#f1f5fa;color:#264653;font-weight:600;width:30%}
-/* ===== Make HR View Details modal match consult.ejs ===== */
-#hrConsultViewModal.modal { z-index: 3000 !important; }
-.modal-backdrop { z-index: 2499 !important; }
-/* FIX: keep these modals above the custom backdrop */
-#medicationModal.modal,
-#editMedModal.modal {
-  z-index: 3001 !important;
-}
+  /* ==============================
+     Walk-In (+) Modal Facelift
+     ============================== */
+  /* Keep the Walk-In modal above other modals/backdrops */
+  #plusModal.modal { z-index: 3002 !important; }
+  /* jQuery UI spinner hint on the search */
+  #walkinOwnerSearch.ui-autocomplete-loading {
+    background: url('/spinner.svg') right 8px center / 16px 16px no-repeat;
+  }
+  /* Ensure jQuery UI menu shows above Bootstrap modal */
+  .ui-autocomplete { z-index: 4000 !important; }
 
-.swal2-container { z-index: 5001 !important; }  /* keep SweetAlert on top */
-.swal2-popup { z-index: 5002 !important; }
+  /* Layout & shell (match consult card look) */
+  #plusModal .modal-dialog {
+    max-width: 640px;
+    width: auto;
+    margin: .75rem auto;
+  }
+  @media (max-width: 576px){
+    #plusModal .modal-dialog { max-width: calc(100% - 1rem); margin: .5rem; }
+    #plusModal .modal-body { padding: .75rem 1rem !important; }
+  }
+  #plusModal .modal-content{
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(30,136,229,0.12), 0 1.5px 12px rgba(32,39,55,0.08);
+    overflow: hidden;
+  }
+  #plusModal .view-details-header{
+    background:#f1f5fa;
+    padding:12px 18px;
+    font-weight:600;
+    font-size:.95rem;
+    color:#444;
+    border-bottom:1px solid rgba(0,0,0,0.08);
+  }
+  #plusModal .modal-body{
+    padding: 1rem 1.25rem !important;
+    background:#fff;
+  }
 
-#hrConsultViewModal .modal-dialog {
-  max-width: 600px;
-  width: 100%;
-}
+  /* Card-like blocks inside the modal */
+  #plusModal .card-like{
+    border:1px solid #eaeaea;
+    border-radius:16px;
+    background:#fff;
+    padding:18px;
+    box-shadow: 0 4px 18px rgba(13,71,161,.10);
+  }
+  #plusModal .section-title{
+    font-weight:700;
+    color:#224b7a;
+    font-size:.95rem;
+    display:flex; align-items:center; gap:8px;
+    margin:0 0 10px;
+  }
 
-#hrConsultViewModal .modal-content {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;           /* rounds bottom corners + clips footer */
-}
+  /* Form grid */
+  #plusModal .form-row-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 14px;
+  }
+  @media (max-width: 576px){
+    #plusModal .form-row-grid{ grid-template-columns: 1fr; }
+  }
 
-/* header already exists in your file; keeping here for parity */
-#hrConsultViewModal .view-details-header{
-  background:#f1f5fa;
-  padding:12px 18px;
-  font-weight:600;
-  font-size:.95rem;
-  color:#444;
-  border-bottom:1px solid rgba(0,0,0,.08);
-  border-radius:12px 12px 0 0;
-}
+  /* Labels/controls */
+  #plusModal .form-group label{
+    font-weight:600;
+    color:#264653;
+    margin-bottom:6px;
+    font-size:.9rem;
+  }
+  #plusModal .form-control{
+    border-radius:8px;
+    border:1px solid #ced4da;
+    box-shadow: none;
+  }
+  #plusModal .form-control:focus{
+    border-color:#1E88E5;
+    box-shadow: 0 0 0 0.2rem rgba(30,136,229,0.25);
+  }
+  #plusModal .helper{
+    font-size:.8rem; color:#6b7a90; margin-top:6px;
+  }
+  #plusModal .btn{ border-radius:10px; font-weight:700; }
 
-#hrConsultViewModal .modal-body {
-  flex: 1 1 auto !important;
-  overflow-y: auto !important;
-  padding: 1rem 1.5rem !important;
-}
+  /* Search input with icon */
+  #plusModal .input-icon{ position:relative; }
+  #plusModal .input-icon i{
+    position:absolute; left:10px; top:50%; transform:translateY(-50%);
+    pointer-events:none;
+  }
+  #plusModal .input-icon input{ padding-left:34px; }
 
-/* footer strip + centered Close button (same as consult.ejs) */
-#hrConsultViewModal .footer-hint {
-  margin-top: auto;
-  padding: 8px 16px;
-  font-size: 0.65rem;
-  color: #6c757d;
-  text-align: center;
-  background: rgba(0,0,0,0.03);
-  border-top: 1px solid rgba(0,0,0,0.05);
-  border-radius: 0 0 12px 12px;
-  width: 100%;
-  box-sizing: border-box;
-}
-#hrConsultViewModal .footer-hint .btn {
-  min-width: 120px;
-  margin-top: 6px;
-}
+  /* Modal footer strip */
+  #plusModal .footer-hint{
+    background:rgba(0,0,0,.03);
+    border-top:1px solid rgba(0,0,0,.06);
+    padding:10px 14px;
+    font-size:.75rem; color:#6c757d;
+  }
 
-/* table look (same as consult.ejs) */
-#hrConsultViewModal .details-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-bottom:1rem
-}
-#hrConsultViewModal .details-table th,
-#hrConsultViewModal .details-table td{
-  padding:.75rem 1.25rem;
-  border:1px solid #eaeaea;
-  vertical-align:top;
-  text-align:left
-}
-#hrConsultViewModal .details-table th{
-  background:#f1f5fa;
-  color:#264653;
-  font-weight:600;
-  width:30%
-}
+  /* Optional inline error under time select (hook for your JS) */
+  #walkinTimeError { color:#dc3545; }
 
 </style>
+
 
    <!-- Optional debug output -->
   <div id="doctorsDebug" style="display:none;"><%= JSON.stringify(doctors) %></div>
@@ -735,184 +755,240 @@
 <!-- Walk-In Reservation Modal -->
 <div class="modal fade" id="plusModal" tabindex="-1" role="dialog" aria-labelledby="plusModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-    <div class="modal-content border-0 rounded-lg shadow">
-      <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title" id="plusModalLabel">New Walk-In Reservation</h5>
-        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+    <div class="modal-content border-0">
+      <!-- Header -->
+      <div class="view-details-header">
+        New Walk-In Reservation
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="position:absolute; right:12px; top:8px;">
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
-      <form id="walkinForm">
+
+      <form id="walkinForm" novalidate>
+        <input type="hidden" id="isExistingPet" name="isExistingPet" value="false"/>
+
         <div class="modal-body">
-          <!-- Row 1: Owner & Pet -->
-          <div class="form-row mb-3">
-            <!-- Owner selector / input -->
-            <div class="form-group col-md-6">
-              <label for="walkinOwnerSelect">Owner</label>
-              <select class="form-control" id="walkinOwnerSelect" name="ownerId">
-                <option value="" disabled selected>Select existing owner…</option>
-                <%
-                  const seen = new Set();
-                  petlistEntries.forEach(e => {
-                    const id   = e.owner._id.toString();
-                    const name = e.owner.username;
-                    if (!seen.has(id)) {
-                      seen.add(id);
-                %>
-                  <option value="<%= id %>"><%= name %></option>
-                <%   }
-                  });
-                %>
-                <option value="_NEW_">+ New Owner…</option>
-              </select>
-              + <input
+          <!-- Section: Owner & Pet -->
+          <div class="card-like mb-3">
+            <div class="section-title">
+              <i class="fa-solid fa-user"></i> Owner & Pet
+            </div>
+
+            <div class="form-row-grid">
+              <!-- Owner selector / search / new -->
+              <div class="form-group">
+                <label for="walkinOwnerSelect">Owner</label>
+
+                <!-- Existing owners dropdown (IDs + walk-in names) -->
+                <select class="form-control" id="walkinOwnerSelect" name="ownerId">
+                  <option value="" disabled selected>Select existing owner…</option>
+                  <% 
+                    const entries = Array.isArray(petlistEntries) ? petlistEntries : [];
+                    const seen = new Set();
+                    entries.forEach(e => {
+                      const ownerId    = e?.owner?._id ? String(e.owner._id) : null;
+                      const accName    = e?.owner?.username || null;
+                      const walkinName = e?.ownerName || null;
+                      if (ownerId && accName) {
+                        const key = 'ID::' + ownerId;
+                        if (!seen.has(key)) { %>
+                          <option value="<%= key %>"><%= accName %></option>
+                        <% seen.add(key); }
+                      } else if (walkinName) {
+                        const key = 'NAME::' + walkinName.trim();
+                        if (!seen.has(key)) { %>
+                          <option value="<%= key %>"><%= walkinName %> (walk-in)</option>
+                        <% seen.add(key); }
+                      }
+                    });
+                  %>
+                  <option value="_NEW_">+ New Owner…</option>
+                </select>
+
+                <!-- Search existing owners (jQuery UI autocomplete) -->
+                <div class="input-icon mt-2">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input
+                    type="text"
+                    id="walkinOwnerSearch"
+                    class="form-control"
+                    placeholder="Search existing owner…"
+                    autocomplete="off"
+                  />
+                </div>
+
+                <!-- New owner text input (shown when _NEW_ chosen) -->
+                <input
                   type="text"
                   id="walkinOwnerInput"
                   name="ownerName"
                   class="form-control mt-2 d-none"
                   placeholder="Type new owner name"
-                >
-            </div>
+                />
+              </div>
 
-            <!-- Pet selector / input -->
-            <div class="form-group col-md-6">
-              <label for="walkinPetSelect">Pet</label>
-              <select
-                class="form-control"
-                id="walkinPetSelect"
-                name="petName"
-                disabled
-              >
-                <option value="" disabled selected>Select owner first…</option>
-              </select>
-              + <input
+              <!-- Pet selector / new pet -->
+              <div class="form-group">
+                <label for="walkinPetSelect">Pet</label>
+                <select class="form-control" id="walkinPetSelect" name="petName" disabled>
+                  <option value="" disabled selected>Select owner first…</option>
+                </select>
+
+                <!-- New pet name (visible when needed) -->
+                <input
                   type="text"
                   id="walkinPetInput"
                   name="petName"
                   class="form-control mt-2 d-none"
                   placeholder="Type new pet name"
-                >
+                />
+              </div>
             </div>
           </div>
 
-          <!-- Row 2: Species / Breed / Sex / Existing Disease -->
-          <div class="form-row mb-3">
-            <div class="form-group col-md-3">
-              <label for="walkinSpecies">Species</label>
-              <select class="form-control" id="walkinSpecies" name="species" required>
-                <option value="" disabled selected>Select…</option>
-                <% petDetails.species.forEach(s => { %>
-                  <option value="<%= s %>"><%= s %></option>
-                <% }) %>
-              </select>
+          <!-- Section: Pet Meta -->
+          <div class="card-like mb-3" id="walkinPetMetaRow">
+            <div class="section-title">
+              <i class="fa-solid fa-paw"></i> Pet Details
             </div>
-            <div class="form-group col-md-3">
-              <label for="walkinBreed">Breed</label>
-              <select class="form-control" id="walkinBreed" name="breed" required>
-                <option value="" disabled selected>Select…</option>
-              </select>
-            </div>
-            <div class="form-group col-md-3">
-              <label for="walkinSex">Sex</label>
-              <select class="form-control" id="walkinSex" name="sex" required>
-                <option value="" disabled selected>Choose…</option>
-                <option>Male</option>
-                <option>Female</option>
-              </select>
-            </div>
-            <div class="form-group col-md-3">
-              <label for="walkinDisease">Existing Disease</label>
-              <select class="form-control" id="walkinDisease" name="existingDisease" required>
-                <option value="" disabled selected>Select…</option>
-                <option value="None">None</option>
-                <option value="Other">Other</option>
-                <% petDetails.diseases.forEach(d => { %>
-                  <option value="<%= d %>"><%= d %></option>
-                <% }) %>
-              </select>
-              <input
-                type="text"
-                class="form-control mt-2 d-none"
-                id="walkinOtherDisease"
-                name="otherDisease"
-                placeholder="Specify other disease"
-              >
+
+            <div class="form-row-grid">
+              <!-- Species -->
+              <div class="form-group">
+                <label for="walkinSpecies">Species</label>
+                <select class="form-control" id="walkinSpecies" name="species" required>
+                  <option value="" disabled selected>Select…</option>
+                  <% (petDetails.species || []).forEach(s => { %>
+                    <option value="<%= s %>"><%= s %></option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <!-- Breed -->
+              <div class="form-group">
+                <label for="walkinBreed">Breed</label>
+                <select class="form-control" id="walkinBreed" name="breed" required>
+                  <option value="" disabled selected>Select…</option>
+                </select>
+              </div>
+
+              <!-- Sex -->
+              <div class="form-group">
+                <label for="walkinSex">Sex</label>
+                <select class="form-control" id="walkinSex" name="sex" required>
+                  <option value="" disabled selected>Choose…</option>
+                  <option>Male</option>
+                  <option>Female</option>
+                </select>
+              </div>
+
+              <!-- Existing Disease (+ Other) -->
+              <div class="form-group">
+                <label for="walkinDisease">Existing Disease</label>
+                <select class="form-control" id="walkinDisease" name="existingDisease" required>
+                  <option value="" disabled selected>Select…</option>
+                  <option value="None">None</option>
+                  <option value="Other">Other</option>
+                  <% (petDetails.diseases || []).forEach(d => { %>
+                    <option value="<%= d %>"><%= d %></option>
+                  <% }) %>
+                </select>
+                <input
+                  type="text"
+                  class="form-control mt-2 d-none"
+                  id="walkinOtherDisease"
+                  name="otherDisease"
+                  placeholder="Specify other disease"
+                />
+              </div>
             </div>
           </div>
 
-          <!-- Row 3: Service / Date / Time -->
-          <div class="form-row mb-3">
-            <div class="form-group col-md-4">
-              <label for="walkinService">Service</label>
-              <select class="form-control" id="walkinService" name="service" required>
-                <option value="" disabled selected>Select…</option>
-                <% petDetails.services.forEach(svc => { %>
-                  <option value="<%= svc %>"><%= svc %></option>
-                <% }) %>
-              </select>
+          <!-- Section: Visit Details -->
+          <div class="card-like mb-3">
+            <div class="section-title">
+              <i class="fa-regular fa-calendar-check"></i> Visit Details
             </div>
-            <div class="form-group col-md-4">
-              <label for="walkinDate">Date</label>
-              <input type="date" class="form-control" id="walkinDate" name="date" required>
-            </div>
-            <div class="form-group col-md-4">
-              <label for="walkinTime">Time</label>
-              <input type="time" class="form-control" id="walkinTime" name="time" required>
-            </div>
-          </div>
 
-          <!-- Row 4: Weight / Temperature / Other Observations -->
-          <div class="form-row mb-3">
-            <div class="form-group col-md-4">
-              <label for="walkinWeight">Weight (kg)</label>
-              <input type="number" step="0.1" class="form-control" id="walkinWeight" name="weight" placeholder="e.g. 12.5">
-            </div>
-            <div class="form-group col-md-4">
-              <label for="walkinTemp">Temperature (°C)</label>
-              <input type="number" step="0.1" class="form-control" id="walkinTemp" name="temperature" placeholder="e.g. 38.0">
-            </div>
-            <div class="form-group col-md-4">
-              <label for="walkinObservations">Other Observations</label>
-              <input type="text" class="form-control" id="walkinObservations" name="observations" placeholder="Any notes…">
-            </div>
-          </div>
+            <div class="form-row-grid">
+              <!-- Service -->
+              <div class="form-group">
+                <label for="walkinService">Service</label>
+                <select class="form-control" id="walkinService" name="service" required>
+                  <option value="" disabled selected>Select service…</option>
+                  <% (petDetails.services || []).forEach(svc => { %>
+                    <option value="<%= svc %>"><%= svc %></option>
+                  <% }) %>
+                </select>
+              </div>
 
-          <!-- Row 5: Concerns (full width) -->
-          <div class="form-group mb-0">
-            <label for="walkinConcerns">Concerns</label>
-            <textarea class="form-control" id="walkinConcerns" name="concerns" rows="2" placeholder="Describe concerns…"></textarea>
+              <!-- Concerns -->
+              <div class="form-group">
+                <label for="walkinConcerns">Concerns</label>
+                <input type="text" class="form-control" id="walkinConcerns" name="concerns" placeholder="Short concern (optional)">
+              </div>
+
+              <!-- Date -->
+              <div class="form-group">
+                <label for="walkinDate">Date</label>
+                <input type="date" class="form-control" id="walkinDate" name="date" required>
+              </div>
+
+              <!-- Time (mirrors consult.ejs rules) -->
+              <div class="form-group">
+                <label for="walkinTimeSelect">Time</label>
+                <select class="form-control" id="walkinTimeSelect" name="time" required></select>
+                <div id="walkinTimeError" class="mt-1" style="min-height:18px;"></div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="modal-footer bg-light">
+        <div class="footer-hint">
+          The date & time follow the same rules as online consults: past times are disabled and full slots are blocked.
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" id="saveWalkinBtn" class="btn btn-success">Save</button>
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-primary">Save Reservation</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
+
 <script>window.petDetails = <%- JSON.stringify(petDetails) %>;</script>
 <script>window.petsData   = <%- JSON.stringify(pets) %>;</script>
+<script>
+  window.doctors = <%- JSON.stringify(doctors || []) %>;
+</script>
 
 
 <script>
   // on species change, re-populate "Breed"
   $('#walkinSpecies').on('change', function() {
     const sp = this.value;
-    const breeds = petDetails.speciesBreeds[sp]||[];
+    const breeds = (window.petDetails?.speciesBreeds?.[sp]) || [];
     const $b = $('#walkinBreed').empty().append('<option disabled selected>Select…</option>');
-    breeds.forEach(b => $b.append(`<option>${b}</option>`));
+    breeds.forEach(b => $b.append(`<option value="${b}">${b}</option>`));
   });
 
-  // show "Other" disease text input
+  // show "Other" disease text input  ✅ FIXED: close the handler properly
   $('#walkinDisease').on('change', function(){
-    $('#walkinOtherDisease')
-      .toggleClass('d-none', this.value!=='Other')
-      .prop('required', this.value==='Other');
+    const isOther = this.value === 'Other';
+    const $od = $('#walkinOtherDisease');
+    $od.toggleClass('d-none', !isOther)
+       .prop('required', isOther)
+       .prop('disabled', !isOther);
+    if (isOther) {
+      $od.attr('name', 'otherDisease');
+    } else {
+      $od.removeAttr('name').val('');
+    }
   });
 </script>
+
 
 <script>
 $(function(){
@@ -928,6 +1004,53 @@ $(function(){
   });
 });
 </script>
+<script>
+// Append a fresh Approved row (no reload)
+function appendApprovedRow(res) {
+  if (!res || !res._id) return;
+  const id = String(res._id);
+  // ❗ Hard guard: if it already exists, do nothing
+  if (document.getElementById('approved-' + id)) return;
+
+  const name    = res.ownerName || '—';
+  const dateISO = res.date || res.createdAt || new Date().toISOString();
+
+  const row = `
+    <tr id="approved-${id}" data-date="${(new Date(dateISO)).toISOString().slice(0,10)}">
+      <td>${name}</td>
+      <td class="text-center">
+        <button class="btn btn-primary btn-sm equal-btn d-block mx-auto"
+                onclick="viewReservation('${id}')">View</button>
+      </td>
+      <td class="actions-column">
+        <div class="dropdown d-inline-block">
+          <button class="btn btn-primary btn-sm dropdown-toggle equal-btn"
+                  type="button" id="doctorDropdown-${id}"
+                  data-toggle="dropdown" data-boundary="window">
+            Assign Doctor
+          </button>
+          <div class="dropdown-menu" aria-labelledby="doctorDropdown-${id}">
+            ${
+              (window.doctors || []).length
+                ? window.doctors.map(d => `
+                    <a class="dropdown-item" href="#"
+                       onclick="assignDoctor('${id}','${d._id}')">${d.username}</a>
+                  `).join('')
+                : `<span class="dropdown-item">No doctors available</span>`
+            }
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+
+  const $tbody = $('#approvedView tbody');
+  if ($tbody.find('td[colspan="3"]').length) $tbody.empty(); // remove empty-state row
+  $tbody.prepend(row);
+}
+
+</script>
+
 <script>
 // Recalculate Meds + Services + Grand totals (safe on empty tables)
 function recalcTotals() {
@@ -1918,74 +2041,503 @@ function addRowUnified(name, unit, qty, petLabel) {
     $drop.removeAttr('name');
   }
 
-  $('#walkinOwnerSelect').on('change', function(){
-    const ownerId = this.value;
+$('#walkinOwnerSelect').on('change', function(){
+  const raw = this.value;
 
-    $('#walkinPetSelect')
-      .prop('disabled', true)
-      .html('<option value="" disabled selected>Select owner first…</option>');
-    $('#walkinOwnerInput, #walkinPetInput')
-      .addClass('d-none')
-      .prop('required', false)
-      .val('');
+  // reset pet UI
+  $('#walkinPetSelect')
+    .prop('disabled', true)
+    .html('<option value="" disabled selected>Select owner first…</option>');
+  $('#walkinOwnerInput, #walkinPetInput')
+    .addClass('d-none').prop('required', false).val('');
 
+  // by default, the selects carry the real field names
+  swapName($('#walkinOwnerSelect'), 'ownerId',  $('#walkinOwnerInput'));
+  swapName($('#walkinPetSelect'),   'petName',  $('#walkinPetInput'));
+
+if (raw === '_NEW_') {
+  $('#walkinOwnerInput').removeClass('d-none').prop('required', true);
+  $('#walkinPetInput').removeClass('d-none').prop('required', true);
+
+  swapName($('#walkinOwnerInput'), 'ownerName', $('#walkinOwnerSelect'));
+  swapName($('#walkinPetInput'),   'petName',   $('#walkinPetSelect'));
+
+  // ⭐ ensure species/breed/sex/disease are visible & required for brand-new pets
+  $('#walkinPetMetaRow').slideDown(120);
+  (function requireMeta(on){
+    const $species = $('#walkinSpecies'), $breed = $('#walkinBreed'),
+          $sex = $('#walkinSex'), $dis = $('#walkinDisease'), $other = $('#walkinOtherDisease');
+    $species.prop('required', on).attr('name', on ? 'species' : null);
+    $breed.prop('required', on).attr('name', on ? 'breed' : null);
+    $sex.prop('required', on).attr('name', on ? 'sex' : null);
+    $dis.prop('required', on).attr('name', on ? 'existingDisease' : null);
+    if (!on) { $species.val(''); $breed.val(''); $sex.val(''); $dis.val(''); $other.addClass('d-none').prop('required', false).removeAttr('name').val(''); }
+  })(true);
+  $('#isExistingPet').val('false');
+
+  return;
+}
+
+
+  // Existing entry chosen. It may be:
+  //  - ID::<ObjectId>  (real account owner)
+  //  - NAME::<ownerName> (pure walk-in owner from PetList)
+  const isNameToken = raw.startsWith('NAME::');
+  const isIdToken   = raw.startsWith('ID::');
+
+  if (isNameToken) {
+    const ownerName = raw.slice(6); // after 'NAME::'
+
+    // Ensure we submit ownerName (string), not ownerId
+    swapName($('#walkinOwnerSelect'), 'ownerName', $('#walkinOwnerInput'));
+
+    // Fetch pets by ownerName
+    $.get('/hr/get-owner-pets', { ownerName })
+      .done(({ pets }) => {
+        const opts =
+          `<option value="" disabled selected>Select pet…</option>` +
+          (pets || []).map(p => `<option>${p}</option>`).join('') +
+          `<option value="_NEW_">+ New Pet…</option>`;
+        $('#walkinPetSelect').prop('disabled', false).html(opts);
+      })
+      .fail(() => console.error('Failed to load pets for ownerName:', ownerName));
+  } else if (isIdToken) {
+    const ownerId = raw.slice(4); // after 'ID::'
+
+    // Ensure we submit ownerId (ObjectId)
     swapName($('#walkinOwnerSelect'), 'ownerId', $('#walkinOwnerInput'));
-    swapName($('#walkinPetSelect'),   'petName', $('#walkinPetInput'));
 
-    if (ownerId === '_NEW_') {
-      $('#walkinOwnerInput').removeClass('d-none').prop('required', true);
-      $('#walkinPetInput').removeClass('d-none').prop('required', true);
+    // Fetch pets by ownerId
+    $.get('/hr/get-owner-pets', { ownerId })
+      .done(({ pets }) => {
+        const opts =
+          `<option value="" disabled selected>Select pet…</option>` +
+          (pets || []).map(p => `<option>${p}</option>`).join('') +
+          `<option value="_NEW_">+ New Pet…</option>`;
+        $('#walkinPetSelect').prop('disabled', false).html(opts);
+      })
+      .fail(() => console.error('Failed to load pets for ownerId:', ownerId));
+  }
+});
 
-      swapName($('#walkinOwnerInput'), 'ownerName', $('#walkinOwnerSelect'));
-      swapName($('#walkinPetInput'),   'petName',   $('#walkinPetSelect'));
+
+ $('#walkinPetSelect').on('change', function(){
+  const val = this.value;
+
+  // helper to toggle "required" + name on meta inputs
+  function requireMeta(on){
+    const $species = $('#walkinSpecies');
+    const $breed   = $('#walkinBreed');
+    const $sex     = $('#walkinSex');
+    const $dis     = $('#walkinDisease');
+    const $other   = $('#walkinOtherDisease');
+
+    // toggle requireds
+    $species.prop('required', on);
+    $breed.prop('required',   on);
+    $sex.prop('required',     on);
+    $dis.prop('required',     on);
+
+    // toggle name attrs so hidden fields don’t get posted
+    if (on) {
+      $species.attr('name','species');
+      $breed.attr('name','breed');
+      $sex.attr('name','sex');
+      $dis.attr('name','existingDisease');
     } else {
-      $('#walkinOwnerInput').addClass('d-none').prop('required', false);
-
-      $.get('/hr/get-owner-pets', { ownerId })
-        .done(({ pets }) => {
-          const opts =
-            `<option value="" disabled selected>Select pet…</option>` +
-            pets.map(p => `<option>${p}</option>`).join('') +
-            `<option value="_NEW_">+ New Pet…</option>`;
-          $('#walkinPetSelect').prop('disabled', false).html(opts);
-        })
-        .fail(() => console.error('Failed to load pets for owner:', ownerId));
+      $species.removeAttr('name').val('');
+      $breed.removeAttr('name').val('');
+      $sex.removeAttr('name').val('');
+      $dis.removeAttr('name').val('');
     }
-  });
 
-  $('#walkinPetSelect').on('change', function(){
-    if (this.value === '_NEW_') {
-      $('#walkinPetInput').removeClass('d-none').prop('required', true);
-      swapName($('#walkinPetInput'), 'petName', $('#walkinPetSelect'));
+    // “Other” disease input
+    if (on) {
+      const isOther = $dis.val() === 'Other';
+      $other.toggleClass('d-none', !isOther)
+            .prop('required', isOther);
+      if (isOther) $other.attr('name','otherDisease');
+      else         $other.removeAttr('name').val('');
     } else {
-      $('#walkinPetInput').addClass('d-none').prop('required', false).val('');
-      swapName($('#walkinPetSelect'), 'petName', $('#walkinPetInput'));
+      $other.addClass('d-none')
+            .prop('required', false)
+            .removeAttr('name')
+            .val('');
     }
-  });
+  }
+
+  if (val === '_NEW_') {
+    // user will TYPE a new pet name
+    $('#walkinPetInput').removeClass('d-none').prop('required', true);
+    // make the typed input carry name="petName"
+    swapName($('#walkinPetInput'), 'petName', $('#walkinPetSelect'));
+
+    // show meta section & require meta
+    $('#walkinPetMetaRow').slideDown(120);
+    requireMeta(true);
+
+    // backend flag
+    $('#isExistingPet').val('false');
+  } else {
+    // existing pet chosen from the list
+    $('#walkinPetInput').addClass('d-none').prop('required', false).val('');
+    swapName($('#walkinPetSelect'), 'petName', $('#walkinPetInput'));
+
+    // hide meta section & remove meta from submission
+    $('#walkinPetMetaRow').slideUp(120);
+    requireMeta(false);
+
+    // backend flag
+    $('#isExistingPet').val('true');
+  }
+});
+
 
   $('#plusModal').on('show.bs.modal', function(){
     swapName($('#walkinOwnerSelect'), 'ownerId', $('#walkinOwnerInput'));
     swapName($('#walkinPetSelect'),   'petName',   $('#walkinPetInput'));
     $('#walkinPetInput').removeAttr('name');
+     $('#walkinOtherDisease').removeAttr('name').val('').addClass('d-none').prop('required', false);
   });
 
-  $('#walkinForm').on('submit', function(e){
-    e.preventDefault();
-    const payload = $(this).serialize();
+$('#walkinForm').on('submit', function (e) {
+  e.preventDefault();
+  e.stopImmediatePropagation();             // 🔒 prevents other submit handlers from also firing
+  if (!validateWalkinTimeAndDate()) return; 
 
-    $.post('/hr/walkin-reservation', payload)
-      .done(res => {
-        if (res.success) {
-          Swal.fire('Saved!','Walk-in added.','success')
-            .then(() => location.reload());
-        } else {
-          Swal.fire('Error', res.message || 'Could not save.','error');
+  const $form = $(this);
+
+  // --- 1) Read owner selection and normalize tokens/field name ---
+  const $ownerSel = $('#walkinOwnerSelect');
+  const ownerSelName = $ownerSel.attr('name');          // 'ownerId' or 'ownerName'
+  let ownerSelVal  = ($ownerSel.val() || '').trim();    // may be "ID::xxx" / "NAME::Juan D."
+
+  // strip UI tokens
+  if (ownerSelName === 'ownerId'  && ownerSelVal.startsWith('ID::'))   ownerSelVal = ownerSelVal.slice(4);
+  if (ownerSelName === 'ownerName'&& ownerSelVal.startsWith('NAME::')) ownerSelVal = ownerSelVal.slice(6);
+
+  // If user chose "+ New Owner…" we moved the name to #walkinOwnerInput
+  const typedOwnerName = ($('#walkinOwnerInput').is(':visible') ? $('#walkinOwnerInput').val().trim() : '');
+
+  // Decide final owner fields to send
+  let finalOwnerId   = '';
+  let finalOwnerName = '';
+
+  if (ownerSelName === 'ownerId' && ownerSelVal) {
+    finalOwnerId = ownerSelVal;
+  } else if (ownerSelName === 'ownerName' && ownerSelVal) {
+    finalOwnerName = ownerSelVal;
+  } else if (typedOwnerName) {
+    // brand-new owner typed
+    finalOwnerName = typedOwnerName;
+  }
+
+  // Guard: require one of ownerId/ownerName before posting
+  if (!finalOwnerId && !finalOwnerName) {
+    return Swal.fire('Error', 'Please select an owner or type a new owner name.', 'error');
+  }
+
+  // --- 2) Build payload explicitly instead of raw serialize() ---
+  // Start from serializeArray but drop any accidental/duplicate owner fields
+  const base = {};
+  $form.serializeArray().forEach(({ name, value }) => {
+    if (['ownerId', 'ownerName'].includes(name)) return; // we'll set clean ones below
+    base[name] = value;
+  });
+
+  // Ensure clean, single source of truth for owner fields
+  const payload = {
+    ...base,
+    ownerId:   finalOwnerId || undefined,
+    ownerName: finalOwnerName || undefined
+  };
+
+  // Safety: if isExistingPet === 'true', strip pet meta so Joi .unknown(false) is happy
+  const isExistingPet = String($('#isExistingPet').val()).toLowerCase() === 'true';
+  if (isExistingPet) {
+    delete payload.species;
+    delete payload.breed;
+    delete payload.sex;
+    delete payload.existingDisease;
+    delete payload.otherDisease;
+  } else {
+    // when new pet, make sure meta fields are sent with names
+    // (your change handlers already toggle these names, this is just a sanity check)
+    $('#walkinSpecies').attr('name','species');
+    $('#walkinBreed').attr('name','breed');
+    $('#walkinSex').attr('name','sex');
+    $('#walkinDisease').attr('name','existingDisease');
+    // otherDisease is already handled by your "Other" toggle
+  }
+
+  const $saveBtn = $form.find('button[type="submit"]');
+  $saveBtn.prop('disabled', true);
+
+  $.post('/hr/walkin-reservation', payload)
+    .done((res) => {
+      if (res.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Saved!',
+          text: 'Walk-in added.',
+          timer: 1000,
+          showConfirmButton: false
+        });
+
+        // Optional: show instantly in "Approved" list if you want
+        if (typeof appendApprovedRow === 'function' && res.reservation) {
+          appendApprovedRow(res.reservation);
         }
-      })
-      .fail(() => {
-        Swal.fire('Error','Server error.','error');
-      });
+
+        // Reset form & UI
+        $('#plusModal').modal('hide');
+        $form[0].reset();
+
+        $('#walkinOwnerSelect').val('');
+        $('#walkinPetSelect')
+          .prop('disabled', true)
+          .html('<option value="" disabled selected>Select owner first…</option>');
+        $('#walkinOwnerInput, #walkinPetInput')
+          .addClass('d-none')
+          .prop('required', false)
+          .val('');
+        $('#walkinPetMetaRow').hide();
+        $('#isExistingPet').val('false');
+      } else {
+        Swal.fire('Error', res.message || 'Could not save.', 'error');
+      }
+    })
+    .fail((xhr) => {
+      const msg = xhr.responseJSON?.message || 'Server error.';
+      const details = xhr.responseJSON?.details;
+      const text = Array.isArray(details) ? [msg, ...details].join('\n') : msg;
+      Swal.fire('Error', text, 'error');
+    })
+    .always(() => {
+      $saveBtn.prop('disabled', false);
+    });
+});
+
+/* --- Live updates from server (SSE) --- */
+try {
+  const es = new EventSource('/hr/stream');
+
+  es.addEventListener('message', (ev) => {
+    let payload;
+    try { payload = JSON.parse(ev.data); } catch { return; }
+
+   if (payload?.type === 'reservation:walkin') {
+  if (!document.getElementById('approved-' + payload.reservation?._id)) {
+    appendApprovedRow(payload.reservation);
+  }
+}
+
+   if (payload?.type === 'reservation:approved') {
+  // either update or skip if already there
+  if (!document.getElementById('approved-' + payload.reservation?._id)) {
+    appendApprovedRow(payload.reservation);
+  }
+}
+
+    if (payload?.type === 'reservation:assigned') {
+      const id = payload.reservation?._id;
+      if (id) $('#approved-' + id).remove();
+    }
+  });
+} catch (e) {
+  console.warn('SSE not available', e);
+}
+  // --- Owner search (autocomplete) ---
+  $('#walkinOwnerSearch').autocomplete({
+    minLength: 1,
+    delay: 100,
+    source: function(request, response) {
+      $.get('/hr/search-owners', { q: request.term })
+        .done(function(res) {
+          response((res.items || []).map(x => ({ label: x.label, value: x.label, token: x.token })));
+        })
+        .fail(() => response([]));
+    },
+    select: function(event, ui) {
+      const token = ui.item.token;
+      const $sel = $('#walkinOwnerSelect');
+
+      if (!$sel.find(`option[value="${token}"]`).length) {
+        $sel.append(`<option value="${token}">${ui.item.label}</option>`);
+      }
+      $sel.val(token).trigger('change');
+
+      $(this).val(ui.item.label);
+      return false;
+    }
   });
 
-}); // end document.ready
+  // Show suggestions as soon as the first letter is typed
+  $('#walkinOwnerSearch').on('input', function () {
+    const val = $(this).val();
+    $('#walkinOwnerSearch').autocomplete('search', val);
+  });
+
+  // Also open suggestions on focus if there’s already 1+ char
+  $('#walkinOwnerSearch').on('focus', function () {
+    const val = $(this).val();
+    if (val.length >= 1) {
+      $('#walkinOwnerSearch').autocomplete('search', val);
+    }
+  });
+
+  // Keep your existing new-owner flow tidy
+  $('#walkinOwnerSelect').on('change', function() {
+    if (this.value === '_NEW_') $('#walkinOwnerSearch').val('');
+  });
+
+}); // <-- this is the end of $(document).ready(...)
+// shared state
+window.walkinAppointmentLimit = window.walkinAppointmentLimit || 1;
+
+// local YYYY-MM-DD (no UTC shift surprises)
+function walkinLocalToday() {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10);
+}
+function walkinSelectedOrToday() {
+  return $('#walkinDate').val() || walkinLocalToday();
+}
+
+// Build the 8:00–17:00 options once
+function buildWalkinTimeOptionsIfMissing() {
+  if ($('#walkinTimeSelect option').length) return;
+  let html = '';
+  for (let hour = 8; hour <= 17; hour++) {
+    const suffix = hour < 12 ? 'AM' : 'PM';
+    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    const display = `${hour12}:00 ${suffix}`;
+    const slug    = `${hour12}${suffix.toLowerCase()}`;
+    html += `<option value="${display}" data-hour="${hour}" id="walkin-slot-${slug}">${display}</option>`;
+  }
+  $('#walkinTimeSelect').html(html);
+}
+
+// Full/remaining check (hits same backend as consult.ejs)
+function walkinCheckTimeSlots() {
+  const selectedDate = walkinSelectedOrToday();
+  $('#walkinTimeSelect option').each(function() {
+    const $opt = $(this);
+    $.ajax({
+      url: '/customer/consult/appointmentCount',
+      method: 'GET',
+      data: { time: $opt.val(), date: selectedDate },
+      success: function(data) {
+        if (data.count >= window.walkinAppointmentLimit) {
+          $opt.prop('disabled', true)
+              .addClass('full-slot')
+              .text($opt.val() + ' - Full')
+              .data('disabled-by-count', true);
+        } else if ($opt.data('disabled-by-count')) {
+          $opt.prop('disabled', false)
+              .removeClass('full-slot')
+              .text($opt.val())
+              .removeData('disabled-by-count');
+        }
+      }
+    });
+  });
+}
+
+// Past-time disabling for "today"
+function updateWalkinTimeDropdownForDate() {
+  buildWalkinTimeOptionsIfMissing();
+
+  const selDate  = walkinSelectedOrToday();
+  const today    = walkinLocalToday();
+  const currHour = new Date().getHours();
+
+  if (selDate === today) {
+    $('#walkinTimeSelect option').each(function() {
+      const $opt = $(this);
+      const slotHour = parseInt($opt.data('hour'), 10);
+      if (slotHour < currHour) {
+        $opt.prop('disabled', true)
+            .attr('data-disabled-by-past', '1')
+            .text($opt.val() + ' - Passed');
+      } else if ($opt.attr('data-disabled-by-past')) {
+        $opt.prop('disabled', false)
+            .removeAttr('data-disabled-by-past')
+            .text($opt.val());
+      }
+    });
+  } else {
+    $('#walkinTimeSelect option[data-disabled-by-past]').each(function() {
+      $(this).prop('disabled', false)
+             .removeAttr('data-disabled-by-past')
+             .text($(this).val());
+    });
+  }
+}
+
+// Validate on submit: same behavior as consult.ejs
+function validateWalkinTimeAndDate() {
+  const $err = $('#walkinTimeError');
+  $err.text('');
+  const date = $('#walkinDate').val();
+  const time = $('#walkinTimeSelect').val();
+
+  const today = walkinLocalToday();
+  if (!date) { $err.text('Please choose a date.'); return false; }
+  if (date < today) { $err.text('Please choose today or a future date.'); return false; }
+  if (!time) { $err.text('Please choose a time.'); return false; }
+
+  // If the currently chosen option is disabled (full or past), block
+  const $chosen = $('#walkinTimeSelect option:selected');
+  if ($chosen.is(':disabled')) {
+    if ($chosen.hasClass('full-slot')) {
+      $err.text('This time slot is full. Please choose another.');
+    } else if ($chosen.attr('data-disabled-by-past')) {
+      $err.text('This time has already passed. Please choose another.');
+    } else {
+      $err.text('This time is not available. Please choose another.');
+    }
+    return false;
+  }
+  return true;
+}
+
+// Boot this logic when the modal opens
+$('#plusModal').on('shown.bs.modal', function() {
+  // min + default date
+  const today = walkinLocalToday();
+  $('#walkinDate').attr('min', today);
+  if (!$('#walkinDate').val() || $('#walkinDate').val() < today) {
+    $('#walkinDate').val(today);
+  }
+
+  buildWalkinTimeOptionsIfMissing();
+
+  // get limit then compute availability
+  $.getJSON('/customer/settings/appointmentLimit')
+    .done(resp => { window.walkinAppointmentLimit = resp?.limit || 1; })
+    .always(() => {
+      updateWalkinTimeDropdownForDate();
+      walkinCheckTimeSlots();
+    });
+});
+
+// React to date change inside modal
+$(document).on('change', '#walkinDate', function() {
+  updateWalkinTimeDropdownForDate();
+  walkinCheckTimeSlots();
+  $('#walkinTimeError').text('');
+});
+
+// Guard on submit
+$(document).on('submit', '#walkinForm', function(e) {
+  if (!validateWalkinTimeAndDate()) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return false;
+  }
+  // allow your existing submit flow to proceed
+  return true;
+});
 </script>
