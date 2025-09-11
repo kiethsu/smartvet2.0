@@ -91,17 +91,28 @@
           <th>Details</th>
         </tr>
       </thead>
-     <tbody id="petTableBody">
-  <% if (list.length > 0) { %>
-    <% list.forEach(function(e) { %>
+<tbody id="petTableBody">
+  <% if (Array.isArray(list) && list.length > 0) { %>
+    <% list.forEach(function(e) { 
+         // Is the owner populated? (owner may be missing/null or just an ObjectId)
+         var hasOwner   = e && e.owner && (e.owner._id || typeof e.owner === 'object');
+         var ownerIdStr = (hasOwner && e.owner._id) ? String(e.owner._id) : null;   // null, not ""
+         var ownerName  = (e && e.owner && e.owner.username) ? e.owner.username : (e.ownerName || '');
+    %>
       <tr id="pet-<%= e._id %>">
-        <td class="ownerName"><%= e.owner.username %></td>
-        <td class="petName"    ><%= e.petName %></td>
+        <td class="ownerName"><%= ownerName %></td>
+        <td class="petName"><%= e.petName %></td>
         <td class="text-center">
-          <button class="btn btn-info btn-sm equal-btn"
-        onclick="viewPetDetails(null, '<%= e.petName %>', '<%= e.owner._id %>')">
-  View History
-</button>
+          <button
+            class="btn btn-info btn-sm equal-btn"
+            onclick='viewPetDetails(
+              null,
+              <%- JSON.stringify(e.petName || "") %>,
+              <%= ownerIdStr ? `"${ownerIdStr}"` : 'null' %>,
+              <%- JSON.stringify(ownerName) %>
+            )'>
+            View History
+          </button>
         </td>
       </tr>
     <% }); %>
@@ -109,6 +120,8 @@
     <tr><td colspan="3" class="text-center">No pets added.</td></tr>
   <% } %>
 </tbody>
+
+
     </table>
   </div>
 </div>
@@ -166,10 +179,13 @@
  * @param {String}      petName
  * @param {String}      ownerId
  */
-function viewPetDetails(petId, petName, ownerId) {
+function viewPetDetails(petId, petName, ownerId, ownerName) {
   $('#petDetailsContent').html('<p>Loading…</p>');
   $('#petDetailsModal').modal('show');
 
+  const params = { petId, petName };
+  if (ownerId) params.ownerId = ownerId;           // only when truthy
+  if (!ownerId && ownerName) params.ownerName = ownerName;
   $.get('/hr/get-pet-history', { petId, petName, ownerId })
     .done(({ success, history }) => {
       if (!success) return $('#petDetailsContent').html('<p>Error loading details.</p>');
