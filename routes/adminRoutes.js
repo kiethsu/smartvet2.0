@@ -463,4 +463,3 @@ router.get("/downloadSalesCSV",  adminController.downloadSalesCSV);
 
 router.get("/download-sales-report.pdf",  adminController.downloadSalesPDF);
 module.exports = router;
-
