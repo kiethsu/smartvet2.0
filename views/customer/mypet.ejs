@@ -843,15 +843,18 @@ $(document).ready(function () {
     $('#savePetBtn').data('id', meta.id);
 
     // Determine if this is a clinic (PetList) record
-    const isClinic = !!meta.added || String(meta.id || '').startsWith('list-');
+ // Determine if this is a clinic (PetList) record
+// Determine if this is a clinic (PetList) record
+const isClinic = !!meta.added || String(meta.id || '').startsWith('list-');
 
-    // Delete button: block clinic records
-    $('#deletePetBtn')
-      .data({ id: meta.id, clinic: isClinic })
-      .prop('disabled', isClinic)
-      .toggleClass('disabled', isClinic)
-      .attr('title', isClinic ? 'Clinic record — cannot delete here' : '')
-      .text(isClinic ? 'Clinic Record' : 'Delete');
+// Always allow Delete; branch behavior on click (real delete vs hide)
+$('#deletePetBtn')
+  .data({ id: meta.id, clinic: isClinic, name: meta.name })
+  .prop('disabled', false)
+  .removeClass('disabled')
+  .attr('title', '')
+  .text('Delete');
+
 
     // Upload button: block clinic records
     $('#uploadPetPicBtn')
@@ -1282,25 +1285,20 @@ $(document).ready(function () {
     });
   });
 
-  // ==============================
-  // Delete (spinner + slow toast)
-  // ==============================
-  $('#deletePetBtn').off('click').on('click', function () {
-    const id = String($(this).data('id') || '');
-    const isClinic = !!$(this).data('clinic');
-    if (!id) return;
+  /// ==============================
+// Delete (spinner + slow toast)
+// ==============================
+$('#deletePetBtn').off('click').on('click', function () {
+  const id       = String($(this).data('id') || '');
+  const isClinic = !!$(this).data('clinic');
+  const name     = String($(this).data('name') || '').trim();
+  if (!id) return;
 
-    if (isClinic || id.startsWith('list-')) {
-      return Swal.fire({
-        icon: 'info',
-        title: 'Clinic record',
-        text: 'This entry is part of the clinic records and cannot be deleted from here.'
-      });
-    }
-
+  // Clinic rows: perform HIDE under the hood, but UX says Delete
+  if (isClinic || id.startsWith('list-')) {
     Swal.fire({
       title: 'Delete Pet?',
-      text: 'This will delete the pet from your account.',
+      text: 'This will delete the pet from your list.',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Yes, delete',
@@ -1309,14 +1307,18 @@ $(document).ready(function () {
       if (!result.isConfirmed) return;
 
       const $del = $('#deletePetBtn');
-      lockBtn($del, 'Deleting…');
+      lockBtn($del, 'Deleting…'); // same UX label as real delete
 
-      const req = $.post('/customer/delete-pet', { id });
+      const req = $.post('/customer/hide-petlist', { petName: name });
       trackSlow(req);
 
       req.done(res => {
         if (res && res.success) {
-          $(`.pet-row[data-id="${id}"]`).remove();
+          // remove the row from the table
+          const selector = id.startsWith('list-')
+            ? `.pet-row[data-id="${id}"]`
+            : `.pet-row[data-petname="${CSS.escape(name)}"][data-addedfromreservation="true"]`;
+          $(selector).remove();
 
           // empty-state row if none left
           const $tbody = $('.reservation-table-wrapper tbody');
@@ -1325,7 +1327,7 @@ $(document).ready(function () {
           }
 
           $('#petDetailsModal').modal('hide');
-          Swal.fire({ icon:'success', title:'Deleted!', text:'Pet removed from your account.' });
+          Swal.fire({ icon:'success', title:'Deleted!', text:'Pet removed from your list.' }); // same success UX
         } else {
           Swal.fire({ icon:'error', title:'Error', text:(res && res.message) || 'Delete failed.' });
         }
@@ -1335,7 +1337,47 @@ $(document).ready(function () {
         unlockBtn($del);
       });
     });
+    return;
+  }
+
+  // Real user-owned pets: actual delete
+  Swal.fire({
+    title: 'Delete Pet?',
+    text: 'This will delete the pet from your account.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, delete',
+    cancelButtonText: 'Cancel'
+  }).then(result => {
+    if (!result.isConfirmed) return;
+
+    const $del = $('#deletePetBtn');
+    lockBtn($del, 'Deleting…');
+
+    const req = $.post('/customer/delete-pet', { id });
+    trackSlow(req);
+
+    req.done(res => {
+      if (res && res.success) {
+        $(`.pet-row[data-id="${id}"]`).remove();
+
+        const $tbody = $('.reservation-table-wrapper tbody');
+        if ($tbody.find('tr.pet-row').length === 0) {
+          $tbody.html('<tr class="no-pets-row"><td colspan="3" class="text-center">You have no pets.</td></tr>');
+        }
+
+        $('#petDetailsModal').modal('hide');
+        Swal.fire({ icon:'success', title:'Deleted!', text:'Pet removed from your account.' });
+      } else {
+        Swal.fire({ icon:'error', title:'Error', text:(res && res.message) || 'Delete failed.' });
+      }
+    }).fail(xhr => {
+      Swal.fire({ icon:'error', title:'Error', text:(xhr.responseJSON && xhr.responseJSON.message) || 'Server error.' });
+    }).always(() => {
+      unlockBtn($del);
+    });
   });
+});
 
   function formatVisitDate(date) {
     const d = new Date(date);
