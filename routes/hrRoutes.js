@@ -13,6 +13,16 @@ const Service      = require('../models/service');
 const nodemailer = require('nodemailer'); // Import Nodemailer
 const Payment = require('../models/Payment')
 const mongoose = require('mongoose');;
+const { isValidObjectId } = mongoose;
+// ===== SSE for HR live updates =====
+const clientsHR = new Set(); // holds res objects
+
+function hrBroadcast(payload) {
+  const data = `data: ${JSON.stringify(payload)}\n\n`;
+  for (const res of clientsHR) {
+    try { res.write(data); } catch(e) {}
+  }
+}
 
 
 // at the top
@@ -33,27 +43,42 @@ const reservationIdSchema = Joi.object({
   reservationId: Joi.string().required()
 });
 // before any routes
+// REPLACE the whole walkinSchema with this:
 const walkinSchema = Joi.object({
   ownerId: Joi.string().optional().allow(''),
   ownerName: Joi.string().optional().allow(''),
+
   petName: Joi.string().required().label('Pet Name'),
-  species: Joi.string().required().label('Species'),
-  breed: Joi.string().required().label('Breed'),
-  sex: Joi.string().valid('Male','Female').required().label('Sex'),
-  existingDisease: Joi.string().required().label('Existing Disease'),
+
+  // NEW: this flag is sent by the form and toggled by your front-end code
+  isExistingPet: Joi.boolean()
+    .truthy('true').falsy('false')
+    .default(true),
+
+  // Pet meta is required ONLY when adding a brand new pet
+  species: Joi.string().trim().when('isExistingPet', { is: false, then: Joi.required(), otherwise: Joi.strip() }).label('Species'),
+  breed:   Joi.string().trim().when('isExistingPet', { is: false, then: Joi.required(), otherwise: Joi.strip() }).label('Breed'),
+  sex:     Joi.string().valid('Male','Female').when('isExistingPet', { is: false, then: Joi.required(), otherwise: Joi.strip() }).label('Sex'),
+
+  // Disease is split into 2 inputs in the form; normalize later
+  existingDisease: Joi.string().optional().allow('').label('Existing Disease'),
   otherDisease: Joi.when('existingDisease', {
     is: 'Other',
     then: Joi.string().required().label('Other Disease'),
-    otherwise: Joi.forbidden()
+    otherwise: Joi.string().optional().allow('')
   }),
+
   service: Joi.string().required().label('Service'),
-  date: Joi.date().required().label('Date'),
-  time: Joi.string().required().label('Time'),
-  weight: Joi.number().optional().allow('', null),
-  temperature: Joi.number().optional().allow('', null),
+  date:    Joi.date().required().label('Date'),
+  time:    Joi.string().required().label('Time'),
+
+  weight:       Joi.number().optional().allow('', null),
+  temperature:  Joi.number().optional().allow('', null),
   observations: Joi.string().optional().allow(''),
-  concerns: Joi.string().optional().allow('')
-});
+  concerns:     Joi.string().optional().allow('')
+})
+  .or('ownerId', 'ownerName')   // must provide one of these
+  .unknown(false);              // reject fields we didn’t declare
 
 function validateWalkin(req, res, next) {
   const { error, value } = walkinSchema.validate(req.body, { abortEarly: false });
@@ -149,6 +174,26 @@ for (let r of reservations) {
     res.status(500).send("Server error");
   }
 });
+// Live event stream for HR dashboard
+router.get('/stream', authMiddleware, async (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+  res.flushHeaders?.();
+  res.write('retry: 3000\n\n'); // auto-retry in 3s
+
+  clientsHR.add(res);
+
+  // OPTIONAL: initial “hello” (so front-end knows stream is open)
+  res.write(`data: ${JSON.stringify({ type: 'hello', t: Date.now() })}\n\n`);
+
+  req.on('close', () => {
+    clientsHR.delete(res);
+    try { res.end(); } catch(e) {}
+  });
+});
 
 
 // Updated /petlist route
@@ -177,39 +222,43 @@ router.get('/petlist', authMiddleware, async (req, res) => {
 // …
 
 router.get('/get-owner-pets', authMiddleware, async (req, res) => {
-  const { ownerId } = req.query;
-  if (!ownerId) return res.json({ pets: [] });
+  const { ownerId, ownerName } = req.query;
 
-  // 1) pull PetList walk-in names
-  const listEntries = await PetList
-    .find({ owner: ownerId })
-    .lean();
-  const listNames = listEntries.map(e => e.petName);
+  // If we have an account owner (ownerId), use that (existing behavior)
+  if (ownerId) {
+    const listEntries = await PetList.find({ owner: ownerId }).lean();
+    const listNames   = listEntries.map(e => e.petName);
 
-  // 2) pull your “real” Pet documents
-  const realPets = await Pet
-    .find({ owner: ownerId })
-    .lean();
-  const realNames = realPets.map(p => p.petName);
+    const realPets    = await Pet.find({ owner: ownerId }).lean();
+    const realNames   = realPets.map(p => p.petName);
 
-  // 3) merge + dedupe
-  const allNames = Array.from(new Set([...realNames, ...listNames]));
+    const allNames = Array.from(new Set([...realNames, ...listNames]));
+    return res.json({ pets: allNames });
+  }
 
-  res.json({ pets: allNames });
+  // If we have a walk-in owner (by ownerName string), pull from PetList by ownerName
+  if (ownerName && ownerName.trim()) {
+    const listEntries = await PetList.find({ ownerName: ownerName.trim() }).lean();
+    const listNames   = listEntries.map(e => e.petName);
+    const allNames    = Array.from(new Set(listNames));
+    return res.json({ pets: allNames });
+  }
+
+  return res.json({ pets: [] });
 });
 
-// then your route
+
 router.post(
   '/walkin-reservation',
   authMiddleware,
   validateWalkin,
   async (req, res) => {
     try {
-      // now you know req.walkinData has everything
       const {
         ownerId,
         ownerName,
         petName,
+        isExistingPet,        // <-- NEW from schema
         species,
         breed,
         sex,
@@ -218,168 +267,232 @@ router.post(
         service,
         date,
         time,
-        weight,
-        temperature,
-        observations,
+        // weight, temperature, observations,
         concerns
       } = req.walkinData;
+// --- NORMALIZE UI TOKENS COMING FROM THE <select> ---
+// The Owner <select> uses "ID::<ObjectId>" for accounts and "NAME::<text>" for walk-ins.
+// Strip those prefixes so we never save tokens into the DB.
+const rawOwnerId   = (ownerId   || '').trim();
+const rawOwnerName = (ownerName || '').trim();
 
-      console.log('📝 walkin-reservation payload:', req.walkinData);
+const ownerIdNorm   = rawOwnerId.startsWith('ID::')     ? rawOwnerId.slice(4)  : rawOwnerId;
+const ownerNameNorm = rawOwnerName.startsWith('NAME::') ? rawOwnerName.slice(6) : rawOwnerName;
 
-      // 1) Determine or create owner
-      let userId, nameToSave;
-      if (ownerId) {
-        const existing = await User.findById(ownerId);
-        if (!existing) {
-          return res.status(400).json({ success: false, message: 'Invalid owner.' });
-        }
-        userId     = ownerId;
-        nameToSave = existing.username;
+  // 1) Resolve owner (use normalized values)
+let userId = null;
+let nameToSave = '';
+
+if (ownerIdNorm) {
+  const existing = await User.findById(ownerIdNorm).lean();
+  if (!existing) {
+    return res.status(400).json({ success: false, message: 'Invalid owner.' });
+  }
+  userId     = existing._id;
+  nameToSave = existing.username;  // clean, stable name for PetList display
+} else {
+  if (!ownerNameNorm) {
+    return res.status(400).json({ success: false, message: 'Owner name is required for walk-in.' });
+  }
+  nameToSave = ownerNameNorm;      // clean walk-in name (no token)
+}
+
+      // 2) Normalize disease
+      let disease = (existingDisease || '').trim();
+      if (disease === 'Other') disease = (otherDisease || '').trim();
+      if (disease === 'None')  disease = '';  // optional, store blank if "None"
+
+      // 3) Create the reservation
+      const reservationPayload = {
+        owner:     userId || undefined,
+        ownerName: nameToSave,
+        walkIn:    true,
+        pets:      [{ petName }], // we track per-pet in consultations later
+        service,
+        concerns,
+        date,
+        time,
+        status:        'Approved',
+        isExistingPet: !!isExistingPet    // <-- store the flag
+      };
+
+      // If it's a NEW pet, keep the quick meta on the reservation so you can later
+      // create/merge a Pet document after the consult if you want
+      if (isExistingPet === false) {
+        reservationPayload.species = species;
+        reservationPayload.breed   = breed;
+        reservationPayload.sex     = sex;
+        reservationPayload.disease = disease;
       } else {
-        // new owner
-        nameToSave = ownerName.trim();
-        const newUser = await User.create({ username: nameToSave, role: 'Guest' });
-        userId = newUser._id;
+        // existing pet selection: still store normalized disease if you want
+        reservationPayload.disease = disease || undefined;
       }
 
-      // 2) normalize disease
-      const disease = existingDisease === 'Other'
-                    ? otherDisease.trim()
-                    : existingDisease;
+      const reservation = await Reservation.create(reservationPayload);
 
-      // 3) create the reservation
-      const reservation = await Reservation.create({
-        owner:     userId,
-        ownerName: nameToSave,
-        pets:      [{ petName }],
-        service, date, time, weight, temperature,
-        observations, concerns,
-        status:    'Approved'
+      // 4) Broadcast so UIs update
+      hrBroadcast({
+        type: 'reservation:walkin',
+        reservation: {
+          _id:       String(reservation._id),
+          ownerName: reservation.ownerName,
+          service:   reservation.service,
+          time:      reservation.time,
+          status:    reservation.status,
+          date:      reservation.date || reservation.createdAt
+        }
       });
 
-      // 4) only add pet record if they don’t already have one
-      const alreadyHas = await Pet.exists({ owner: userId, petName });
-      if (!alreadyHas) {
-        await Pet.create({
-          owner:               userId,
-          petName,
-          species,
-          breed,
-          birthday:            null,
-          existingDisease:     disease,
-          sex,
-          petPic:              '',
-          addedFromReservation:true
-        });
-      }
-
-      // 5) return success
-      res.json({ success: true, reservation });
+      return res.json({ success: true, reservation });
     } catch (err) {
       console.error('Walkin reservation error:', err);
-      res.status(500).json({ success: false, message: 'Server error.' });
+      const msg = err?.message || 'Server error.';
+      return res.status(500).json({ success: false, message: msg });
     }
   }
 );
 
+
 // Approve Reservation route (updated with email notification)
 // Approve Reservation route (updated with email notification using verified sender)
-router.post('/approve-reservation', authMiddleware, validateRequest(reservationIdSchema), async (req, res) => {
-  try {
-    const { reservationId } = req.body;
-    const reservation = await Reservation.findById(reservationId);
-    if (!reservation) {
-      return res.status(404).json({ success: false, message: 'Reservation not found.' });
-    }
-    
-    // Set status to Approved and save
-    reservation.status = 'Approved';
-    await reservation.save();
+// ===================== APPROVE RESERVATION (updated) =====================
+router.post('/approve-reservation',
+  authMiddleware,
+  validateRequest(reservationIdSchema),
+  async (req, res) => {
+    try {
+      const { reservationId } = req.body;
 
-    // Fetch customer details (assuming reservation.owner is the customer's ID)
-    const customer = await User.findById(reservation.owner);
-    if (customer && customer.email) {
-      // Configure the nodemailer transporter using Brevo SMTP settings
-      const transporter = nodemailer.createTransport({
-        host: "smtp-relay.brevo.com",
-        port: 587,
-        secure: false,
-        auth: {
-          user: process.env.SMTP_EMAIL,
-          pass: process.env.SMTP_PASS
-        },
-        logger: true,
-        debug: true
-      });
+      // 1) Load & validate
+      const reservation = await Reservation.findById(reservationId);
+      if (!reservation) {
+        return res.status(404).json({ success: false, message: 'Reservation not found.' });
+      }
 
-      // Optional: Verify the SMTP connection
-      transporter.verify((error, success) => {
-        if (error) {
-          console.error("SMTP connection error:", error);
-        } else {
-          console.log("Server is ready to send emails.");
+      // 2) Update status
+      reservation.status = 'Approved';
+      await reservation.save();
+
+      // 3) Broadcast to HR dashboards (SSE)
+      hrBroadcast({
+        type: 'reservation:approved',
+        id: String(reservation._id),
+        reservation: {
+          _id: String(reservation._id),
+          ownerName: reservation.ownerName,
+          service: reservation.service,
+          time: reservation.time,
+          status: reservation.status,
+          date: reservation.date || reservation.createdAt
         }
       });
 
-      // Compose the notification email using the verified sender
-      const mailOptions = {
-        from: `"SmartVet Clinic" <dehe.marquez.au@phinmaed.com>`,
-        to: customer.email,
-        subject: "Your Consultation is Approved!",
-        text: `Hello ${customer.username},
+      // 4) Notify customer (email) — non-blocking
+      try {
+        const customer = await User.findById(reservation.owner);
+        if (customer && customer.email) {
+          const transporter = nodemailer.createTransport({
+            host: "smtp-relay.brevo.com",
+            port: 587,
+            secure: false,
+            auth: { user: process.env.SMTP_EMAIL, pass: process.env.SMTP_PASS },
+            logger: true,
+            debug: true
+          });
+
+          // optional connectivity check (non-blocking log)
+          transporter.verify((error) => {
+            if (error) console.error("SMTP connection error:", error);
+          });
+
+          const mailOptions = {
+            from: `"SmartVet Clinic" <dehe.marquez.au@phinmaed.com>`,
+            to: customer.email,
+            subject: "Your Consultation is Approved!",
+            text:
+`Hello ${customer.username || 'Customer'},
 
 Your consultation has been approved by our HR team.
 You can now visit the vet clinic at your earliest convenience.
 
 Thank you,
 SmartVet Clinic`
-      };
+          };
 
-      // Send the email (errors here are logged but do not block the approval)
-      transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-          console.error("Error sending approval email:", error);
+          transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+              console.error("Error sending approval email:", error);
+            } else {
+              console.log("Approval email sent:", info.response);
+            }
+          });
         } else {
-          console.log("Approval email sent:", info.response);
+          console.warn("Customer email not found for reservation:", reservation._id);
         }
-      });
-    } else {
-      console.error("Customer email not found.");
+      } catch (mailErr) {
+        console.error("Email notification failed:", mailErr);
+        // do not fail the main request on email issues
+      }
+
+      // 5) Done
+      return res.json({ success: true, reservation });
+    } catch (error) {
+      console.error("Error approving reservation:", error);
+      return res.status(500).json({ success: false, message: 'Server error' });
     }
-
-    res.json({ success: true, reservation });
-  } catch (error) {
-    console.error("Error approving reservation:", error);
-    res.status(500).json({ success: false, message: 'Server error' });
   }
-});
+);
 
 
-// Schema for assigning a doctor
+// ===================== ASSIGN DOCTOR (updated) =====================
 const assignDoctorSchema = Joi.object({
   reservationId: Joi.string().required(),
   doctorId: Joi.string().required()
 });
 
-router.post('/assign-doctor', authMiddleware, validateRequest(assignDoctorSchema), async (req, res) => {
-  try {
-    const { reservationId, doctorId } = req.body;
-    const reservation = await Reservation.findById(reservationId);
-    if (!reservation) {
-      return res.status(404).json({ success: false, message: 'Reservation not found.' });
+router.post('/assign-doctor',
+  authMiddleware,
+  validateRequest(assignDoctorSchema),
+  async (req, res) => {
+    try {
+      const { reservationId, doctorId } = req.body;
+
+      // 1) Load & validate
+      const reservation = await Reservation.findById(reservationId);
+      if (!reservation) {
+        return res.status(404).json({ success: false, message: 'Reservation not found.' });
+      }
+      if (reservation.doctor && reservation.doctor.toString() === doctorId) {
+        return res.status(400).json({ success: false, message: 'Doctor is already assigned to this reservation.' });
+      }
+
+      // 2) Assign & save
+      reservation.doctor = doctorId;
+      await reservation.save();
+      await reservation.populate('doctor', 'username');
+
+      // 3) Broadcast to HR dashboards (SSE)
+      hrBroadcast({
+        type: 'reservation:assigned',
+        id: String(reservation._id),
+        reservation: {
+          _id: String(reservation._id),
+          ownerName: reservation.ownerName,
+          service: reservation.service,
+          time: reservation.time,
+          date: reservation.date || reservation.createdAt,
+          doctor: reservation.doctor // { _id, username }
+        }
+      });
+
+      // 4) Respond
+      return res.json({ success: true, reservation });
+    } catch (error) {
+      console.error("Error assigning doctor:", error);
+      return res.status(500).json({ success: false, message: 'Server error' });
     }
-    if (reservation.doctor && reservation.doctor.toString() === doctorId) {
-      return res.status(400).json({ success: false, message: 'Doctor is already assigned to this reservation.' });
-    }
-    reservation.doctor = doctorId;
-    await reservation.save();
-    await reservation.populate('doctor', 'username');
-    res.json({ success: true, reservation });
-  } catch (error) {
-    console.error("Error assigning doctor:", error);
-    res.status(500).json({ success: false, message: 'Server error' });
   }
-});
+);
 
 // GET limit-per-hour route (no validation required)
 router.get('/limit-per-hour', authMiddleware, async (req, res) => {
@@ -474,27 +587,34 @@ router.post('/add-to-petlist', authMiddleware, validateRequest(reservationIdSche
       const petName = resolvePetName(c);
       if (!petName || petName === '—') continue;
 
-      let entry = await PetList.findOne({ owner: reservation.owner, petName }).lean();
+// build a safe lookup (owner when present, else ownerName)
+const baseLookup = reservation.owner
+  ? { owner: reservation.owner, petName }
+  : { ownerName: reservation.ownerName, petName };
 
-      if (!entry) {
-        // create new entry for this pet
-        entry = await PetList.create({
-          owner: reservation.owner,
-          petName,
-          reservation: reservationId,
-          consultationHistory: [{ reservation: reservationId, consultation: c._id }]
-        });
-      } else {
-        // push only if this reservation not present yet
-        const hasThis = (entry.consultationHistory || [])
-          .some(ch => String(ch.reservation) === String(reservationId));
-        if (!hasThis) {
-          await PetList.updateOne(
-            { _id: entry._id },
-            { $push: { consultationHistory: { reservation: reservationId, consultation: c._id } } }
-          );
-        }
-      }
+let entry = await PetList.findOne(baseLookup).lean();
+
+if (!entry) {
+  // create new entry for this pet (include ownerName always)
+  entry = await PetList.create({
+    owner: reservation.owner ?? undefined,
+    ownerName: reservation.ownerName,
+    petName,
+    reservation: reservationId,
+    consultationHistory: [{ reservation: reservationId, consultation: c._id }]
+  });
+} else {
+  // push only if this reservation not present yet
+  const hasThis = (entry.consultationHistory || [])
+    .some(ch => String(ch.reservation) === String(reservationId));
+  if (!hasThis) {
+    await PetList.updateOne(
+      { _id: entry._id },
+      { $push: { consultationHistory: { reservation: reservationId, consultation: c._id } } }
+    );
+  }
+}
+
     }
 
     await Reservation.findByIdAndUpdate(reservationId, { status: 'Done' });
@@ -541,26 +661,33 @@ router.post('/update-petlist', authMiddleware, validateRequest(reservationIdSche
       const petName = resolvePetName(c);
       if (!petName || petName === '—') continue;
 
-      let entry = await PetList.findOne({ owner: reservation.owner, petName }).lean();
+    // safe lookup
+const baseLookup = reservation.owner
+  ? { owner: reservation.owner, petName }
+  : { ownerName: reservation.ownerName, petName };
 
-      if (!entry) {
-        // if somehow missing, create it (makes Update safe if Add was skipped)
-        entry = await PetList.create({
-          owner: reservation.owner,
-          petName,
-          reservation: reservationId,
-          consultationHistory: [{ reservation: reservationId, consultation: c._id }]
-        });
-      } else {
-        const hasThis = (entry.consultationHistory || [])
-          .some(ch => String(ch.reservation) === String(reservationId));
-        if (!hasThis) {
-          await PetList.updateOne(
-            { _id: entry._id },
-            { $push: { consultationHistory: { reservation: reservationId, consultation: c._id } } }
-          );
-        }
-      }
+let entry = await PetList.findOne(baseLookup).lean();
+
+if (!entry) {
+  // if missing, create it (works even if Add was skipped)
+  entry = await PetList.create({
+    owner: reservation.owner ?? undefined,
+    ownerName: reservation.ownerName,
+    petName,
+    reservation: reservationId,
+    consultationHistory: [{ reservation: reservationId, consultation: c._id }]
+  });
+} else {
+  const hasThis = (entry.consultationHistory || [])
+    .some(ch => String(ch.reservation) === String(reservationId));
+  if (!hasThis) {
+    await PetList.updateOne(
+      { _id: entry._id },
+      { $push: { consultationHistory: { reservation: reservationId, consultation: c._id } } }
+    );
+  }
+}
+
     }
 
     await Reservation.findByIdAndUpdate(reservationId, { status: 'Done' });
@@ -573,43 +700,55 @@ router.post('/update-petlist', authMiddleware, validateRequest(reservationIdSche
 
 
 
-
 // GET /hr/get-pet-history
-router.get(
-  '/get-pet-history',
-  authMiddleware,
-  async (req, res) => {
-    const { petId, petName, ownerId } = req.query;
+router.get('/get-pet-history', authMiddleware, async (req, res) => {
+  try {
+    const { petId, petName, ownerId, ownerName } = req.query;
+
     if (!petId && !petName) {
       return res.json({ success: false, message: 'petId or petName is required' });
     }
 
-    // 1) populate consultation → reservation → doctor & schedule
-    const entry = await PetList.findOne(
-      petId
-        ? { _id: petId }
-        : { owner: ownerId, petName }
-    )
-    .populate({
-      path: 'consultationHistory.consultation',
-      populate: [
-        {
-          path: 'reservation',
-          select: 'date doctor schedule',
-          populate: { path: 'doctor', select: 'username' }
-        }
-      ]
-    })
-    .lean();
+    // Build a SAFE query (avoid casting invalid ObjectIds)
+    let query;
+    if (petId) {
+      if (!isValidObjectId(petId)) {
+        return res.json({ success: false, message: 'Invalid petId' });
+      }
+      query = { _id: petId };
+    } else {
+      // lookup by name + owner (ObjectId when valid; otherwise by ownerName for walk-ins)
+      if (ownerId && isValidObjectId(ownerId)) {
+        query = { petName, owner: ownerId };
+      } else if (ownerName && ownerName.trim()) {
+        query = { petName, ownerName: ownerName.trim() };
+      } else {
+        // last fallback: name only (could be ambiguous, but won’t cast error)
+        query = { petName };
+      }
+    }
+
+    const entry = await PetList.findOne(query)
+      .populate({
+        path: 'consultationHistory.consultation',
+        populate: [
+          {
+            path: 'reservation',
+            select: 'date doctor schedule',
+            populate: { path: 'doctor', select: 'username' }
+          }
+        ]
+      })
+      .lean();
 
     if (!entry) {
       return res.json({ success: false, message: 'PetList entry not found.' });
     }
 
-    // 2) map out history with nextSchedule
-    const history = entry.consultationHistory
+    // map out history with nextSchedule
+    const history = (entry.consultationHistory || [])
       .map(ch => {
-        const c   = ch.consultation || {};
+        const c = ch.consultation || {};
         const resv = c.reservation || {};
         return {
           id:         c._id,
@@ -632,18 +771,18 @@ router.get(
                       })),
           confinement:c.confinementStatus || [],
           nextSchedule: resv.schedule
-            ? {
-                date:    resv.schedule.scheduleDate,
-                details: resv.schedule.scheduleDetails
-              }
+            ? { date: resv.schedule.scheduleDate, details: resv.schedule.scheduleDetails }
             : null
         };
       })
       .sort((a, b) => new Date(b.date) - new Date(a.date));
 
     return res.json({ success: true, history });
+  } catch (err) {
+    console.error('get-pet-history failed:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
-);
+});
 
 // at the bottom of hrroutes.js
 router.post('/add-consult-existing', authMiddleware, async (req, res) => {
@@ -932,15 +1071,18 @@ for (const { name, quantity } of cleanProducts) {
 }
 
       // 3) Save the payment record — now with customer & by
-   const payment = new Payment({
-  reservation: reservation._id,
-  customer:    reservation.owner,
-  by:          req.user.userId,
-  products:    cleanProducts,
-  services:    cleanServices,
+// inside router.post('/mark-paid', ...)
+const payment = new Payment({
+  reservation:  reservation._id,
+  customer:     reservation.owner || undefined, // <-- only if there is a real user
+  customerName: reservation.ownerName || '',    // <-- always capture the name
+  by:           req.user.userId,
+  products:     cleanProducts,
+  services:     cleanServices,
   amount
 });
 await payment.save();
+
 
       return res.json({ success: true, reservation });
     } catch (err) {
@@ -1030,5 +1172,49 @@ router.post('/add-medication', authMiddleware, validateRequest(addMedicationSche
   }
 });
 
+// Search owners that exist in PetList (accounts + walk-ins)
+router.get('/search-owners', authMiddleware, async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    if (!q) return res.json({ items: [] });
+
+    const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+
+    // 1) Account owners that appear in PetList
+    const ownerIdsInPetList = await PetList.distinct('owner', { owner: { $ne: null } });
+    let accountItems = [];
+    if (ownerIdsInPetList.length) {
+      const users = await User.find({ _id: { $in: ownerIdsInPetList }, username: rx })
+                              .select('_id username')
+                              .lean();
+      accountItems = users.map(u => ({
+        token: `ID::${u._id}`,
+        label: u.username
+      }));
+    }
+
+    // 2) Walk-in names that appear in PetList
+    const walkinNames = await PetList.distinct('ownerName', { ownerName: rx });
+    const walkinItems = walkinNames
+      .filter(Boolean)
+      .map(name => ({
+        token: `NAME::${name}`,
+        label: `${name} (walk-in)`
+      }));
+
+    // 3) Merge + de-dupe by label
+    const seen = new Set();
+    const items = [...accountItems, ...walkinItems].filter(x => {
+      if (seen.has(x.label)) return false;
+      seen.add(x.label);
+      return true;
+    }).slice(0, 20); // cap results
+
+    res.json({ items });
+  } catch (err) {
+    console.error('search-owners failed:', err);
+    res.status(500).json({ items: [] });
+  }
+});
 
 module.exports = router;
