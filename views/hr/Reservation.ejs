@@ -1050,6 +1050,43 @@ function appendApprovedRow(res) {
 }
 
 </script>
+<script>
+// find doctor by id from the global doctors list you already render
+function getDoctorById(id){
+  return (window.doctors || []).find(d => String(d._id) === String(id));
+}
+
+// Append a fresh Ongoing row (no reload)
+function appendOngoingRow(res, doctorName) {
+  if (!res || !res._id) return;
+  const id = String(res._id);
+  if (document.getElementById('ongoing-' + id)) return;
+
+  const doctor = doctorName || (res.doctor && (res.doctor.username || res.doctor.name)) || 'N/A';
+  const dateISO = res.date || res.createdAt || new Date().toISOString();
+
+  const row = `
+    <tr id="ongoing-${id}" data-date="${(new Date(dateISO)).toISOString().slice(0,10)}">
+      <td>${res.ownerName || '—'}</td>
+      <td class="text-center">${doctor}</td>
+      <td class="medication-column text-center">
+        <button class="btn btn-info btn-sm equal-btn d-block mx-auto"
+                onclick="viewReceipt('${id}')">View Details</button>
+      </td>
+      <td class="text-center">
+        <span class="badge badge-secondary">Ongoing</span>
+      </td>
+      <td class="text-center">
+        N/A
+      </td>
+    </tr>
+  `;
+
+  const $tbody = $('#ongoingView tbody');
+  if ($tbody.find('td[colspan="5"]').length) $tbody.empty(); // remove empty-state
+  $tbody.prepend(row);
+}
+</script>
 
 <script>
 // Recalculate Meds + Services + Grand totals (safe on empty tables)
@@ -1192,41 +1229,69 @@ $(document).ready(function () {
   // ---- actions exposed for inline onclicks ----
   window.viewReservation = function(id){ viewDetails(id); };
 
-  window.approveReservation = function(reservationId){
-    Swal.fire({
-      title: 'Approve Reservation?',
-      text: 'Are you sure you want to approve this reservation?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, approve',
-      cancelButtonText: 'Cancel'
-    }).then((result) => {
-      if (!result.isConfirmed) return;
-      $.post('/hr/approve-reservation', { reservationId })
-        .done(function (response) {
-          if (response.success) {
-            Swal.fire({ icon:'success', title:'Approved', text:'Reservation has been approved.' })
-              .then(() => { $('#reservation-'+reservationId).remove(); location.reload(); });
-          } else {
-            Swal.fire('Error', response.message || 'Error approving reservation.', 'error');
-          }
-        })
-        .fail(() => Swal.fire('Error','Server error while approving reservation.','error'));
-    });
-  };
+// Approve -> move from Pending table to Approved list immediately
+window.approveReservation = function(reservationId){
+  Swal.fire({
+    title: 'Approve Reservation?',
+    text: 'Are you sure you want to approve this reservation?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, approve',
+    cancelButtonText: 'Cancel'
+  }).then((result) => {
+    if (!result.isConfirmed) return;
 
-  window.assignDoctor = function(reservationId, doctorId){
-    $.post('/hr/assign-doctor', { reservationId, doctorId })
+    $.post('/hr/approve-reservation', { reservationId })
       .done(function (response) {
-        if (response.success) {
-          Swal.fire({ icon:'success', title:'Doctor Assigned', text:'Reservation remains in Approved until marked as done.' })
-            .then(() => location.reload());
-        } else {
-          Swal.fire('Error', response.message || 'Error assigning doctor.', 'error');
+        if (!response?.success) {
+          return Swal.fire('Error', response?.message || 'Error approving reservation.', 'error');
         }
+
+        // 1) remove from Pending table
+        $('#reservation-' + reservationId).remove();
+
+        // 2) Add to Approved list
+        // Prefer server-returned reservation, else build a minimal one from the row we just removed
+        const res = response.reservation || {
+          _id: reservationId,
+          ownerName: (response.ownerName) ||
+                     ($('#reservation-' + reservationId + ' .ownerName').text() || '—'),
+          createdAt: new Date().toISOString()
+        };
+        appendApprovedRow(res);
+
+        Swal.fire({ icon:'success', title:'Approved', text:'Reservation has been approved.', timer:900, showConfirmButton:false });
       })
-      .fail(() => Swal.fire('Error', 'Server error while assigning doctor.', 'error'));
-  };
+      .fail(() => Swal.fire('Error','Server error while approving reservation.','error'));
+  });
+};
+
+// Assign Doctor -> move from Approved to Ongoing instantly
+window.assignDoctor = function(reservationId, doctorId){
+  $.post('/hr/assign-doctor', { reservationId, doctorId })
+    .done(function (response) {
+      if (!response?.success) {
+        return Swal.fire('Error', response?.message || 'Error assigning doctor.', 'error');
+      }
+
+      // remove from Approved list
+      $('#approved-' + reservationId).remove();
+
+      // figure out doctor name for the ongoing row
+      const doc = getDoctorById(doctorId);
+      const doctorName = doc ? (doc.username || doc.name) : (response?.doctor?.username || response?.doctor?.name || 'N/A');
+
+      // prefer server reservation for correctness
+      const res = response.reservation || { _id: reservationId, ownerName: response?.ownerName || '—', createdAt: new Date().toISOString() };
+      // append to Ongoing
+      appendOngoingRow(res, doctorName);
+
+      Swal.fire({ icon:'success', title:'Doctor Assigned', text:'Moved to Ongoing.', timer:900, showConfirmButton:false });
+    })
+    .fail(() => Swal.fire('Error', 'Server error while assigning doctor.', 'error'));
+};
+
+
 
   // ---- details modal ----
   function viewDetails(reservationId){
