@@ -1087,6 +1087,88 @@ function appendOngoingRow(res, doctorName) {
   $tbody.prepend(row);
 }
 </script>
+<script>
+// Build a <tr> for the Pending table
+function buildPendingRow(res){
+  const id       = String(res._id);
+  const owner    = res.ownerName || '—';
+  const service  = res.service || '—';
+  const dateLike = res.date || (res.schedule && res.schedule.scheduleDate) || res.createdAt;
+
+  const d = new Date(dateLike);
+  const yyyy = d.getFullYear();
+  const mm = ('0'+(d.getMonth()+1)).slice(-2);
+  const dd = ('0'+d.getDate()).slice(-2);
+  const dateKey = `${yyyy}-${mm}-${dd}`;
+
+  function normalizeHHmm(s){
+    if(!s || typeof s!=='string') return '00:00';
+    const m = s.trim().match(/^(\d{1,2}):?(\d{2})?\s*([AaPp][Mm])?$/);
+    if(!m) return '00:00';
+    let h = parseInt(m[1],10) || 0;
+    const mi = parseInt(m[2]||'0',10) || 0;
+    const suf = (m[3]||'').toUpperCase();
+    if(suf==='PM' && h<12) h+=12;
+    if(suf==='AM' && h===12) h=0;
+    if(h<0||h>23) h=0;
+    return ('0'+h).slice(-2)+':'+('0'+mi).slice(-2);
+  }
+  const hhmm = normalizeHHmm(res.time);
+
+  return {
+    html: `
+      <tr id="reservation-${id}"
+          data-date="${dateKey}"
+          data-time="${hhmm}">
+        <td class="ownerName">${owner}</td>
+        <td>${formatTimeForCell(hhmm)}</td>
+        <td>${service}</td>
+        <td class="text-center">
+          <button class="btn btn-info btn-sm equal-btn mx-auto d-block"
+                  onclick="viewReservation('${id}','pending')">View</button>
+        </td>
+        <td class="text-center">
+          <button class="btn btn-success btn-sm equal-btn mx-auto d-block"
+                  onclick="approveReservation('${id}')">Approve</button>
+        </td>
+      </tr>`,
+    dateKey,
+    hhmm
+  };
+}
+
+// “h:mm AM/PM” for display from "HH:MM"
+function formatTimeForCell(hhmm){
+  const [H,M] = (hhmm||'00:00').split(':');
+  const h = parseInt(H,10) || 0;
+  const suffix = h<12 ? 'AM':'PM';
+  const h12 = (h%12===0) ? 12 : (h%12);
+  return `${h12}:${M} ${suffix}`;
+}
+
+// Insert into #appointmentsTableBody keeping sort (date, then time)
+function insertPendingRowSorted(rowHTML, dateKey, hhmm){
+  const $tbody = $('#appointmentsTableBody');
+  $tbody.find('tr.no-appointment').remove();
+
+  let inserted = false;
+  $tbody.find('tr').each(function(){
+    const d = $(this).data('date') || '';
+    const t = $(this).data('time') || '';
+    if (d > dateKey || (d === dateKey && t > hhmm)) {
+      $(this).before(rowHTML);
+      inserted = true;
+      return false;
+    }
+  });
+  if (!inserted) $tbody.append(rowHTML);
+
+  // if a day is selected, re-apply the filter for that day
+  if (typeof window.filterPendingRows === 'function') {
+    window.filterPendingRows();
+  }
+}
+</script>
 
 <script>
 // Recalculate Meds + Services + Grand totals (safe on empty tables)
@@ -1147,13 +1229,14 @@ $(document).ready(function () {
   window.activeDate = dateKeyLocal(new Date());
 
   // build calendar highlights from Pending reservations (with date fallback)
-  var appointmentDates = Object.create(null);
-  (reservationsData || []).forEach(function(r){
-    if (!r || r.status !== 'Pending') return;
-    var d = r.date || (r.schedule && r.schedule.scheduleDate) || r.createdAt;
-    var key = dateKeyLocal(d);
-    if (key) appointmentDates[key] = true;
-  });
+// build calendar highlights from Pending reservations (with date fallback)
+var appointmentDates = window.appointmentDates = Object.create(null);
+(reservationsData || []).forEach(function(r){
+  if (!r || r.status !== 'Pending') return;
+  var d = r.date || (r.schedule && r.schedule.scheduleDate) || r.createdAt;
+  var key = dateKeyLocal(d);
+  if (key) window.appointmentDates[key] = true;
+});
 
   // filter pending rows by window.activeDate
   function filterRows(){
@@ -1172,6 +1255,8 @@ $(document).ready(function () {
       );
     }
   }
+// expose to SSE so it can re-filter when new rows arrive
+window.filterPendingRows = filterRows;
 
   // ---- datepicker (single init) ----
   $("#datepicker").datepicker({
@@ -1231,14 +1316,7 @@ $(document).ready(function () {
 
 // Approve -> move from Pending table to Approved list immediately
 window.approveReservation = function(reservationId){
-  Swal.fire({
-    title: 'Approve Reservation?',
-    text: 'Are you sure you want to approve this reservation?',
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Yes, approve',
-    cancelButtonText: 'Cancel'
-  }).then((result) => {
+  Swal.fire({ /* ... */ }).then((result) => {
     if (!result.isConfirmed) return;
 
     $.post('/hr/approve-reservation', { reservationId })
@@ -1247,15 +1325,17 @@ window.approveReservation = function(reservationId){
           return Swal.fire('Error', response?.message || 'Error approving reservation.', 'error');
         }
 
-        // 1) remove from Pending table
-        $('#reservation-' + reservationId).remove();
+        // read BEFORE removing
+        const $row = $('#reservation-' + reservationId);
+        const fallbackName = $row.find('.ownerName').text() || '—';
 
-        // 2) Add to Approved list
-        // Prefer server-returned reservation, else build a minimal one from the row we just removed
+        // 1) remove from Pending table
+        $row.remove();
+
+        // 2) add to Approved list
         const res = response.reservation || {
           _id: reservationId,
-          ownerName: (response.ownerName) ||
-                     ($('#reservation-' + reservationId + ' .ownerName').text() || '—'),
+          ownerName: response.ownerName || fallbackName,
           createdAt: new Date().toISOString()
         };
         appendApprovedRow(res);
@@ -1265,6 +1345,7 @@ window.approveReservation = function(reservationId){
       .fail(() => Swal.fire('Error','Server error while approving reservation.','error'));
   });
 };
+
 
 // Assign Doctor -> move from Approved to Ongoing instantly
 window.assignDoctor = function(reservationId, doctorId){
@@ -2388,27 +2469,53 @@ try {
   const es = new EventSource('/hr/stream');
 
   es.addEventListener('message', (ev) => {
-    let payload;
-    try { payload = JSON.parse(ev.data); } catch { return; }
+  let payload;
+  try { payload = JSON.parse(ev.data); } catch { return; }
 
-   if (payload?.type === 'reservation:walkin') {
-  if (!document.getElementById('approved-' + payload.reservation?._id)) {
-    appendApprovedRow(payload.reservation);
-  }
-}
+  // ✅ NEW: handle fresh/moved-to Pending reservations
+  if (payload?.type === 'reservation:pending' || payload?.type === 'reservation:created') {
+    const r = payload.reservation;
+    if (r && r.status === 'Pending') {
+      const built = buildPendingRow(r);
 
-   if (payload?.type === 'reservation:approved') {
-  // either update or skip if already there
-  if (!document.getElementById('approved-' + payload.reservation?._id)) {
-    appendApprovedRow(payload.reservation);
-  }
-}
+      // mark calendar day as having pending + refresh UI
+      if (built.dateKey) {
+        (window.appointmentDates || (window.appointmentDates = {}))[built.dateKey] = true;
+        $("#datepicker").datepicker("refresh");
+      }
 
-    if (payload?.type === 'reservation:assigned') {
-      const id = payload.reservation?._id;
-      if (id) $('#approved-' + id).remove();
+      // insert row in order (filter will hide it if it’s not the active day)
+      insertPendingRowSorted(built.html, built.dateKey, built.hhmm);
+
+      // if you exposed the filter function, re-apply to respect current day
+      if (typeof window.filterPendingRows === 'function') {
+        window.filterPendingRows();
+      }
     }
-  });
+  }
+
+  // existing behaviors — keep them:
+  if (payload?.type === 'reservation:walkin') {
+    if (!document.getElementById('approved-' + payload.reservation?._id)) {
+      appendApprovedRow(payload.reservation);
+    }
+  }
+
+  if (payload?.type === 'reservation:approved') {
+    if (!document.getElementById('approved-' + payload.reservation?._id)) {
+      appendApprovedRow(payload.reservation);
+    }
+    // also remove from Pending if present
+    const id = payload.reservation?._id;
+    if (id) $('#reservation-' + id).remove();
+  }
+
+  if (payload?.type === 'reservation:assigned') {
+    const id = payload.reservation?._id;
+    if (id) $('#approved-' + id).remove();
+  }
+});
+
 } catch (e) {
   console.warn('SSE not available', e);
 }
