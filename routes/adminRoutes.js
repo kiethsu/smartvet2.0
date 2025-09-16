@@ -460,6 +460,7 @@ router.get("/get-sales-by-service", adminController.getSalesByService);
 // change to these two lines:
 router.get("/downloadSalesExcel", adminController.downloadSalesExcel);
 router.get("/downloadSalesCSV",  adminController.downloadSalesCSV);
-
+router.get('/expired-products', adminController.getExpiredProducts);
 router.get("/download-sales-report.pdf",  adminController.downloadSalesPDF);
+router.get('/get-top-category', adminController.getTopCategory);
 module.exports = router;
