@@ -204,488 +204,127 @@ exports.updateOTPSetting = async (req, res) => {
  */
 exports.getDashboardStats = async (req, res) => {
   try {
-    // 0) Parse & normalize query params
-    let range = req.query.range || "7d";
-    const compare = req.query.compare || "prev"; // 'prev' or 'yoy' or 'none'
-    const startQ = req.query.start;  // for custom
-    const endQ = req.query.end;    // for custom
+    const qRange  = req.query.range || "7d";      // 'today' | '7d' | '30d'/'month' | 'year' | 'custom'
+    const compare = req.query.compare || "prev";  // 'prev' | 'none'
+    const startQ  = req.query.start;
+    const endQ    = req.query.end;
 
-    // Normalize synonyms:
-    if (range === "30d" || range === "mtd") range = "month";
-    if (range === "ytd") range = "year";
+    // normalize synonyms
+    const range = (qRange === "30d" || qRange === "mtd") ? "30d" : (qRange === "ytd" ? "year" : qRange);
 
-    // Set "now" to end‐of‐today in the server's timezone
-    const now = new Date();
-    now.setHours(23, 59, 59, 999);
-    
+    // end of today (server TZ)
+    const now = new Date(); now.setHours(23, 59, 59, 999);
 
-    // ── “Today” Branch ──────────────────────────────────────────────────────
+    // compute current & previous windows
+    let curFrom, curTo = new Date(now), prevFrom = null, prevTo = null, bucket = "day";
     if (range === "today") {
-      // Define curFrom/curTo = today’s midnight → 23:59:59.999
-      const curFrom = new Date(now);
-      curFrom.setHours(0, 0, 0, 0);
-      const curTo = new Date(now); // already at 23:59:59.999
-
-      // Define prevFrom/prevTo = yesterday’s midnight → 23:59:59.999
-      const prevTo = new Date(curFrom.getTime() - 1);
-      const prevFrom = new Date(prevTo);
-      prevFrom.setHours(0, 0, 0, 0);
-
-      // 1) Count & sum “today”
-      const [todayTxns, todayRevAgg] = await Promise.all([
-        Payment.countDocuments({ paidAt: { $gte: curFrom, $lte: curTo } }),
-        Payment.aggregate([
-          { $match: { paidAt: { $gte: curFrom, $lte: curTo } } },
-          { $group: { _id: null, total: { $sum: "$amount" } } }
-        ])
-      ]);
-      const todayRev = todayRevAgg[0]?.total || 0;
-
-      // 2) Count & sum “yesterday”
-      const [yestTxns, yestRevAgg] = await Promise.all([
-        Payment.countDocuments({ paidAt: { $gte: prevFrom, $lte: prevTo } }),
-        Payment.aggregate([
-          { $match: { paidAt: { $gte: prevFrom, $lte: prevTo } } },
-          { $group: { _id: null, total: { $sum: "$amount" } } }
-        ])
-      ]);
-      const yestRev = yestRevAgg[0]?.total || 0;
-
-      // 3) Compute COGS for “today”
-      const curCogsAgg = await Payment.aggregate([
-        { $match: { paidAt: { $gte: curFrom, $lte: curTo } } },
-        { $unwind: "$products" },
-        {
-          $lookup: {
-            from: "inventories",
-            localField: "products.name",
-            foreignField: "name",
-            as: "inv"
-          }
-        },
-        { $unwind: "$inv" },
-        {
-          $group: {
-            _id: null,
-            totalCOGS: { $sum: { $multiply: ["$products.quantity", "$inv.basePrice"] } }
-          }
-        }
-      ]);
-      const curCogs = curCogsAgg[0]?.totalCOGS || 0;
-
-      // 4) Compute COGS for “yesterday”
-      const prevCogsAgg = await Payment.aggregate([
-        { $match: { paidAt: { $gte: prevFrom, $lte: prevTo } } },
-        { $unwind: "$products" },
-        {
-          $lookup: {
-            from: "inventories",
-            localField: "products.name",
-            foreignField: "name",
-            as: "inv"
-          }
-        },
-        { $unwind: "$inv" },
-        {
-          $group: {
-            _id: null,
-            totalCOGS: { $sum: { $multiply: ["$products.quantity", "$inv.basePrice"] } }
-          }
-        }
-      ]);
-      const prevCogs = prevCogsAgg[0]?.totalCOGS || 0;
-
-      // 5) Compute expired‐loss “today”
-     // (updated code)
-const curExpiredAgg = await Inventory.aggregate([
-  { $unwind: "$expiredDates" },
-  {
-    $match: {
-      expiredDates: { $gte: curFrom, $lte: curTo }
-    }
-  },
-  {
-    $group: {
-      _id: null,
-      totalExpiredLoss: { $sum: "$basePrice" }    // ← now summing cost instead of price
-    }
-  }
-]);
-const curExpiredLoss = curExpiredAgg[0]?.totalExpiredLoss || 0;
-
-const prevExpiredAgg = await Inventory.aggregate([
-  { $unwind: "$expiredDates" },
-  {
-    $match: {
-      expiredDates: { $gte: prevFrom, $lte: prevTo }
-    }
-  },
-  {
-    $group: {
-      _id: null,
-      totalExpiredLoss: { $sum: "$basePrice" }    // ← now summing cost instead of price
-    }
-  }
-]);
-const prevExpiredLoss = prevExpiredAgg[0]?.totalExpiredLoss || 0;
-
-// … later …
-// after:
-const curProfit    = todayRev    - curCogs    - curExpiredLoss;
-const prevProfit   = yestRev     - prevCogs   - prevExpiredLoss;
-
-
-
-      // 8) Build a tiny “trend” array (1‐day only)
-      const trendLabels = [curFrom.toISOString().slice(0, 10)];
-      const trendData = [todayRev];
-      const prevTrend = [yestRev];
-
-      // 9) Fetch all “today” payments for the table
-      const paymentsToday = await Payment.find({
-        paidAt: { $gte: curFrom, $lte: curTo }
-      })
-        .populate("by", "username")
-        .populate("customer", "username")
-        .lean();
-
-      const transactions = paymentsToday.map(p => ({
-        date: p.paidAt.toISOString().slice(0, 10),
-        id: p._id.toString().slice(-6),
-        customer: p.customer?.username || "N/A",
-        cashier: p.by?.username || "N/A",
-        items: [
-          ...(p.services || []).map(s => s.name),
-          ...(p.products || []).map(x => x.name)
-        ].join(", "),
-        amount: p.amount
-      }));
-
-      // … build revenueByService, topSKUs, new vs returning … (omit here for brevity)
-    // ─── **NEW** ─── Compute user‐counts by role
-      const doctorsCount   = await User.countDocuments({ role: "Doctor" });
-      const hrCount        = await User.countDocuments({ role: "HR" });
-      const customersCount = await User.countDocuments({ role: "Customer" });
-      // 10) Assemble entire payload
-      const dashboardStats = {
-        appointmentTrends: { labels: [], pending: [], approved: [], completed: [] },
-        servicesData: { labels: [], data: [] },
-        petsData: { labels: [], datasets: [] },
-        diseaseData: { labels: [], data: [] },
-        userStats: { doctors: 0, hr: 0, customers: 0 },
-        activityFeed: [],
-
-        // ─── “Today” Sales Section ───────────────────────────────────────────
-        sales: {
-          totalTransactions: todayTxns,
-          totalRevenue: todayRev,
-          profit: curProfit,
-          trend: { labels: trendLabels, data: trendData },
-          prevTrend: prevTrend,
-          heatmap: { [trendLabels[0]]: todayRev },
-          comparison: {
-            currentTransactions: todayTxns,
-            prevTransactions: yestTxns,
-            transactionsChangePercent: yestTxns ? ((todayTxns - yestTxns) / yestTxns) * 100 : 0,
-            currentRevenue: todayRev,
-            prevRevenue: yestRev,
-            revenueChangePercent: yestRev ? ((todayRev - yestRev) / yestRev) * 100 : 0,
-            currentProfit: curProfit,
-            prevProfit: prevProfit
-          },
-          transactions
-        },
-        descriptive: {
-          // revenueByService, topSKUs, newCustomers, returningCustomers
-          revenueByService: [], // fill in as before
-          topSKUs: [], // fill in as before
-          newCustomers: 0, // …
-          returningCustomers: 0
-        }
-      };
-
-      return res.json(dashboardStats);
-    }
-    // ────────────────────────────────────────────────────────────────────────────
-
-    // ── “All Other Ranges” (7d, 30d/month, year, or custom) ─────────────────
-    // We’ll build curFrom/curTo + prevFrom/prevTo exactly as before,
-    // then do the same steps (sum revenue, sum COGS, sum expiredLoss).
-    let curFrom, curToVal = now, prevFrom, prevTo;
-    const trendLabels = [], trendData = [], prevTrend = [];
-
-    // 1) Build current & previous windows
-    if (range === "7d") {
-      curFrom = new Date(now);
-      curFrom.setDate(now.getDate() - 6);
-      curFrom.setHours(0, 0, 0, 0);
-
+      curFrom = new Date(now); curFrom.setHours(0, 0, 0, 0);
+      prevTo = new Date(curFrom.getTime() - 1);
+      prevFrom = new Date(prevTo); prevFrom.setHours(0, 0, 0, 0);
+      bucket = "hour";
+    } else if (range === "7d") {
+      curFrom = new Date(now); curFrom.setDate(now.getDate() - 6); curFrom.setHours(0, 0, 0, 0);
       if (compare === "prev") {
-        prevTo = new Date(curFrom);
-        prevTo.setDate(curFrom.getDate() - 1);
-        prevTo.setHours(23, 59, 59, 999);
-
-        prevFrom = new Date(prevTo);
-        prevFrom.setDate(prevTo.getDate() - 6);
-        prevFrom.setHours(0, 0, 0, 0);
-      } else {
-        // YoY: same dates last year
-        prevFrom = new Date(curFrom);
-        prevFrom.setFullYear(curFrom.getFullYear() - 1);
-        prevTo = new Date(curToVal);
-        prevTo.setFullYear(curToVal.getFullYear() - 1);
+        prevTo = new Date(curFrom); prevTo.setDate(curFrom.getDate() - 1); prevTo.setHours(23, 59, 59, 999);
+        prevFrom = new Date(prevTo); prevFrom.setDate(prevTo.getDate() - 6); prevFrom.setHours(0, 0, 0, 0);
       }
-
-      // Build daily arrays
-      for (let d = new Date(curFrom); d <= curToVal; d.setDate(d.getDate() + 1)) {
-        const s = new Date(d);
-        s.setHours(0, 0, 0, 0);
-        const e = new Date(d);
-        e.setHours(23, 59, 59, 999);
-
-        trendLabels.push(d.toISOString().slice(0, 10));
-
-        // Sum revenue for that day
-        // eslint-disable-next-line no-await-in-loop
-        const agg = await Payment.aggregate([
-          { $match: { paidAt: { $gte: s, $lte: e } } },
-          { $group: { _id: null, total: { $sum: "$amount" } } }
-        ]);
-        trendData.push(agg[0]?.total || 0);
-
-        if (prevFrom) {
-          let ps, pe;
-          if (compare === "yoy") {
-            const pd = new Date(s);
-            pd.setFullYear(s.getFullYear() - 1);
-            ps = pd;
-            pe = new Date(pd);
-            pe.setHours(23, 59, 59, 999);
-          } else {
-            // “prev” week
-            const pd = new Date(s.getTime() - 7 * 24 * 60 * 60 * 1000);
-            ps = new Date(pd);
-            ps.setHours(0, 0, 0, 0);
-            pe = new Date(pd);
-            pe.setHours(23, 59, 59, 999);
-          }
-          // eslint-disable-next-line no-await-in-loop
-          const piff = await Payment.aggregate([
-            { $match: { paidAt: { $gte: ps, $lte: pe } } },
-            { $group: { _id: null, total: { $sum: "$amount" } } }
-          ]);
-          prevTrend.push(piff[0]?.total || 0);
-        }
-      }
-    } else if (range === "month") {
+      bucket = "day";
+    } else if (range === "30d" || range === "month") {
       curFrom = new Date(now.getFullYear(), now.getMonth(), 1);
       if (compare === "prev") {
-        prevTo = new Date(curFrom);
-        prevTo.setDate(0);
-        prevTo.setHours(23, 59, 59, 999);
+        prevTo = new Date(curFrom.getTime() - 1);
         prevFrom = new Date(prevTo.getFullYear(), prevTo.getMonth(), 1);
-      } else {
-        prevFrom = new Date(curFrom);
-        prevFrom.setFullYear(curFrom.getFullYear() - 1);
-        prevTo = new Date(curToVal);
-        prevTo.setFullYear(curToVal.getFullYear() - 1);
       }
-      for (let d = new Date(curFrom); d <= curToVal; d.setDate(d.getDate() + 1)) {
-        const s = new Date(d);
-        s.setHours(0, 0, 0, 0);
-        const e = new Date(d);
-        e.setHours(23, 59, 59, 999);
-        trendLabels.push(d.toISOString().slice(0, 10));
-
-        // eslint-disable-next-line no-await-in-loop
-        const agg = await Payment.aggregate([
-          { $match: { paidAt: { $gte: s, $lte: e } } },
-          { $group: { _id: null, total: { $sum: "$amount" } } }
-        ]);
-        trendData.push(agg[0]?.total || 0);
-
-        if (prevFrom) {
-          let ps, pe;
-          if (compare === "yoy") {
-            const pd = new Date(s);
-            pd.setFullYear(s.getFullYear() - 1);
-            ps = pd;
-            pe = new Date(pd);
-            pe.setHours(23, 59, 59, 999);
-          } else {
-            const pd = new Date(s);
-            pd.setMonth(s.getMonth() - 1);
-            ps = new Date(pd);
-            ps.setHours(0, 0, 0, 0);
-            pe = new Date(pd);
-            pe.setHours(23, 59, 59, 999);
-          }
-          // eslint-disable-next-line no-await-in-loop
-          const piff = await Payment.aggregate([
-            { $match: { paidAt: { $gte: ps, $lte: pe } } },
-            { $group: { _id: null, total: { $sum: "$amount" } } }
-          ]);
-          prevTrend.push(piff[0]?.total || 0);
-        }
-      }
+      bucket = "day";
     } else if (range === "year") {
       curFrom = new Date(now.getFullYear(), 0, 1);
       if (compare === "prev") {
-        const tmp = new Date(curFrom);
-        tmp.setFullYear(curFrom.getFullYear() - 1);
-        prevFrom = tmp;
-        prevTo = new Date(curToVal);
-        prevTo.setFullYear(curToVal.getFullYear() - 1);
-      } else {
-        prevFrom = new Date(curFrom);
-        prevFrom.setFullYear(curFrom.getFullYear() - 1);
-        prevTo = new Date(curToVal);
-        prevTo.setFullYear(curToVal.getFullYear() - 1);
+        prevFrom = new Date(curFrom); prevFrom.setFullYear(curFrom.getFullYear() - 1);
+        prevTo   = new Date(curTo);   prevTo.setFullYear(curTo.getFullYear() - 1);
       }
-      for (let m = 0; m <= now.getMonth(); m++) {
-        const ms = new Date(now.getFullYear(), m, 1);
-        const me = new Date(now.getFullYear(), m + 1, 0, 23, 59, 59, 999);
-        trendLabels.push(String(m + 1));
-
-        // eslint-disable-next-line no-await-in-loop
-        const agg = await Payment.aggregate([
-          { $match: { paidAt: { $gte: ms, $lte: me } } },
-          { $group: { _id: null, total: { $sum: "$amount" } } }
-        ]);
-        trendData.push(agg[0]?.total || 0);
-
-        if (prevFrom) {
-          let pms = new Date(ms);
-          pms.setFullYear(ms.getFullYear() - 1);
-          let pme = new Date(me);
-          pme.setFullYear(me.getFullYear() - 1);
-          // eslint-disable-next-line no-await-in-loop
-          const piff = await Payment.aggregate([
-            { $match: { paidAt: { $gte: pms, $lte: pme } } },
-            { $group: { _id: null, total: { $sum: "$amount" } } }
-          ]);
-          prevTrend.push(piff[0]?.total || 0);
-        }
-      }
+      bucket = "month";
     } else if (range === "custom" && startQ && endQ) {
-      curFrom = new Date(startQ);
-      curFrom.setHours(0, 0, 0, 0);
-      curToVal = new Date(endQ);
-      curToVal.setHours(23, 59, 59, 999);
-      const diff = curToVal.getTime() - curFrom.getTime();
-
+      curFrom = new Date(startQ); curFrom.setHours(0, 0, 0, 0);
+      curTo   = new Date(endQ);   curTo.setHours(23, 59, 59, 999);
       if (compare === "prev") {
-        prevTo = new Date(curFrom.getTime() - 1);
-        prevTo.setHours(23, 59, 59, 999);
-        prevFrom = new Date(prevTo.getTime() - diff);
-        prevFrom.setHours(0, 0, 0, 0);
-      } else {
-        prevFrom = new Date(curFrom);
-        prevFrom.setFullYear(curFrom.getFullYear() - 1);
-        prevTo = new Date(curToVal);
-        prevTo.setFullYear(curToVal.getFullYear() - 1);
+        const diff = curTo.getTime() - curFrom.getTime();
+        prevTo   = new Date(curFrom.getTime() - 1); prevTo.setHours(23, 59, 59, 999);
+        prevFrom = new Date(prevTo.getTime() - diff); prevFrom.setHours(0, 0, 0, 0);
       }
-
-      for (let d = new Date(curFrom); d <= curToVal; d.setDate(d.getDate() + 1)) {
-        const s = new Date(d);
-        s.setHours(0, 0, 0, 0);
-        const e = new Date(d);
-        e.setHours(23, 59, 59, 999);
-        trendLabels.push(d.toISOString().slice(0, 10));
-
-        // eslint-disable-next-line no-await-in-loop
-        const agg = await Payment.aggregate([
-          { $match: { paidAt: { $gte: s, $lte: e } } },
-          { $group: { _id: null, total: { $sum: "$amount" } } }
-        ]);
-        trendData.push(agg[0]?.total || 0);
-
-        if (prevFrom) {
-          let pd;
-          if (compare === "yoy") {
-            pd = new Date(s);
-            pd.setFullYear(s.getFullYear() - 1);
-          } else {
-            pd = new Date(s.getTime() - diff - 24 * 60 * 60 * 1000);
-          }
-          const ps = new Date(pd);
-          ps.setHours(0, 0, 0, 0);
-          const pe = new Date(pd);
-          pe.setHours(23, 59, 59, 999);
-
-          // eslint-disable-next-line no-await-in-loop
-          const piff = await Payment.aggregate([
-            { $match: { paidAt: { $gte: ps, $lte: pe } } },
-            { $group: { _id: null, total: { $sum: "$amount" } } }
-          ]);
-          prevTrend.push(piff[0]?.total || 0);
-        }
+      bucket = "day";
+    } else {
+      // default 7d
+      curFrom = new Date(now); curFrom.setDate(now.getDate() - 6); curFrom.setHours(0, 0, 0, 0);
+      if (compare === "prev") {
+        prevTo = new Date(curFrom); prevTo.setDate(curFrom.getDate() - 1); prevTo.setHours(23, 59, 59, 999);
+        prevFrom = new Date(prevTo); prevFrom.setDate(prevTo.getDate() - 6); prevFrom.setHours(0, 0, 0, 0);
       }
+      bucket = "day";
     }
 
-    // ── 2) Totals & revenue for the entire [curFrom … curToVal]
-    const [currTxns, currRevAgg] = await Promise.all([
-      Payment.countDocuments({ paidAt: { $gte: curFrom, $lte: curToVal } }),
-      Payment.aggregate([
-        { $match: { paidAt: { $gte: curFrom, $lte: curToVal } } },
-        { $group: { _id: null, total: { $sum: "$amount" } } }
-      ])
-    ]);
-    const currRev = currRevAgg[0]?.total || 0;
+    // helpers
+    const dateKeyStage = (bucket === "month")
+      ? { $dateToString: { format: "%Y-%m", date: "$paidAt" } }
+      : { $dateToString: { format: "%Y-%m-%d", date: "$paidAt" } };
 
-    // 3) Compute total COGS over [curFrom … curToVal]
-    const curCogsAgg2 = await Payment.aggregate([
-      { $match: { paidAt: { $gte: curFrom, $lte: curToVal } } },
-      { $unwind: "$products" },
-      {
-        $lookup: {
-          from: "inventories",
-          localField: "products.name",
-          foreignField: "name",
-          as: "inv"
+    // one aggregation to get totals + series for a window
+    function paymentAggWindow(from, to) {
+      return Payment.aggregate([
+        { $match: { paidAt: { $gte: from, $lte: to } } },
+        {
+          $facet: {
+            totals: [
+              { $group: { _id: null, totalRevenue: { $sum: "$amount" }, totalTransactions: { $sum: 1 } } }
+            ],
+            series: [
+              { $group: { _id: dateKeyStage, revenue: { $sum: "$amount" } } },
+              { $sort: { _id: 1 } }
+            ]
+          }
         }
-      },
-      { $unwind: "$inv" },
-      {
-        $group: {
-          _id: null,
-          totalCOGS: { $sum: { $multiply: ["$products.quantity", "$inv.basePrice"] } }
-        }
-      }
+      ]);
+    }
+
+    // COGS in one pipeline
+    function cogsAggWindow(from, to) {
+      return Payment.aggregate([
+        { $match: { paidAt: { $gte: from, $lte: to } } },
+        { $unwind: "$products" },
+        { $lookup: { from: "inventories", localField: "products.name", foreignField: "name", as: "inv" } },
+        { $unwind: "$inv" },
+        { $group: { _id: null, totalCOGS: { $sum: { $multiply: [ "$products.quantity", "$inv.basePrice" ] } } } }
+      ]);
+    }
+
+    // expired loss (by base cost) in one pipeline
+    function expiredAggWindow(from, to) {
+      return Inventory.aggregate([
+        { $unwind: "$expiredDates" },
+        { $match: { expiredDates: { $gte: from, $lte: to } } },
+        { $group: { _id: null, totalExpiredLoss: { $sum: "$basePrice" } } }
+      ]);
+    }
+
+    // run current window in parallel
+    const [curPay, curCogsAgg, curExpiredAgg, curPayments] = await Promise.all([
+      paymentAggWindow(curFrom, curTo),
+      cogsAggWindow(curFrom, curTo),
+      expiredAggWindow(curFrom, curTo),
+      Payment.find({ paidAt: { $gte: curFrom, $lte: curTo } })
+             .populate("by", "username")
+             .populate("customer", "username")
+             .lean()
     ]);
-    const curCogs2 = curCogsAgg2[0]?.totalCOGS || 0;
 
-    // 4) Compute expired loss over [curFrom … curToVal]
-    // (updated code in “All Other Ranges”)
-// 4) Compute expired loss over [curFrom … curToVal]
-// FIX: use expiredDates consistently
-const curExpiredAgg2 = await Inventory.aggregate([
-  { $unwind: "$expiredDates" },
-  { $match: { expiredDates: { $gte: curFrom, $lte: curToVal } } },
-  { $group: { _id: null, totalExpiredLoss: { $sum: "$basePrice" } } }
-]);
-const curExpiredLoss2 = curExpiredAgg2[0]?.totalExpiredLoss || 0;
+    const curTotals  = curPay[0]?.totals[0] || {};
+    const curSeries  = curPay[0]?.series || [];
+    const curRev     = curTotals.totalRevenue || 0;
+    const curTxns    = curTotals.totalTransactions || 0;
+    const curCOGS    = curCogsAgg[0]?.totalCOGS || 0;
+    const curExpired = curExpiredAgg[0]?.totalExpiredLoss || 0;
+    const curProfit  = curRev - curCOGS - curExpired;
 
-
-
-// … after COGS, compute profit …
-const curProfit2   = currRev  - curCogs2    - curExpiredLoss2;
-
-
-
-    // 6) Build a heatmap object
-    const heatmap = {};
-    trendLabels.forEach((d, i) => (heatmap[d] = trendData[i]));
-
-    // 7) Fetch all payments for [curFrom … curToVal] to build the transaction list
-    const paymentsInRange = await Payment.find({
-      paidAt: { $gte: curFrom, $lte: curToVal }
-    })
-      .populate("by", "username")
-      .populate("customer", "username")
-      .lean();
-
-    const transactions2 = paymentsInRange.map(p => ({
+    const transactions = curPayments.map(p => ({
       date: p.paidAt.toISOString().slice(0, 10),
       id: p._id.toString().slice(-6),
       customer: p.customer?.username || "N/A",
@@ -696,101 +335,71 @@ const curProfit2   = currRev  - curCogs2    - curExpiredLoss2;
       ].join(", "),
       amount: p.amount
     }));
-   // ─── **NEW** ─── Compute user‐counts by role
-    const doctorsCount2   = await User.countDocuments({ role: "Doctor" });
-    const hrCount2        = await User.countDocuments({ role: "HR" });
-    const customersCount2 = await User.countDocuments({ role: "Customer" });
 
-    // 8) Attach basic sales object to the payload
-  const dashboardStats = {
-      appointmentTrends: { labels: trendLabels, pending: [], approved: [], completed: [] },
-      servicesData:      { labels: [], data: [] },
-      petsData:          { labels: [], datasets: [] },
-      diseaseData:       { labels: [], data: [] },
-      userStats: {
-        doctors:   doctorsCount2,
-        hr:        hrCount2,
-        customers: customersCount2
-      },
-      activityFeed:       [],
+    // previous window (if requested)
+    let comparison, prevSeries;
+    if (prevFrom && prevTo) {
+      const [prevPay, prevCogsAgg, prevExpiredAgg] = await Promise.all([
+        paymentAggWindow(prevFrom, prevTo),
+        cogsAggWindow(prevFrom, prevTo),
+        expiredAggWindow(prevFrom, prevTo)
+      ]);
+      const prevTotals  = prevPay[0]?.totals[0] || {};
+      const prevRev     = prevTotals.totalRevenue || 0;
+      const prevTxns    = prevTotals.totalTransactions || 0;
+      const prevCOGS    = prevCogsAgg[0]?.totalCOGS || 0;
+      const prevExpired = prevExpiredAgg[0]?.totalExpiredLoss || 0;
+      const prevProfit  = prevRev - prevCOGS - prevExpired;
+      prevSeries        = prevPay[0]?.series || [];
+
+      comparison = {
+        currentTransactions: curTxns,
+        prevTransactions: prevTxns,
+        transactionsChangePercent: prevTxns ? ((curTxns - prevTxns) / prevTxns) * 100 : 0,
+        currentRevenue: curRev,
+        prevRevenue: prevRev,
+        revenueChangePercent: prevRev ? ((curRev - prevRev) / prevRev) * 100 : 0,
+        currentProfit: curProfit,
+        prevProfit: prevProfit
+      };
+    }
+
+    // heatmap from current series
+    const heatmap = {};
+    curSeries.forEach(d => { heatmap[d._id] = d.revenue; });
+
+    // response (same shape your UI expects)
+    const body = {
+      appointmentTrends: { labels: [], pending: [], approved: [], completed: [] },
+      servicesData: { labels: [], data: [] },
+      petsData: { labels: [], datasets: [] },
+      diseaseData: { labels: [], data: [] },
+      userStats: { doctors: 0, hr: 0, customers: 0 }, // keep if UI expects
+      activityFeed: [],
       sales: {
-        totalTransactions: currTxns,
-        totalRevenue:      currRev,
-        profit:            curProfit2,
-        trend:             { labels: trendLabels, data: trendData },
-        prevTrend:         prevTrend.length ? prevTrend : undefined,
+        totalTransactions: curTxns,
+        totalRevenue: curRev,
+        profit: curProfit,
+        trend: {
+          labels: curSeries.map(s => s._id),
+          data:   curSeries.map(s => s.revenue)
+        },
+        prevTrend: prevSeries ? prevSeries.map(s => s.revenue) : undefined,
         heatmap,
-        transactions:      transactions2
+        comparison,
+        transactions
       },
       descriptive: {
         revenueByService: [],
-        topSKUs:          [],
-        newCustomers:     0,
+        topSKUs: [],
+        newCustomers: 0,
         returningCustomers: 0
       }
     };
 
-    // 9) If there is a prevFrom, compute previous‐period totals/profit too
-    if (prevFrom) {
-      const [prevTxns, prevRevAgg] = await Promise.all([
-        Payment.countDocuments({ paidAt: { $gte: prevFrom, $lte: prevTo } }),
-        Payment.aggregate([
-          { $match: { paidAt: { $gte: prevFrom, $lte: prevTo } } },
-          { $group: { _id: null, total: { $sum: "$amount" } } }
-        ])
-      ]);
-      const prevRev = prevRevAgg[0]?.total || 0;
-
-      // Prev COGS:
-      const prevCogsAgg2 = await Payment.aggregate([
-        { $match: { paidAt: { $gte: prevFrom, $lte: prevTo } } },
-        { $unwind: "$products" },
-        {
-          $lookup: {
-            from: "inventories",
-            localField: "products.name",
-            foreignField: "name",
-            as: "inv"
-          }
-        },
-        { $unwind: "$inv" },
-        {
-          $group: {
-            _id: null,
-            totalCOGS: { $sum: { $multiply: ["$products.quantity", "$inv.basePrice"] } }
-          }
-        }
-      ]);
-      const prevCogs2 = prevCogsAgg2[0]?.totalCOGS || 0;
-
-// FIX: use expiredDates consistently
-const prevExpiredAgg2 = await Inventory.aggregate([
-  { $unwind: "$expiredDates" },
-  { $match: { expiredDates: { $gte: prevFrom, $lte: prevTo } } },
-  { $group: { _id: null, totalExpiredLoss: { $sum: "$basePrice" } } }
-]);
-const prevExpiredLoss2 = prevExpiredAgg2[0]?.totalExpiredLoss || 0;
-
-
-
-  const prevProfit2  = prevRev  - prevCogs2   - prevExpiredLoss2;
-
-      dashboardStats.sales.comparison = {
-        currentTransactions: currTxns,
-        prevTransactions: prevTxns,
-        transactionsChangePercent: prevTxns ? ((currTxns - prevTxns) / prevTxns) * 100 : 0,
-        currentRevenue: currRev,
-        prevRevenue: prevRev,
-        revenueChangePercent: prevRev ? ((currRev - prevRev) / prevRev) * 100 : 0,
-        currentProfit: curProfit2,
-        prevProfit: prevProfit2
-      };
-    }
-
-    console.log("[getDashboardStats] returning →", dashboardStats.sales);
-    return res.json(dashboardStats);
-  } catch (error) {
-    console.error("Error in getDashboardStats:", error);
+    return res.json(body);
+  } catch (err) {
+    console.error("Error in getDashboardStats (optimized):", err);
     return res.status(500).json({ error: "Server error" });
   }
 };
