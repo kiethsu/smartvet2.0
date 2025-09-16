@@ -14,7 +14,7 @@ const Inventory = require('../models/inventory');
 const { Parser: Json2csvParser } = require('json2csv');
 const PDFDocument = require('pdfkit');
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
-
+const mongoose = require('mongoose');
 /**
  * Create a new Doctor/HR account
  */
@@ -658,21 +658,14 @@ const prevProfit   = yestRev     - prevCogs   - prevExpiredLoss;
     // 4) Compute expired loss over [curFrom … curToVal]
     // (updated code in “All Other Ranges”)
 // 4) Compute expired loss over [curFrom … curToVal]
+// FIX: use expiredDates consistently
 const curExpiredAgg2 = await Inventory.aggregate([
-  { $unwind: "$expirationDates" },
-  {
-    $match: {
-      expirationDates: { $gte: curFrom, $lte: curToVal }
-    }
-  },
-  {
-    $group: {
-      _id: null,
-      totalExpiredLoss: { $sum: "$basePrice" }
-    }
-  }
+  { $unwind: "$expiredDates" },
+  { $match: { expiredDates: { $gte: curFrom, $lte: curToVal } } },
+  { $group: { _id: null, totalExpiredLoss: { $sum: "$basePrice" } } }
 ]);
 const curExpiredLoss2 = curExpiredAgg2[0]?.totalExpiredLoss || 0;
+
 
 
 // … after COGS, compute profit …
@@ -770,22 +763,14 @@ const curProfit2   = currRev  - curCogs2    - curExpiredLoss2;
       ]);
       const prevCogs2 = prevCogsAgg2[0]?.totalCOGS || 0;
 
-      // Prev expired loss:
+// FIX: use expiredDates consistently
 const prevExpiredAgg2 = await Inventory.aggregate([
-  { $unwind: "$expirationDates" },
-  {
-    $match: {
-      expirationDates: { $gte: prevFrom, $lte: prevTo }
-    }
-  },
-  {
-    $group: {
-      _id: null,
-      totalExpiredLoss: { $sum: "$basePrice" }
-    }
-  }
+  { $unwind: "$expiredDates" },
+  { $match: { expiredDates: { $gte: prevFrom, $lte: prevTo } } },
+  { $group: { _id: null, totalExpiredLoss: { $sum: "$basePrice" } } }
 ]);
 const prevExpiredLoss2 = prevExpiredAgg2[0]?.totalExpiredLoss || 0;
+
 
 
   const prevProfit2  = prevRev  - prevCogs2   - prevExpiredLoss2;
@@ -882,6 +867,8 @@ exports.getTopCategory = async (req, res) => {
 };
 // ─── 2) GET /admin/get-sales-by-category?category=... ─────────────────────
 // adminController.js
+// adminController.js
+// adminController.js
 exports.getSalesByCategory = async (req, res) => {
   try {
     const category = req.query.category;
@@ -893,7 +880,7 @@ exports.getSalesByCategory = async (req, res) => {
     const now = new Date();
     let startDate = null;
 
-    // 1) Determine startDate for “current” window
+    // 1) Determine startDate for current window
     switch (range) {
       case "day": {
         const today = new Date(now);
@@ -909,91 +896,90 @@ exports.getSalesByCategory = async (req, res) => {
         break;
       }
       case "month": {
-        // first day of current month
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         break;
       }
       case "year": {
-        // first day of current year
         startDate = new Date(now.getFullYear(), 0, 1);
         break;
       }
-      default:
-        // default “week”
+      default: {
         const wk = new Date(now);
         wk.setDate(now.getDate() - 6);
         wk.setHours(0, 0, 0, 0);
         startDate = wk;
+      }
     }
 
-    // ─── A) Compute “current” totals:
-    // (A1) Payments pipeline to get revenue & COGS
+    // ── A) Current totals (Revenue / COGS / SOLD Markup)
     const paymentPipeline = [];
     if (startDate) {
-      paymentPipeline.push({
-        $match: { paidAt: { $gte: startDate, $lte: now } }
-      });
+      paymentPipeline.push({ $match: { paidAt: { $gte: startDate, $lte: now } } });
     }
-    paymentPipeline.push({ $unwind: "$products" });
-    paymentPipeline.push({
-      $lookup: {
-        from: "inventories",
-        localField: "products.name",
-        foreignField: "name",
-        as: "inv"
+    paymentPipeline.push(
+      { $unwind: "$products" },
+      {
+        $lookup: {
+          from: "inventories",
+          localField: "products.name",
+          foreignField: "name",
+          as: "inv"
+        }
+      },
+      { $unwind: "$inv" },
+      { $match: { "inv.category": category } },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$products.lineTotal" },
+          totalCOGS: { $sum: { $multiply: ["$products.quantity", "$inv.basePrice"] } },
+          totalMarkup: { $sum: { $multiply: ["$products.quantity", "$inv.markup"] } } // sold markup
+        }
       }
-    });
-    paymentPipeline.push({ $unwind: "$inv" });
-    paymentPipeline.push({ $match: { "inv.category": category } });
-    paymentPipeline.push({
-      $group: {
-        _id: null,
-        totalRevenue: { $sum: "$products.lineTotal" },
-        totalCOGS: { $sum: { $multiply: ["$products.quantity", "$inv.basePrice"] } }
+    );
+
+    const soldAgg = await Payment.aggregate(paymentPipeline);
+    const soldRow = soldAgg[0] || {};
+    const totalRevenue = soldRow.totalRevenue || 0;
+    const totalCOGS = soldRow.totalCOGS || 0;
+    const totalMarkup = soldRow.totalMarkup || 0; // markup from SOLD items in period
+
+    // ── A2) Expired totals (FULL value = base + markup = price) for same period
+    const expiredMatch = startDate
+      ? { expiredDates: { $gte: startDate, $lte: now } }
+      : { expiredDates: { $lte: now } };
+
+    const expiredAgg = await Inventory.aggregate([
+      { $match: { category } },
+      { $unwind: "$expiredDates" }, // each date = one expired unit
+      { $match: expiredMatch },
+      {
+        $group: {
+          _id: null,
+          totalExpiredFullLoss:   { $sum: "$price" },      // base + markup per unit
+          totalExpiredBaseLoss:   { $sum: "$basePrice" },  // optional breakdown
+          totalExpiredMarkupLoss: { $sum: "$markup" },     // optional breakdown
+          totalExpiredUnits:      { $sum: 1 }              // optional count
+        }
       }
-    });
+    ]);
 
-    const revenueAndCogsAgg = await Payment.aggregate(paymentPipeline);
-    const revenueRow = revenueAndCogsAgg[0] || {};
-    const totalRevenue = revenueRow.totalRevenue || 0;
-    const totalCOGS = revenueRow.totalCOGS || 0;
+    const totalExpiredFullLoss   = expiredAgg[0]?.totalExpiredFullLoss   || 0;
+    const totalExpiredBaseLoss   = expiredAgg[0]?.totalExpiredBaseLoss   || 0;
+    const totalExpiredMarkupLoss = expiredAgg[0]?.totalExpiredMarkupLoss || 0;
+    const totalExpiredUnits      = expiredAgg[0]?.totalExpiredUnits      || 0;
 
-    // (A2) Expired loss pipeline (for this same category):
-   // (updated code in getSalesByCategory)
-const expiredPipeline = [];
-expiredPipeline.push({ $match: { category: category } });
-expiredPipeline.push({ $unwind: "$expirationDates" });
-if (startDate) {
-  expiredPipeline.push({
-    $match: { expirationDates: { $gte: startDate, $lte: now } }
-  });
-} else {
-  expiredPipeline.push({
-    $match: { expirationDates: { $lte: now } }
-  });
-}
-expiredPipeline.push({
-  $group: { _id: null, totalExpiredLoss: { $sum: "$basePrice" } }
-});
-const expiredAgg = await Inventory.aggregate(expiredPipeline);
-const expiredRow = expiredAgg[0] || {};
-const totalExpiredLoss = expiredRow.totalExpiredLoss || 0;
-
-
-
-    // ─── B) Compute “previous” equivalent‐period revenue:
+    // ── B) Previous period revenue (for % growth line)
     let lastPeriodStart = null;
     let lastPeriodEnd = null;
     if (range === "day") {
-      // previous day = [yesterday midnight … yesterday 23:59:59]
-      const todayMid = new Date(startDate);
-      const prevDayEnd = new Date(todayMid.getTime() - 1);
-      const prevDayStart = new Date(prevDayEnd);
-      prevDayStart.setHours(0, 0, 0, 0);
-      lastPeriodStart = prevDayStart;
-      lastPeriodEnd = prevDayEnd;
+      const curStart = new Date(startDate);
+      const prevEnd = new Date(curStart.getTime() - 1);
+      const prevStart = new Date(prevEnd);
+      prevStart.setHours(0, 0, 0, 0);
+      lastPeriodStart = prevStart;
+      lastPeriodEnd = prevEnd;
     } else if (range === "week") {
-      // previous 7 days = [startDate - 7 days … startDate - 1 ms]
       const curStart = new Date(startDate);
       const prevEnd = new Date(curStart.getTime() - 1);
       const prevStart = new Date(prevEnd);
@@ -1003,22 +989,17 @@ const totalExpiredLoss = expiredRow.totalExpiredLoss || 0;
       lastPeriodEnd = prevEnd;
     } else if (range === "month") {
       const curStart = new Date(startDate);
-      // previous month end = curStart - 1 ms
       const prevEnd = new Date(curStart.getTime() - 1);
-      // previous month start = first day of prevEnd.month
       const prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), 1);
       lastPeriodStart = prevStart;
       lastPeriodEnd = prevEnd;
     } else if (range === "year") {
       const curStart = new Date(startDate);
-      // previous year end = curStart - 1 ms
       const prevEnd = new Date(curStart.getTime() - 1);
-      // previous year start = Jan 1 of prevEnd.year
       const prevStart = new Date(prevEnd.getFullYear(), 0, 1);
       lastPeriodStart = prevStart;
       lastPeriodEnd = prevEnd;
     } else {
-      // fallback to “week”
       const curStart = new Date(startDate);
       const prevEnd = new Date(curStart.getTime() - 1);
       const prevStart = new Date(prevEnd);
@@ -1030,36 +1011,37 @@ const totalExpiredLoss = expiredRow.totalExpiredLoss || 0;
 
     let lastPeriodRevenue = 0;
     if (lastPeriodStart && lastPeriodEnd) {
-      const prevPipeline = [];
-      prevPipeline.push({
-        $match: { paidAt: { $gte: lastPeriodStart, $lte: lastPeriodEnd } }
-      });
-      prevPipeline.push({ $unwind: "$products" });
-      prevPipeline.push({
-        $lookup: {
-          from: "inventories",
-          localField: "products.name",
-          foreignField: "name",
-          as: "inv"
-        }
-      });
-      prevPipeline.push({ $unwind: "$inv" });
-      prevPipeline.push({ $match: { "inv.category": category } });
-      prevPipeline.push({
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: "$products.lineTotal" }
-        }
-      });
-
+      const prevPipeline = [
+        { $match: { paidAt: { $gte: lastPeriodStart, $lte: lastPeriodEnd } } },
+        { $unwind: "$products" },
+        {
+          $lookup: {
+            from: "inventories",
+            localField: "products.name",
+            foreignField: "name",
+            as: "inv"
+          }
+        },
+        { $unwind: "$inv" },
+        { $match: { "inv.category": category } },
+        { $group: { _id: null, totalRevenue: { $sum: "$products.lineTotal" } } }
+      ];
       const lastAgg = await Payment.aggregate(prevPipeline);
       lastPeriodRevenue = (lastAgg[0] && lastAgg[0].totalRevenue) || 0;
     }
 
+    // ── Final: markup-based profit minus FULL expired loss
+    const profit = totalMarkup - totalExpiredFullLoss; // can be negative
+
     return res.json({
       totalRevenue,
       totalCOGS,
-      totalExpiredLoss,
+      totalMarkup,               // sold markup this period
+      totalExpiredFullLoss,      // FULL expired = base + markup
+      totalExpiredBaseLoss,      // optional breakdown for UI
+      totalExpiredMarkupLoss,    // optional breakdown for UI
+      totalExpiredUnits,         // optional count for UI
+      profit,                    // final profit for the card
       lastPeriodRevenue
     });
   } catch (err) {
@@ -1067,6 +1049,7 @@ const totalExpiredLoss = expiredRow.totalExpiredLoss || 0;
     return res.status(500).json({ error: "Server error" });
   }
 };
+
 
 exports.getAbout = async (req, res) => {
   try {
@@ -1639,6 +1622,7 @@ exports.generateReport = async (req, res) => {
 exports.getInventoryStats = async (req, res) => {
   try {
     const now = new Date();
+
     // 1) basic counts & value
     const allItems = await Inventory.find().lean();
     const totalSKUs = allItems.length;
@@ -1666,21 +1650,41 @@ exports.getInventoryStats = async (req, res) => {
       { $limit: 5 }
     ]);
 
-    // 4) low-stock & expiring soon
+    // 4) low-stock & expiring soon  (standardize expiration field + provide full count)
     const lowStock = allItems.filter(i => i.quantity <= 10);
-    let expirations = [];
+
+    // Normalize expiration fields per item:
+    // prefer `expirationDates` (array), fallback to `expiredDates` (array) or single `expirationDate`
+    const getExpirationDates = (item) => {
+      if (Array.isArray(item.expirationDates)) return item.expirationDates;
+      if (Array.isArray(item.expiredDates)) return item.expiredDates;
+      if (item.expirationDate) return [item.expirationDate];
+      return [];
+    };
+
+    const SOON_DAYS = 30;
+    const msInDay = 1000 * 60 * 60 * 24;
+
+    const allExpiringSoon = [];
     allItems.forEach(i => {
-      (i.expiredDates || []).forEach(d => {
-        if (d > now && ((d - now) / (1000 * 60 * 60 * 24)) <= 30) {
-          expirations.push({ name: i.name, expiry: d });
+      const dates = getExpirationDates(i);
+      dates.forEach(d => {
+        const dt = new Date(d);
+        if (!isNaN(dt) && dt > now) {
+          const daysAway = (dt - now) / msInDay;
+          if (daysAway <= SOON_DAYS) {
+            allExpiringSoon.push({ name: i.name, expiry: dt });
+          }
         }
       });
     });
-    const expiringSoon = expirations
-      .sort((a, b) => a.expiry - b.expiry)
-      .slice(0, 5);
 
-    // --- New Analytics ---
+    // Sort by nearest expiry; build top list for table but keep full count for KPI
+    allExpiringSoon.sort((a, b) => a.expiry - b.expiry);
+    const expiringSoonTop = allExpiringSoon.slice(0, 5);
+    const expiringSoonCount = allExpiringSoon.length;
+
+    // --- New Analytics (unchanged) ---
 
     // Inventory Turnover Rate (times per month)
     const totalSold30dAgg = await Payment.aggregate([
@@ -1706,10 +1710,11 @@ exports.getInventoryStats = async (req, res) => {
 
     // Next expiry date (soonest item)
     let nextExpiry = null;
-    if (expirations.length > 0) {
-      nextExpiry = expirations[0].expiry;
+    if (allExpiringSoon.length > 0) {
+      nextExpiry = allExpiringSoon[0].expiry;
     }
 
+    // Respond
     res.json({
       totalSKUs,
       totalValue,
@@ -1718,7 +1723,8 @@ exports.getInventoryStats = async (req, res) => {
       valueByCategory,
       topSold,
       lowStock,
-      expiringSoon,
+      expiringSoon: expiringSoonTop,     // table shows up to 5
+      expiringSoonCount,                 // KPI uses the full count
       turnoverRate,
       daysLeft,
       topCategory,
@@ -1731,13 +1737,6 @@ exports.getInventoryStats = async (req, res) => {
   }
 };
 
-// helper to fetch every payment with both cashier and customer
-async function fetchAllPayments() {
-  return Payment.find()
-    .populate('by', 'username')   // who marked it paid
-    .populate('customer', 'username')   // who paid
-    .lean();
-}
 
 // ─── Download Excel ─────────────────────────────────────────────────
 exports.downloadSalesExcel = async (req, res) => {
@@ -2401,4 +2400,63 @@ exports.downloadSalesPDF = async (req, res) => {
   });
 
   doc.end();
+};
+// ─── GET /admin/expired-products?category=Optional ──────────────────────────
+exports.getExpiredProducts = async (req, res) => {
+  try {
+    const { category = "" } = req.query;
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+
+    // Primary: use expiredDates[] you already maintain
+    const pipeline = [
+      { $unwind: "$expiredDates" },
+      { $match: { expiredDates: { $lte: now } } }, // already expired
+    ];
+
+    if (category) {
+      pipeline.push({ $match: { category } });
+    }
+
+    pipeline.push({
+      $group: {
+        _id: "$name",
+        expiredCount: { $sum: 1 },
+        lastExpired: { $max: "$expiredDates" },
+        category: { $first: "$category" }
+      }
+    });
+
+    pipeline.push({ $sort: { lastExpired: -1 } });
+
+    const agg = await Inventory.aggregate(pipeline);
+
+    // Fallback: for items that might not have expiredDates but have expiredCount
+    // (keeps your UI from looking empty if data is partially migrated)
+    let fallback = [];
+    if (!agg.length) {
+      const q = category ? { category, expiredCount: { $gt: 0 } } : { expiredCount: { $gt: 0 } };
+      const docs = await Inventory.find(q).lean();
+      fallback = docs.map(d => ({
+        _id: d.name,
+        expiredCount: Number(d.expiredCount || 0),
+        lastExpired: (Array.isArray(d.expiredDates) && d.expiredDates.length)
+          ? new Date(d.expiredDates[d.expiredDates.length - 1])
+          : null,
+        category: d.category
+      })).filter(x => x.expiredCount > 0);
+    }
+
+    const rows = (agg.length ? agg : fallback).map(r => ({
+      productName: r._id,
+      expiredCount: r.expiredCount || 0,
+      lastExpired: r.lastExpired || null,
+      category: r.category || null
+    }));
+
+    return res.json({ items: rows });
+  } catch (err) {
+    console.error("Error in getExpiredProducts:", err);
+    return res.status(500).json({ error: "Server error fetching expired products." });
+  }
 };
