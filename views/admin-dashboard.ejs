@@ -114,8 +114,6 @@
   /* ============================
      HARD LOCKS (prevent font jumps)
      ============================ */
-
-  /* Lock shell typography so injected page CSS can’t change it */
   #sidebar, #sidebar *{
     font-family:'Roboto',sans-serif !important;
     font-size:14px !important;
@@ -124,44 +122,37 @@
   #topbar, #topbar *{ font-family:'Roboto',sans-serif !important; }
   #sub-nav, #sub-nav *{ font-family:'Roboto',sans-serif !important; }
 
-  /* Restore intended sizes for key elements (so locks don't shrink them) */
   #sidebar .sidebar-title{ font-size:1.2rem !important; }
   #sidebar .sidebar-logo,
   #sidebar .sidebar-logo *{ font-size:1.8rem !important; }
 
-  /* Keep weights stable so .active/:hover doesn’t turn bold via external CSS */
   #sidebar .sidebar-menu a{ font-weight:500 !important; font-size:0.95rem !important; }
   #sidebar .sidebar-menu a.active,
   #sidebar .sidebar-menu a:hover,
   #sidebar .sidebar-menu a:focus{ font-weight:500 !important; }
 
-  /* Prevent icon line-height from nudging text */
   #sidebar .sidebar-menu a i{
     width:24px; min-width:24px; text-align:center; line-height:1 !important;
     font-size:1rem;
   }
 
-  /* —— Font Awesome exceptions (restore icons, incl. fa-solid) —— */
+  /* Font Awesome exceptions */
   #sidebar .fa, #sidebar .fas, #sidebar .far, #sidebar .fal, #sidebar .fad,
   #topbar  .fa, #topbar  .fas, #topbar  .far, #topbar  .fal, #topbar  .fad,
-  #sidebar .fa-solid, #topbar .fa-solid, /* FA6 solid */
-  #sidebar .fa-regular, #topbar .fa-regular /* FA6 regular */{
+  #sidebar .fa-solid, #topbar .fa-solid,
+  #sidebar .fa-regular, #topbar .fa-regular{
     font-family:"Font Awesome 6 Free" !important;
   }
-  /* weights per style */
   #sidebar .fas, #topbar .fas,
   #sidebar .fa-solid, #topbar .fa-solid{ font-weight:900 !important; }
   #sidebar .far, #topbar .far,
   #sidebar .fa-regular, #topbar .fa-regular{ font-weight:400 !important; }
-
-  /* brands */
   #sidebar .fab, #topbar .fab,
   #sidebar .fa-brands, #topbar .fa-brands{
     font-family:"Font Awesome 6 Brands" !important;
     font-weight:400 !important;
   }
 
-  /* Optional: smoother text on dark areas */
   #sidebar, #topbar{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
 </style>
 
@@ -257,9 +248,15 @@
   <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Load shared/feature bundles globally once -->
+<script src="/js/dashboard-common.js"></script>
+<script src="/js/sales-overview.js"></script>
+<script src="/js/inventory-overview.js"></script>
+<script src="/js/appointments.js"></script>
+
 
   <script>
-    // ===== Charts =====
+    // ===== Charts (these are only for the small charts in this shell) =====
     let appointmentTrendsChart, servicesChart, petsChart, diseaseChart;
 
     function initDashboard(){
@@ -374,20 +371,59 @@
       $('.wrapper').css('padding-top', (topbarHeight + subnavHeight) + 'px');
     }
 
-    // ===== Content loader =====
-    function loadContent(page, basePath = '/admin/'){
-      $("#main-content").load(`${basePath}${page}`, function(_res, status, xhr){
-        if (status === 'error'){
-          $("#main-content").html(
-            `<div class="alert alert-danger mt-3">Failed to load <b>${page}</b>. ${xhr?.status || ''} ${xhr?.statusText || ''}</div>`
-          );
-        } else if (page === 'dashboard'){
-          initDashboard();
-        }
-        setSubNavFor(page);
-      });
-    }
+    // ===== Lifecycle glue for SPA partial reloads =====
+  let __currentPage = null;
 
+  function runPageInit(page){
+    if (page === 'dashboard'){
+      window.SalesOverview && window.SalesOverview.init();
+      window.InventoryOverview && window.InventoryOverview.init && window.InventoryOverview.init();
+      window.Appointments && window.Appointments.init && window.Appointments.init();
+
+      // when switching tabs inside the dashboard, refresh the right module
+      wireDashboardTabRefreshes();
+    }
+  }
+
+  function runPageDestroy(page){
+    if (page === 'dashboard'){
+      window.SalesOverview && window.SalesOverview.destroy && window.SalesOverview.destroy();
+      window.InventoryOverview && window.InventoryOverview.destroy && window.InventoryOverview.destroy();
+      window.Appointments && window.Appointments.destroy && window.Appointments.destroy();
+      // remove delegated tab handler
+      $('#main-content').off('shown.bs.tab.dashboardTabs');
+    }
+  }
+
+  function wireDashboardTabRefreshes() {
+    // Delegated — works for content loaded via .load()
+    $('#main-content').on('shown.bs.tab.dashboardTabs', 'a[data-toggle="tab"]', function (e) {
+      const target = $(e.target).attr('href'); // '#salesOverview' | '#inventoryOverview' | '#appointmentTrends'
+      if (target === '#appointmentTrends') {
+        // ensure charts/values render even if the tab was hidden at init time
+        window.Appointments && (window.Appointments.refresh ? window.Appointments.refresh() : window.Appointments.init && window.Appointments.init());
+      } else if (target === '#salesOverview') {
+        window.SalesOverview && window.SalesOverview.init && window.SalesOverview.init(); // idempotent
+      }
+    });
+  }
+
+  // ===== Content loader (AJAX) =====
+  function loadContent(page, basePath = '/admin/'){
+    if (__currentPage) runPageDestroy(__currentPage);
+
+    $("#main-content").load(`${basePath}${page}`, function(_res, status, xhr){
+      if (status === 'error'){
+        $("#main-content").html(
+          `<div class="alert alert-danger mt-3">Failed to load <b>${page}</b>. ${xhr?.status || ''} ${xhr?.statusText || ''}</div>`
+        );
+      } else {
+        runPageInit(page);
+      }
+      setSubNavFor(page);
+      __currentPage = page;
+    });
+  }
     $(document).ready(function(){
       if (isMobile()) hideSidebar(); else showSidebar();
 
