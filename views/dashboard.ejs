@@ -889,7 +889,25 @@
   max-height: calc(5 * 2.2rem);
   overflow-y: auto; /* will only show a slim scroll when needed */
 }
+.card-loading {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.75); z-index:10; backdrop-filter:saturate(120%) blur(1px);
+}
+.card-loading .spin {
+  width:28px; height:28px; border:3px solid rgba(0,0,0,.1); border-top-color:#007bff;
+  border-radius:50%; animation:spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
+/* --- table/list skeleton rows --- */
+.skel-row td { padding:.5rem .75rem; }
+.skel {
+  display:inline-block; height:12px; width:100%;
+  background:linear-gradient(90deg,#eee 25%,#f5f5f5 37%,#eee 63%);
+  background-size:400% 100%; animation:shimmer 1.2s ease-in-out infinite;
+  border-radius:6px;
+}
+@keyframes shimmer { 0%{background-position:100% 0} 100%{background-position:0 0} }
 </style>
 
 </style>
@@ -954,7 +972,7 @@
       >
         <section class="section-pad">
           <!-- KPI Row -->
-          <div class="d-flex flex-wrap mb-4">
+        <div class="d-flex flex-wrap mb-4 position-relative" id="salesKpiRow">
             <div class="kpi-card mr-3 mb-3">
               <i class="fas fa-chart-line"></i>
               <h4 id="kpiRevenue">₱0</h4>
@@ -981,7 +999,7 @@
             <!-- Left column: Sales Trend + Sales by Service -->
             <div class="col-lg-6 mb-4 d-flex flex-column">
               <!-- Sales Trend -->
-              <div class="card sales-trend-card mb-4">
+        <div class="card sales-trend-card mb-4" id="salesTrendCard"> 
                 <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center">
                   <h6 class="mb-0">Sales Trend</h6>
                   <div class="header-controls d-flex align-items-center">
@@ -1038,7 +1056,7 @@
               </div>
 
               <!-- Sales by Service -->
-              <div class="card sales-by-serv-card">
+            <div class="card sales-by-serv-card" id="salesByServCard">
                 <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center">
                   <h6 class="mb-0">Sales by Service</h6>
                   <div class="header-controls d-flex align-items-center">
@@ -1071,7 +1089,7 @@
             <!-- Right column: Sales by Category + Sales by Product -->
             <div class="col-lg-6 mb-4 d-flex flex-column">
               <!-- Sales by Category -->
-              <div class="card sales-by-cat-card mb-4">
+             <div class="card sales-by-cat-card mb-4" id="salesByCatCard">
                 <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center">
                   <h6 class="mb-0">Sales by Category</h6>
                   <div class="header-controls d-flex align-items-center">
@@ -1118,7 +1136,7 @@
               </div>
 
               <!-- Sales by Product -->
-              <div class="card sales-by-prod-card">
+            <div class="card sales-by-prod-card" id="salesByProdCard"> 
                 <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center">
                   <h6 class="mb-0">Sales by Product</h6>
                   <div class="header-controls d-flex align-items-center">
