@@ -1,80 +1,117 @@
 // models/inventory.js
-
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const InventorySchema = new Schema({
-  name: {
-    type: String,
-    required: true
-  },
-  category: {
-    type: String,
-    required: true,
-    enum: [
-      "pet grooming",
-      "pet accessories",
-      "pet essentials",
-      "pet medication",
-      "pet vaccination",
-      "heartworm preventive",
-      "anti-thick and flea preventive",
-      "injectable meds",
-      "clinic needs",
-      "surgery",
-      "cbc",
-      "blood chemistry",
-      "gas anesthesia",
-      "cbc/blood chemistry",
-      "urinalysis",
-      "ultrasounds",
-      "blood collection",
-      "syringe",
-      "needle",
-      "test kits",
-      "petfood",
-      "dewormer"
-    ]
-  },
+const InventorySchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    // Category is now free-form so you can add new ones from the UI
+    category: {
+      type: String,
+      required: true,
+      trim: true
+    },
 
-  basePrice: {
-    type: Number,
-    required: true,
-    min: 0
-  },
-  markup: {
-    type: Number, 
-    required: true,
-    min: 0,
-    default: 0
-  },
-  price: {
-    type: Number,
-    required: true,
-    min: 0
-  },
+    // Base cost of the item (₱)
+    basePrice: {
+      type: Number,
+      required: true,
+      min: 0
+    },
 
-  expirationDates: [{
-    type: Date
-  }],
+    // Markup in PESOS (₱), not percent
+    markup: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0
+    },
 
-  // ← new: keep track of those that have already expired
-  expiredDates: [{
-    type: Date
-  }],
+    // Selling price (auto-computed as basePrice + markup)
+    price: {
+      type: Number,
+      required: true,
+      min: 0
+    },
 
-  quantity: {
-    type: Number,
-    required: true,
-    min: 0
+    // Per-unit expiration dates (one date per unit in stock)
+    expirationDates: [
+      {
+        type: Date
+      }
+    ],
+
+    // Already-expired unit dates (for analytics/loss tracking)
+    expiredDates: [
+      {
+        type: Date
+      }
+    ],
+
+    // Current stock quantity
+    quantity: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+
+    // Count of expired units (redundant but handy for quick queries)
+    expiredCount: {
+      type: Number,
+      default: 0,
+      min: 0
+    }
   },
+  { timestamps: true }
+);
 
-  // ← new: how many units have expired
-  expiredCount: {
-    type: Number,
-    default: 0,
-    min: 0
+/**
+ * Ensure price is always basePrice + markup (markup in pesos).
+ * We do this on validate (create/save) and on findOneAndUpdate.
+ */
+InventorySchema.pre("validate", function (next) {
+  const b = Number(this.basePrice || 0);
+  const m = Number(this.markup || 0);
+  this.price = b + m;
+  next();
+});
+
+InventorySchema.pre("findOneAndUpdate", async function (next) {
+  try {
+    const update = this.getUpdate() || {};
+    // Support both $set and direct assignment updates
+    const $set = update.$set || update;
+
+    let basePrice = $set.basePrice;
+    let markup = $set.markup;
+
+    // If either field wasn't provided in the update, fetch current doc to fill in
+    if (basePrice === undefined || markup === undefined) {
+      const doc = await this.model.findOne(this.getQuery()).lean();
+      if (doc) {
+        if (basePrice === undefined) basePrice = doc.basePrice || 0;
+        if (markup === undefined) markup = doc.markup || 0;
+      } else {
+        // No existing doc; bail gracefully
+        return next();
+      }
+    }
+
+    // Compute selling price in pesos
+    $set.price = Number(basePrice || 0) + Number(markup || 0);
+
+    // Reassign back to the update payload
+    if (update.$set) update.$set = $set;
+    else this.setUpdate($set);
+
+    next();
+  } catch (err) {
+    next(err);
   }
-}, { timestamps: true });
+});
 
 module.exports = mongoose.model("Inventory", InventorySchema);
