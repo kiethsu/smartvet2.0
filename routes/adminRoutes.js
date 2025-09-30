@@ -12,7 +12,7 @@ const ServiceCategory = require("../models/serviceCategory");
 const mongoose = require("mongoose");
 const Payment = require('../models/Payment');
 const PetList = require('../models/petlist');
-
+const salesReportController = require("../controllers/salesReportController");
 
 // Helper middleware for validating request bodies
 function validateRequest(schema) {
@@ -117,6 +117,7 @@ router.get("/petlist", async (req, res) => {
     res.status(500).send("Server error");
   }
 });
+
 router.get('/get-pet-history', async (req, res) => {
   const { petId, petName, ownerId } = req.query;
   if (!petId && !petName) {
@@ -172,12 +173,16 @@ router.get('/get-pet-history', async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
 router.get("/generate-report", adminController.generateReport);
 router.get("/peak-day-of-week", adminController.getPeakDayOfWeek);
 
 router.get("/predict-appointments", adminController.predictAppointments);
 router.post("/update-profile", upload.single("profilePic"), adminController.updateProfile);
+
+// Dashboard stats
 router.get("/get-dashboard-stats", adminController.getDashboardStats);
+
 // Render the Inventory view
 router.get("/inventory", (req, res) => {
   res.render("inventory"); // Ensure views/inventory.ejs exists.
@@ -193,58 +198,40 @@ router.get("/inventory/list", async (req, res) => {
   }
 });
 
-// API route to add a new inventory item
-// API route to add a new inventory item
 // ─── Add a New Inventory Item ───────────────────────────────────────
-// adminRoutes.js (snippet)
-
+// ─── Add a New Inventory Item ───────────────────────────────────────
 router.post("/inventory/add", async (req, res) => {
   try {
     const { name, category, basePrice, markup, quantity } = req.body;
 
-    const bPrice = parseFloat(basePrice);
-    const mPct   = parseFloat(markup);
-    const qty    = parseInt(quantity, 10);
+    const bPrice = parseFloat(basePrice) || 0;
+    const mAmt   = parseFloat(markup)    || 0;  // pesos
+    const qty    = parseInt(quantity, 10) || 0;
 
-    // Compute final price
-    const finalPrice = Math.round((bPrice * (1 + mPct / 100)) * 100) / 100;
+    // NEW: peso-based price
+    const finalPrice = Math.round((bPrice + mAmt) * 100) / 100;
 
-    // Parse incoming expirationDates (strings) into Date[]
+    // ... expiration handling unchanged ...
     let expirationDates = req.body["expirationDates[]"] || req.body.expirationDates;
     if (expirationDates) {
-      if (!Array.isArray(expirationDates)) {
-        expirationDates = [expirationDates];
-      }
+      if (!Array.isArray(expirationDates)) expirationDates = [expirationDates];
       expirationDates = expirationDates
-        .map(dateStr => new Date(dateStr))
+        .map(s => new Date(s))
         .filter(d => !isNaN(d.getTime()));
     } else {
       expirationDates = [];
     }
 
-    // Split into “alreadyExpired” vs “stillValid”
-    const today = new Date();
-    today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const validDates = [], alreadyExpired = [];
+    expirationDates.forEach(d => (d < today ? alreadyExpired : validDates).push(d));
 
-    const validDates = [];
-    const alreadyExpired = [];
-
-    expirationDates.forEach(d => {
-      // d is at midnight of user‐entered date
-      if (d < today) {
-        alreadyExpired.push(d);
-      } else {
-        validDates.push(d);
-      }
-    });
-
-    // Build new Inventory document
     const newItem = new Inventory({
       name,
       category,
       basePrice:    bPrice,
-      markup:       mPct,
-      price:        finalPrice,
+      markup:       mAmt,         // pesos stored
+      price:        finalPrice,   // base + markup
       quantity:     qty,
       expirationDates: validDates,
       expiredDates:    alreadyExpired,
@@ -269,69 +256,48 @@ router.get("/inventory/item/:id", async (req, res) => {
   }
 });
 
-// API route to edit an inventory item
-// adminRoutes.js (snippet)
-
+// ─── Edit an Inventory Item ─────────────────────────────────────────
 router.post("/inventory/edit", async (req, res) => {
   try {
     const { id, name, category, basePrice, markup, quantity } = req.body;
 
-    const bPrice = parseFloat(basePrice);
-    const mPct   = parseFloat(markup);
-    const qty    = parseInt(quantity, 10);
+    const bPrice = parseFloat(basePrice) || 0;
+    const mAmt   = parseFloat(markup)    || 0; // pesos
+    const qty    = parseInt(quantity, 10) || 0;
 
-    // Recompute final price
-    const finalPrice = Math.round((bPrice * (1 + mPct / 100)) * 100) / 100;
+    // NEW: peso-based price
+    const finalPrice = Math.round((bPrice + mAmt) * 100) / 100;
 
-    // Parse incoming expirationDates[]
+    // expiration parsing unchanged ...
     let expirationDates = req.body["expirationDates[]"] || req.body.expirationDates;
     if (expirationDates) {
-      if (!Array.isArray(expirationDates)) {
-        expirationDates = [expirationDates];
-      }
+      if (!Array.isArray(expirationDates)) expirationDates = [expirationDates];
       expirationDates = expirationDates
-        .map(dateStr => new Date(dateStr))
+        .map(s => new Date(s))
         .filter(d => !isNaN(d.getTime()));
     } else {
       expirationDates = [];
     }
 
-    const today = new Date();
-    today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const validDates = [], alreadyExpired = [];
+    expirationDates.forEach(d => (d < today ? alreadyExpired : validDates).push(d));
 
-    const validDates = [];
-    const alreadyExpired = [];
-
-    expirationDates.forEach(d => {
-      if (d < today) {
-        alreadyExpired.push(d);
-      } else {
-        validDates.push(d);
-      }
-    });
-
-    // Fetch existing doc so we can merge old expiredDates
     const existing = await Inventory.findById(id).lean();
-    if (!existing) {
-      return res.status(404).json({ message: "Item not found" });
-    }
+    if (!existing) return res.status(404).json({ message: "Item not found" });
 
-    // Combine previously expiredDates + new alreadyExpired
     const combinedExpiredDates = [
-      ...existing.expiredDates.map(d => new Date(d)), 
+      ...existing.expiredDates.map(d => new Date(d)),
       ...alreadyExpired
     ];
-
-    // Update expiredCount to reflect total expired
     const newExpiredCount = combinedExpiredDates.length;
 
-    // Now update the inventory doc
     await Inventory.findByIdAndUpdate(id, {
       name,
       category,
       basePrice:       bPrice,
-      markup:          mPct,
-      price:           finalPrice,
+      markup:          mAmt,        // pesos stored
+      price:           finalPrice,  // base + markup
       quantity:        qty,
       expirationDates: validDates,
       expiredDates:    combinedExpiredDates,
@@ -344,6 +310,7 @@ router.post("/inventory/edit", async (req, res) => {
     res.status(500).json({ message: "Error updating inventory item" });
   }
 });
+
 
 // API route to delete an inventory item
 router.post("/inventory/delete", async (req, res) => {
@@ -387,7 +354,7 @@ router.post("/services/categories/delete", async (req, res) => {
 // -------------------- Service Item Routes --------------------
 // Render the Services view
 router.get("/services", (req, res) => {
-  res.render("services"); // Ensure views/services.ejs exists.
+  res.render("services");
 });
 router.get("/services/list", async (req, res) => {
   try {
@@ -441,26 +408,43 @@ router.post("/services/delete", async (req, res) => {
     res.status(500).json({ message: "Error deleting service" });
   }
 });
-router.get('/inventory-stats', adminController.getInventoryStats);
-// in adminRoutes.js, after router.get("/inventory", ...)
-router.get("/sales-report", (req, res) => {
-  // If you have logic to gather data, do it here and pass to the template.
-  res.render("sales-report"); 
-});
-// ─── GET /admin/get-categories ─────────────────────────────────────────
-router.get('/get-categories', adminController.getCategories);
 
-// adminRoutes.js
+router.get('/inventory-stats', adminController.getInventoryStats);
+
+// Sales Report page
+router.get("/sales-report", (req, res) => {
+  res.render("sales-report");
+});
+
+// ─── Shared (Dashboard) data endpoints (keep these on adminController) ───
+router.get('/get-categories', adminController.getCategories);
 router.get("/get-sales-by-category", adminController.getSalesByCategory);
-router.get(
-  "/get-sales-by-product",
-  adminController.getSalesByProduct
-);
-router.get("/get-sales-by-service", adminController.getSalesByService);
-// change to these two lines:
-router.get("/downloadSalesExcel", adminController.downloadSalesExcel);
-router.get("/downloadSalesCSV",  adminController.downloadSalesCSV);
-router.get('/expired-products', adminController.getExpiredProducts);
-router.get("/download-sales-report.pdf",  adminController.downloadSalesPDF);
-router.get('/get-top-category', adminController.getTopCategory);
+router.get("/get-sales-by-product",  adminController.getSalesByProduct);
+router.get("/get-sales-by-service",  adminController.getSalesByService);
+router.get('/expired-products',       adminController.getExpiredProducts);
+router.get("/downloadSalesExcel",     adminController.downloadSalesExcel);
+router.get("/downloadSalesCSV",       adminController.downloadSalesCSV);
+router.get("/download-sales-report.pdf", adminController.downloadSalesPDF);
+router.get('/get-top-category',       adminController.getTopCategory);
+
+// ─── Namespaced Sales Report endpoints (NO collisions) ────────────────────
+router.get("/report/get-sales-kpis",        salesReportController.getSalesKPIs);
+router.get("/report/get-sales-by-product",  salesReportController.getSalesByProduct);
+router.get("/report/get-sales-by-service",  salesReportController.getSalesByService);
+router.get("/report/get-sales-by-category", salesReportController.getSalesByCategory);
+router.get("/report/expired-products",      salesReportController.getExpiredProducts);
+
+// (Optional) if you want separate categories endpoint for report:
+// router.get("/report/get-categories",        salesReportController.getProductCategories);
+router.get('/report/top-profit-items', salesReportController.getTopProfitItems);
+router.get('/report/expiring-soon', salesReportController.getExpiringSoon);
+
+// Slow movers (no sales in range)
+router.get('/report/slow-movers', salesReportController.getSlowMovers);
+// Excel export (filter-aware)
+router.get('/report/export-excel', salesReportController.exportExcel);
+router.get('/categories', adminController.listCategories);
+router.post('/categories', adminController.addCategory);
+router.patch('/categories/:id', adminController.renameCategory);
+router.delete('/categories/:id', adminController.deleteCategory);
 module.exports = router;
