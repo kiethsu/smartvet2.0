@@ -15,6 +15,7 @@ const { Parser: Json2csvParser } = require('json2csv');
 const PDFDocument = require('pdfkit');
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 const mongoose = require('mongoose');
+const ProductCategory = require('../models/ProductCategory');
 /**
  * Create a new Doctor/HR account
  */
@@ -405,16 +406,17 @@ exports.getDashboardStats = async (req, res) => {
 };
 
 // ─── 1) GET /admin/get-categories ─────────────────────────────────────────
-exports.getCategories = async (req, res) => {
+// ─── 1) GET /admin/get-categories  (kept for backwards compatibility) ───────
+exports.getCategories = async (_req, res) => {
   try {
-    // Fetch distinct categories from Inventory schema
-    const categories = await Inventory.distinct('category');
-    return res.json(categories);
+    const cats = await ProductCategory.find({}, { name: 1 }).sort({ name: 1 }).lean();
+    res.json(cats.map(c => c.name));
   } catch (err) {
     console.error('Error fetching categories:', err);
-    return res.status(500).json({ error: 'Server error fetching categories' });
+    res.status(500).json({ error: 'Server error fetching categories' });
   }
 };
+
 exports.getTopCategory = async (req, res) => {
   try {
     // Only implement “week” for now. You could expand to month/year if desired.
@@ -2067,5 +2069,90 @@ exports.getExpiredProducts = async (req, res) => {
   } catch (err) {
     console.error("Error in getExpiredProducts:", err);
     return res.status(500).json({ error: "Server error fetching expired products." });
+  }
+};
+// ─── Categories CRUD ─────────────────────────────────────────────────────────
+
+// GET /admin/categories
+exports.listCategories = async (_req, res) => {
+  try {
+    const cats = await ProductCategory.find({}, { name: 1 }).sort({ name: 1 }).lean();
+    res.json(cats); // [{_id, name}, ...]
+  } catch (err) {
+    console.error('listCategories', err);
+    res.status(500).json({ error: 'Server error listing categories' });
+  }
+};
+
+// POST /admin/categories
+// body: { name }
+exports.addCategory = async (req, res) => {
+  try {
+    const name = (req.body.name || "").trim();
+    if (!name) return res.status(400).json({ error: "Category name is required" });
+
+    // case-insensitive check
+    const exists = await ProductCategory.findOne({ name: new RegExp(`^${name}$`, 'i') });
+    if (exists) return res.status(409).json({ error: "Category already exists" });
+
+    const cat = await ProductCategory.create({ name });
+    res.status(201).json({ message: "Category added", category: { _id: cat._id, name: cat.name } });
+  } catch (err) {
+    console.error('addCategory', err);
+    res.status(500).json({ error: 'Server error adding category' });
+  }
+};
+
+// PATCH /admin/categories/:id
+// body: { name }
+exports.renameCategory = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const newName = (req.body.name || "").trim();
+    if (!newName) return res.status(400).json({ error: "New name is required" });
+
+    const cat = await ProductCategory.findById(id);
+    if (!cat) return res.status(404).json({ error: "Category not found" });
+
+    // uniqueness check (case-insensitive)
+    const exists = await ProductCategory.findOne({
+      _id: { $ne: id },
+      name: new RegExp(`^${newName}$`, 'i')
+    });
+    if (exists) return res.status(409).json({ error: "Another category with that name exists" });
+
+    const oldName = cat.name;
+    cat.name = newName;
+    await cat.save();
+
+    // Propagate rename to inventories using the string name
+    await Inventory.updateMany({ category: oldName }, { $set: { category: newName } });
+
+    res.json({ message: "Category renamed", category: { _id: cat._id, name: cat.name } });
+  } catch (err) {
+    console.error('renameCategory', err);
+    res.status(500).json({ error: 'Server error renaming category' });
+  }
+};
+
+// DELETE /admin/categories/:id
+exports.deleteCategory = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const cat = await ProductCategory.findById(id);
+    if (!cat) return res.status(404).json({ error: "Category not found" });
+
+    const inUse = await Inventory.countDocuments({ category: cat.name });
+    if (inUse > 0) {
+      return res.status(400).json({
+        error: `Cannot delete. ${inUse} item(s) still use this category.`
+      });
+    }
+
+    await ProductCategory.deleteOne({ _id: id });
+    res.json({ message: "Category deleted" });
+  } catch (err) {
+    console.error('deleteCategory', err);
+    res.status(500).json({ error: 'Server error deleting category' });
   }
 };
